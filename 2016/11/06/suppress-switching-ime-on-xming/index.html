@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+  <title>Xmingによる入力言語の切り替えを防ぐ | 一生あとで読んでろ</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="description" content="Xming　XmingはWindows向けX Window System実装で，WindowsでX11 Forwardingをする場合のデファクトスタンダード．さて，日本語版のWindowsでXmingを利用していると，時折勝手に入力言語が英語に変わってしまうことがある．でまあOSSなのでソースコードを書き換えればいいんだけど，バイナリを読んだほうが早そう，ということでそのようにした． 原因　ID">
+<meta name="keywords" content="reversing">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Xmingによる入力言語の切り替えを防ぐ">
+<meta property="og:url" content="http://ntddk.github.io/2016/11/06/suppress-switching-ime-on-xming/index.html">
+<meta property="og:site_name" content="一生あとで読んでろ">
+<meta property="og:description" content="Xming　XmingはWindows向けX Window System実装で，WindowsでX11 Forwardingをする場合のデファクトスタンダード．さて，日本語版のWindowsでXmingを利用していると，時折勝手に入力言語が英語に変わってしまうことがある．でまあOSSなのでソースコードを書き換えればいいんだけど，バイナリを読んだほうが早そう，ということでそのようにした． 原因　ID">
+<meta property="og:image" content="http://ntddk.github.io/image/xming/1.png">
+<meta property="og:image" content="http://ntddk.github.io/image/xming/2.png">
+<meta property="og:updated_time" content="2016-11-07T09:13:52.811Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Xmingによる入力言語の切り替えを防ぐ">
+<meta name="twitter:description" content="Xming　XmingはWindows向けX Window System実装で，WindowsでX11 Forwardingをする場合のデファクトスタンダード．さて，日本語版のWindowsでXmingを利用していると，時折勝手に入力言語が英語に変わってしまうことがある．でまあOSSなのでソースコードを書き換えればいいんだけど，バイナリを読んだほうが早そう，ということでそのようにした． 原因　ID">
+<meta name="twitter:image" content="http://ntddk.github.io/image/xming/1.png">
+  
+  
+  <link href="//fonts.googleapis.com/css?family=Ubuntu" rel="stylesheet" type="text/css">
+  <link rel="stylesheet" href="/css/style.css">
+  
+</head>
+<body>
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/" id="logo">一生あとで読んでろ</a>
+      </h1>
+      
+        <h2 id="subtitle-wrap">
+          <a href="/" id="subtitle">技術ブログ</a>
+        </h2>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="sub-nav">
+        
+          <a id="nav-home-icon" class="nav-icon" href="/"></a>
+        
+          <a id="nav-about-icon" class="nav-icon" href="/about"></a>
+        
+        
+      </nav>
+    </div>
+  </div>
+</header>
+      <div class="outer">
+        <section id="main"><article id="post-suppress-switching-ime-on-xming" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    
+      <header class="article-header">
+        
+  
+    <h1 class="article-title" itemprop="name">
+      Xmingによる入力言語の切り替えを防ぐ
+    </h1>
+  
+
+      </header>
+    
+    <time class="article-date" datetime="2016-11-06T09:40:00.000Z" itemprop="datePublished">11-06-2016</time>
+    
+  </div>
+  <div class="article-inner">
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h1 id="Xming"><a href="#Xming" class="headerlink" title="Xming"></a>Xming</h1><p>　<a href="http://www.straightrunning.com/XmingNotes/" target="_blank" rel="external">Xming</a>はWindows向けX Window System実装で，WindowsでX11 Forwardingをする場合のデファクトスタンダード．さて，日本語版のWindowsでXmingを利用していると，時折勝手に入力言語が英語に変わってしまうことがある．でまあOSSなのでソースコードを書き換えればいいんだけど，バイナリを読んだほうが早そう，ということでそのようにした．</p>
+<h1 id="原因"><a href="#原因" class="headerlink" title="原因"></a>原因</h1><p>　IDA Proでキーボード関連のAPIの呼び出し元を眺めると，LoadKeyboardLayoutのロケールID引数を英語 (0x0409) に設定していることがわかる．これを日本語 (0x0411) にすればよい．</p>
+<p><img src="/image/xming/1.png" width="100%" height="100%"></p>
+<p>　素直に.rdataセクションに載っているので，そのまま書き換えられる．</p>
+<p><img src="/image/xming/2.png" width="100%" height="100%"></p>
+<p>　紀元前のバイナリパッチ方式で書くと下記の通り：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div></pre></td><td class="code"><pre><div class="line">19AFAA: 30 31</div><div class="line">19AFAB: 39 31</div><div class="line">19AFB5: 55 4A</div><div class="line">19AFB6: 53 50</div></pre></td></tr></table></figure>
+<p>　はい．</p>
+<h1 id="追記-2016-11-07"><a href="#追記-2016-11-07" class="headerlink" title="追記 (2016.11.07)"></a>追記 (2016.11.07)</h1><p>　XmingのバージョンはPublic Domain Releases 6.9.0.31で，より新しい有償版で修正されているのかどうかは知らない．で，6.9.0.31の当該ソースコード (<code>xc/programs/Xserver/hw/xwin/winconfig.c</code>) にはなにやら不吉なコメントが記されているが，見なかったことにする．うちの環境では，レジストリ設定でCaps LockをCtrlに入れ替えてるし．</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div></pre></td><td class="code"><pre><div class="line"><span class="keyword">if</span> (keyboardType == <span class="number">7</span>)</div><div class="line">  &#123;</div><div class="line">    <span class="comment">/* Japanese layouts have problems with key event messages</span></div><div class="line">       such as the lack of WM_KEYUP for Caps Lock key.</div><div class="line">       Loading US layout fixes this problem. */</div><div class="line">    <span class="keyword">if</span> (LoadKeyboardLayout(<span class="string">"00000409"</span>, KLF_ACTIVATE) != <span class="literal">NULL</span>)</div><div class="line">      winMsg (X_INFO, <span class="string">"Loading US keyboard layout.\n"</span>);</div><div class="line">    <span class="keyword">else</span></div><div class="line">      winMsg (X_ERROR, <span class="string">"LoadKeyboardLaout failed.\n"</span>);</div><div class="line">  &#125;</div></pre></td></tr></table></figure>
+<p>　ご自身の責任でやっていってください．</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://ntddk.github.io/2016/11/06/suppress-switching-ime-on-xming/" data-id="cj13oizhb0010pcosf63ele8t" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/reversing/">reversing</a></li></ul>
+
+    </footer>
+  </div>
+  
+    
+<nav id="article-nav">
+  
+    <a href="/2016/08/27/angr-afl-driller/" id="article-nav-newer" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Newer</strong>
+      <div class="article-nav-title">
+        
+          angr, AFL, Driller
+        
+      </div>
+    </a>
+  
+  
+    <a href="/2016/11/23/kdd-cup-99-data/" id="article-nav-older" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Older</strong>
+      <div class="article-nav-title">KDD Cup 99 Dataおぼえがき</div>
+    </a>
+  
+</nav>
+
+  
+</article>
+
+</section>
+        
+      </div>
+      <footer id="footer">
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      &copy; 2017 ntddk<br>
+      <a href="https://github.com/ntddk/hexo-theme-jathena" target="_blank">JAthena</a> by <a href="http://ntddk.github.io" target="_blank">ntddk</a> | Powered by <a href="http://hexo.io/" target="_blank">Hexo</a>
+    </div>
+  </div>
+</footer>
+    </div>
+    
+
+<script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+
+
+  <link rel="stylesheet" href="/fancybox/jquery.fancybox.css">
+  <script src="/fancybox/jquery.fancybox.pack.js"></script>
+
+
+<script src="/js/script.js"></script>
+  </div>
+</body>
+</html>

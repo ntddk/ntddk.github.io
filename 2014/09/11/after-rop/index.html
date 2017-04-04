@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+  <title>Return-oriented programming以後 | 一生あとで読んでろ</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="description" content="はじめにReturn-oriented programming(ROP)が提唱されて久しい．CTFにおいても，ROPは当たり前のように要求される技術となってきている．一方で，ROPに代わる新たな攻撃手法も模索されている．ここでは，そういったROP以後の攻撃手法を概観する． Return-oriented programmingコンセプトまずは簡単にROPをおさらいする．ROPは主にハードウェアDE">
+<meta name="keywords" content="exploiting">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Return-oriented programming以後">
+<meta property="og:url" content="http://ntddk.github.io/2014/09/11/after-rop/index.html">
+<meta property="og:site_name" content="一生あとで読んでろ">
+<meta property="og:description" content="はじめにReturn-oriented programming(ROP)が提唱されて久しい．CTFにおいても，ROPは当たり前のように要求される技術となってきている．一方で，ROPに代わる新たな攻撃手法も模索されている．ここでは，そういったROP以後の攻撃手法を概観する． Return-oriented programmingコンセプトまずは簡単にROPをおさらいする．ROPは主にハードウェアDE">
+<meta property="og:updated_time" content="2014-09-16T11:54:16.000Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Return-oriented programming以後">
+<meta name="twitter:description" content="はじめにReturn-oriented programming(ROP)が提唱されて久しい．CTFにおいても，ROPは当たり前のように要求される技術となってきている．一方で，ROPに代わる新たな攻撃手法も模索されている．ここでは，そういったROP以後の攻撃手法を概観する． Return-oriented programmingコンセプトまずは簡単にROPをおさらいする．ROPは主にハードウェアDE">
+  
+  
+  <link href="//fonts.googleapis.com/css?family=Ubuntu" rel="stylesheet" type="text/css">
+  <link rel="stylesheet" href="/css/style.css">
+  
+</head>
+<body>
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/" id="logo">一生あとで読んでろ</a>
+      </h1>
+      
+        <h2 id="subtitle-wrap">
+          <a href="/" id="subtitle">技術ブログ</a>
+        </h2>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="sub-nav">
+        
+          <a id="nav-home-icon" class="nav-icon" href="/"></a>
+        
+          <a id="nav-about-icon" class="nav-icon" href="/about"></a>
+        
+        
+      </nav>
+    </div>
+  </div>
+</header>
+      <div class="outer">
+        <section id="main"><article id="post-after-rop" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    
+      <header class="article-header">
+        
+  
+    <h1 class="article-title" itemprop="name">
+      Return-oriented programming以後
+    </h1>
+  
+
+      </header>
+    
+    <time class="article-date" datetime="2014-09-11T10:07:12.000Z" itemprop="datePublished">09-11-2014</time>
+    
+  </div>
+  <div class="article-inner">
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h1 id="はじめに"><a href="#はじめに" class="headerlink" title="はじめに"></a>はじめに</h1><p>Return-oriented programming(ROP)が提唱されて久しい．CTFにおいても，ROPは当たり前のように要求される技術となってきている．一方で，ROPに代わる新たな攻撃手法も模索されている．ここでは，そういったROP以後の攻撃手法を概観する．</p>
+<h1 id="Return-oriented-programming"><a href="#Return-oriented-programming" class="headerlink" title="Return-oriented programming"></a>Return-oriented programming</h1><h2 id="コンセプト"><a href="#コンセプト" class="headerlink" title="コンセプト"></a>コンセプト</h2><p>まずは簡単にROPをおさらいする．<br>ROPは主にハードウェアDEPという脆弱性対策技術に対抗するために編み出された攻撃手法である．ハードウェアDEPはCPUのNX bitを有効化することで，スタック上でコードを実行する攻撃を無効化する．<br>そこで，ROPはコード領域のretで終わる命令列(gadget)を実行することによってこれを回避する．単体のgadgetではわずかな処理しか行えないが，スタックに次のgadgetのアドレスを積むことで，gadgetを組み合わせたchainを構築することができる．ROPの作成にはコード領域からgadgetを探索する段階とgadgetを組み合わせる段階を要する．レジスタの操作はpopによって行う．</p>
+<h2 id="ASLR-PIEの迂回"><a href="#ASLR-PIEの迂回" class="headerlink" title="ASLR/PIEの迂回"></a>ASLR/PIEの迂回</h2><p>ASLRはスタックやヒープなどが読み込まれる位置を実行ごとにランダマイズすることで，アドレスを決め打ちした攻撃を困難にする．だが，ASLRはROPに対処しうる技術ではない．<br>まず，LinuxにおいてASLRはコード領域のランダマイズを行わないため，スタックオーバーフローなどをROPの起点とすることができる．また，bssセグメントに存在する変数のアドレスを取得することができるのは，ASLRの重大な欠陥である．さらに，32bitの場合は総当りによってアドレスを特定できるほか，ulimit -s unlimitedによってASLRを無効化することができる．<br>PIEはASLRに加えてgadgetのアドレスまでランダマイズの対象となるため，攻撃にあたってはleakが前提となる．</p>
+<h2 id="RELROの迂回"><a href="#RELROの迂回" class="headerlink" title="RELROの迂回"></a>RELROの迂回</h2><p>RELROはセクションをread onlyに設定する機能である．Partial RELROとFull RELROがあり，前者の場合はGOTを利用した攻撃が可能である．後者の場合はread onlyにしうる全てのセクションがread onlyとなるが，ROPによって攻撃を成立させることができる．</p>
+<h2 id="Stager"><a href="#Stager" class="headerlink" title="Stager"></a>Stager</h2><p>攻撃に使える領域のサイズが制限されている場合，readなどの関数を用いて再度メモリに書き込む方法をstagerと呼ぶ．</p>
+<h2 id="Stack-Pivot"><a href="#Stack-Pivot" class="headerlink" title="Stack Pivot"></a>Stack Pivot</h2><p>スタックのサイズ上，リターンアドレスの下にROP chainを構築できないような場合，xchg esp,eaxなどのgadgetを用いてスタックのアドレスを移動させる方法をstack pivotと呼ぶ．</p>
+<h2 id="論文"><a href="#論文" class="headerlink" title="論文"></a>論文</h2><ul>
+<li><a href="http://cseweb.ucsd.edu/~hovav/dist/geometry.pdf" target="_blank" rel="external">The Geometry of Innocent Flesh on the Bone: Return-into-libc without Function Calls (on the x86) [PDF]</a></li>
+</ul>
+<h1 id="BROP-Blind-return-oriented-programming"><a href="#BROP-Blind-return-oriented-programming" class="headerlink" title="BROP: Blind return-oriented programming"></a>BROP: Blind return-oriented programming</h1><h2 id="コンセプト-1"><a href="#コンセプト-1" class="headerlink" title="コンセプト"></a>コンセプト</h2><p>以下の要件を満たすサーバープログラムの場合は，バイナリが手元になくてもROPを試みることができる．</p>
+<ul>
+<li>listen，forkを行う</li>
+<li>スタックオーバーフローで子プロセスが落ちた場合も動き続ける</li>
+<li>GOTにstrcmpなど第三引数を操作できる関数が存在する</li>
+<li>GOTにwriteなどleakさせることができる関数が存在する</li>
+<li>総当りなどでGOTのアドレスが分かる</li>
+</ul>
+<p>目的は，自身をwriteによってダンプさせることである．<br>まず，リターンアドレスを総当りして，無限ループに陥るようなgadget(STOP gadgetと呼称)を探す．次に，関数にinnvalidな引数を渡した場合であっても，GOTに正しく飛んだ場合はSEGVしないという点に着目し，0x08040000周辺に存在しているはずのGOTセクションの位置を推定する．推定にあたっては，+0x6のアドレスや次のGOTエントリに飛んだ場合もSEGVしないという特性を用いる．そして，fdを総当りするか，多数のコネクションからwriteを探り当てる．<br>GOTエントリは要素数のサイズが同じであるため，スタックのleakからゴリ押しできる，といった内容のようだが，実際のところどうなのだろうか．CTFのネタとしては面白いのではないか．</p>
+<h2 id="論文-1"><a href="#論文-1" class="headerlink" title="論文"></a>論文</h2><ul>
+<li><a href="http://www.scs.stanford.edu/brop/bittau-brop.pdf" target="_blank" rel="external">Hacking Blind [PDF]</a></li>
+</ul>
+<h2 id="実例"><a href="#実例" class="headerlink" title="実例"></a>実例</h2><ul>
+<li><a href="http://www.scs.stanford.edu/brop/braille.rb" target="_blank" rel="external">Braille [Ruby]</a></li>
+</ul>
+<h1 id="SROP-Sigreturn-oriented-Programming"><a href="#SROP-Sigreturn-oriented-Programming" class="headerlink" title="SROP: Sigreturn-oriented Programming"></a>SROP: Sigreturn-oriented Programming</h1><h2 id="コンセプト-2"><a href="#コンセプト-2" class="headerlink" title="コンセプト"></a>コンセプト</h2><p>vdsoには，シグナル割り込みから復帰する際に，ユーザーランドのスタック上に作成したsignal frameに保存している値を全てのレジスタへ戻すsigreturnという命令が存在する．つまり，popadが廃止されたx64においても，sigreturnによってスタック上の値を複数のレジスタにセットすることができる．これによって，任意のシステムコールを呼び出すことが可能となるほか，関数の呼び出しがレジスタ渡しの場合においてもROPが容易になる．なお，vsyscallはASLRが有効であっても固定アドレスである．<br>ulimit -s unlimitedを用いてvdsoのマッピングアドレスを固定できる場合はCTFでも活用できそうだ．</p>
+<h2 id="論文-2"><a href="#論文-2" class="headerlink" title="論文"></a>論文</h2><ul>
+<li><a href="https://www.cs.vu.nl/~herbertb/papers/srop_sp14.pdf" target="_blank" rel="external">Framing Signals—A Return to Portable Shellcode [PDF]</a></li>
+</ul>
+<h2 id="実例-1"><a href="#実例-1" class="headerlink" title="実例"></a>実例</h2><ul>
+<li><a href="http://inaz2.hatenablog.com/entry/2014/07/30/021123" target="_blank" rel="external">x64でSigreturn Oriented ProgrammingによるASLR+DEP+RELRO回避をやってみる - ももいろテクノロジー</a></li>
+</ul>
+<h1 id="JOP-Jump-oriented-programmingとCOP-Call-oriented-programming"><a href="#JOP-Jump-oriented-programmingとCOP-Call-oriented-programming" class="headerlink" title="JOP: Jump-oriented programmingとCOP: Call-oriented programming"></a>JOP: Jump-oriented programmingとCOP: Call-oriented programming</h1><h2 id="コンセプト-3"><a href="#コンセプト-3" class="headerlink" title="コンセプト"></a>コンセプト</h2><p>通常，retの次にはそのサブルーチンを呼び出したcallの次の命令が存在する．そこで，コールスタックを辿ることでROPによってretが使われていないか検出するROPguardが考案された．ROPguardはMicrosoftの脆弱性対策ツールであるEMET 3.5の根幹を成す理論だった．<br>そこで，retの代わりにjmpを用いるJump-oriented programmingが考案された．また，retやjmpの代わりにcallを用いるCall-oriented programmingも可能である．例えば以下のコードスニペットにおいて，callはjmpと実質的に等価である．</p>
+<pre><code>pop esi;
+ret;
+push eax;
+call esi;
+
+; call先
+pop esi ;retアドレスを除去
+;eaxを用いる処理
+</code></pre><p>COPでは，pushのような表現力の高い命令を用いることができる．</p>
+<h2 id="論文-3"><a href="#論文-3" class="headerlink" title="論文"></a>論文</h2><h3 id="ROPguard"><a href="#ROPguard" class="headerlink" title="ROPguard"></a>ROPguard</h3><ul>
+<li><a href="http://ifsec.blogspot.jp/2012/08/my-bluehat-prize-entry-ropguard-runtime.html" target="_blank" rel="external">My BlueHat Prize entry: ROPGuard - runtime prevention of return-oriented programming attacks - Ivan Fratric’s Security Blog</a></li>
+</ul>
+<h3 id="JOP"><a href="#JOP" class="headerlink" title="JOP"></a>JOP</h3><ul>
+<li><a href="ftp://ftp.ncsu.edu/pub/tech/2010/TR-2010-8.pdf" target="_blank" rel="external">Jump-Oriented Programming: A New Class of Code-Reuse Attack [PDF]</a></li>
+</ul>
+<h3 id="COP"><a href="#COP" class="headerlink" title="COP"></a>COP</h3><ul>
+<li><a href="http://www.cs.stevens.edu/~gportoka/files/outofcontrol_oakland14.pdf" target="_blank" rel="external">Out of control: Overcoming control-flow integrity [PDF]</a></li>
+<li><a href="http://www.cs.berkeley.edu/~daw/papers/rop-usenix14.pdf" target="_blank" rel="external">ROP is Still Dangerous: Breaking Modern Defenses [PDF]</a></li>
+</ul>
+<h2 id="実例-2"><a href="#実例-2" class="headerlink" title="実例"></a>実例</h2><h3 id="COP-1"><a href="#COP-1" class="headerlink" title="COP"></a>COP</h3><ul>
+<li><a href="http://potetisensei.hatenablog.com/entry/2014/09/12/020720" target="_blank" rel="external">Call Oriented Programming - 生きたい</a></li>
+</ul>
+<h1 id="おわりに"><a href="#おわりに" class="headerlink" title="おわりに"></a>おわりに</h1><p>ざっとROP以後の攻撃手法を列挙した．これ以外にも，AlphanumericなROPを作成する技術やバイナリから自動的にROPを作成する技術などが研究されている．また，<a href="http://inaz2.hatenablog.com/entry/2014/08/03/230528" target="_blank" rel="external">roputils</a>や<a href="http://bap.ece.cmu.edu/" target="_blank" rel="external">BAP</a>など，ROPを支援するフレームワークも開発されている．これらについてもいずれ理解したい．</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://ntddk.github.io/2014/09/11/after-rop/" data-id="cj13oizg00001pcos2n506i6e" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/exploiting/">exploiting</a></li></ul>
+
+    </footer>
+  </div>
+  
+    
+<nav id="article-nav">
+  
+  
+    <a href="/2014/09/12/symexec-intro/" id="article-nav-older" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Older</strong>
+      <div class="article-nav-title">シンボリック実行に入門しようとした</div>
+    </a>
+  
+</nav>
+
+  
+</article>
+
+</section>
+        
+      </div>
+      <footer id="footer">
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      &copy; 2017 ntddk<br>
+      <a href="https://github.com/ntddk/hexo-theme-jathena" target="_blank">JAthena</a> by <a href="http://ntddk.github.io" target="_blank">ntddk</a> | Powered by <a href="http://hexo.io/" target="_blank">Hexo</a>
+    </div>
+  </div>
+</footer>
+    </div>
+    
+
+<script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+
+
+  <link rel="stylesheet" href="/fancybox/jquery.fancybox.css">
+  <script src="/fancybox/jquery.fancybox.pack.js"></script>
+
+
+<script src="/js/script.js"></script>
+  </div>
+</body>
+</html>

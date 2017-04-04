@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+  <title>Tag: symbolic execution | 一生あとで読んでろ</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta property="og:type" content="website">
+<meta property="og:title" content="一生あとで読んでろ">
+<meta property="og:url" content="http://ntddk.github.io/tags/symbolic-execution/index.html">
+<meta property="og:site_name" content="一生あとで読んでろ">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="一生あとで読んでろ">
+  
+  
+  <link href="//fonts.googleapis.com/css?family=Ubuntu" rel="stylesheet" type="text/css">
+  <link rel="stylesheet" href="/css/style.css">
+  
+</head>
+<body>
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/" id="logo">一生あとで読んでろ</a>
+      </h1>
+      
+        <h2 id="subtitle-wrap">
+          <a href="/" id="subtitle">技術ブログ</a>
+        </h2>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="sub-nav">
+        
+          <a id="nav-home-icon" class="nav-icon" href="/"></a>
+        
+          <a id="nav-about-icon" class="nav-icon" href="/about"></a>
+        
+        
+      </nav>
+    </div>
+  </div>
+</header>
+      <div class="outer">
+        <section id="main">
+  
+    <article id="post-angr-afl-driller" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    
+      <header class="article-header">
+        
+  
+    <a class="article-title" href="/2016/08/27/angr-afl-driller/">angr, AFL, Driller</a>
+  
+
+      </header>
+    
+    <time class="article-date" datetime="2016-08-26T18:00:00.000Z" itemprop="datePublished">08-27-2016</time>
+    
+  </div>
+  <div class="article-inner">
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h1 id="はじめに"><a href="#はじめに" class="headerlink" title="はじめに"></a>はじめに</h1><p>　今年のセキュリティ・キャンプでは，うっかり「なぜマルウェア解析は自動化できないのか」という題の講義を行ってしまったが，それだけセキュリティの世界には自動化の波が来ている．本稿では，脆弱性分析の自動化をめざして開発されているangr, AFL, Drillerをざっくり紹介する．</p>
+<h1 id="angr"><a href="#angr" class="headerlink" title="angr"></a>angr</h1><p>　<a href="http://angr.io/" target="_blank" rel="external">angr</a>はUCSBの研究チームにしてCTFチーム<a href="https://twitter.com/shellphish" target="_blank" rel="external">Shellphish</a>を中心に開発されているバイナリ解析フレームワーク．<a href="https://www.cs.ucsb.edu/~vigna/publications/2016_SP_angrSoK.pdf" target="_blank" rel="external">論文[PDF]</a>はIEEE S&amp;P 2016に採択されている．手法の新規性というよりは実装力でゴリ押しするタイプ．評価には，アメリカ国防高等研究計画局が5,500万ドル（約56億円）の資金を投じてまで開催した脆弱性分析・修正の自動化コンペ，<a href="https://www.cybergrandchallenge.com/" target="_blank" rel="external">DARPA Cyber Grand Challenge</a> (CGC) のデータセットが用いられている．CGCの決勝戦に進出したチームには75万ドル（約7,600万円），優勝したチームは200万ドル（約2億円）が与えられる．angr開発の目的のひとつが，CGCでの勝利にあることは疑いようもない——最終的な戦績は，CMUのツールMAYHEMに優勝を譲って3位だったが．<br>　さて，angrはシンボリック実行やプログラムスライシングを通して，<strong>プログラムの特定位置に到達するための入力値を抽出することができる</strong>．次のコードで雰囲気をつかめるだろうか：</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div><div class="line">22</div><div class="line">23</div><div class="line">24</div><div class="line">25</div><div class="line">26</div><div class="line">27</div><div class="line">28</div><div class="line">29</div><div class="line">30</div></pre></td><td class="code"><pre><div class="line"><span class="comment">#!/usr/bin/env python</span></div><div class="line"><span class="comment">#-*- coding:utf-8 -*-</span></div><div class="line"><span class="keyword">import</span> sys</div><div class="line"><span class="keyword">import</span> angr</div><div class="line"><span class="keyword">import</span> simuvex</div><div class="line"></div><div class="line"><span class="comment"># 解析対象を指定</span></div><div class="line">p = angr.Project(sys.argv[<span class="number">1</span>]) </div><div class="line"></div><div class="line"><span class="comment"># 制御フローグラフの生成</span></div><div class="line">cfg = p.analyses.CFG()</div><div class="line"><span class="keyword">print</span> [x <span class="keyword">for</span> x <span class="keyword">in</span> cfg.functions.iteritems()]</div><div class="line"></div><div class="line"><span class="comment"># シンボルを取得</span></div><div class="line">target_addr = p.loader.main_bin.get_symbol(<span class="string">"main"</span>).addr</div><div class="line"></div><div class="line"><span class="comment"># パス分析クラスのインスタンス</span></div><div class="line">pg = p.factory.path_group()</div><div class="line"></div><div class="line"><span class="comment"># シンボルへのパスを分析</span></div><div class="line">pg.explore(find = target_addr)</div><div class="line"></div><div class="line"><span class="comment"># avoidを避け，findに到達する入力値を探索してくれる</span></div><div class="line">a = p.surveyors.Explorer(find = FIND_ADDR, avoid = AVOID_ADDR).run()</div><div class="line"></div><div class="line"><span class="comment"># フック</span></div><div class="line">p.hook_symbol(<span class="string">'strlen'</span>, simuvex.SimProcedures[<span class="string">'stubs'</span>][<span class="string">'ReturnUnconstrained'</span>])</div><div class="line"></div><div class="line"><span class="comment"># 実行結果のダンプ</span></div><div class="line">a.found[<span class="number">0</span>].state.posix.dumps(<span class="number">1</span>)</div></pre></td></tr></table></figure>
+<p>　解析対象の規模が大きい場合，エントリポイントを起点とした解析に時間を要するあるいは失敗することがあるが，プログラムの途中から解析を始めることも可能だ．</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div></pre></td><td class="code"><pre><div class="line">p = angr.Project(sys.argv[<span class="number">1</span>])</div><div class="line"></div><div class="line"><span class="comment"># 解析の起点となるアドレス</span></div><div class="line">state = p.factory.blank_state(addr = START_ADDR)</div><div class="line"><span class="comment"># その地点までプログラムを実行したときのスタックの状態</span></div><div class="line">state.regs.ebp = BASE_ADDR</div><div class="line">state.regs.esp = STACK_ADDR</div><div class="line"></div><div class="line"><span class="comment"># 入力値の設定</span></div><div class="line"><span class="keyword">for</span> i <span class="keyword">in</span> range(INPUT_LENGTH):</div><div class="line">    s = state.se.BVS(<span class="string">'Var[&#123;&#125;]'</span>.format(i), <span class="number">32</span>, explicit_name = <span class="keyword">True</span>)</div><div class="line">    state.memory.store(INPUT_ADDR + i * <span class="number">4</span>, s)</div><div class="line"></div><div class="line">path = p.factory.path(state)</div><div class="line">a = p.surveyors.Explorer(start = path, find= FIND_ADDR, avoid= AVOID_ADDR)</div><div class="line">a.found[<span class="number">0</span>].state.posix.dumps(<span class="number">1</span>)</div></pre></td></tr></table></figure>
+<p>　シンボリック実行はSSA形式の中間表現を前提とするが，angrはValgrindのVEX IRを用いている．バックエンドのSMTソルバはZ3だが，claripyという自前のラッパが噛ませてある．<br>　これ以上の説明は<a href="http://docs.angr.io/" target="_blank" rel="external">公式ドキュメント</a>に譲ろう．</p>
+<h1 id="AFL"><a href="#AFL" class="headerlink" title="AFL"></a>AFL</h1><p>　<a href="http://lcamtuf.coredump.cx/afl/" target="_blank" rel="external">AFL</a> (American Fuzzy Lop) はGoogleのエンジニア<a href="https://twitter.com/lcamtuf" target="_blank" rel="external">lcamtuf</a>を中心に開発されているファジングツール．遺伝的アルゴリズムによって正常な入力を次々と変異させていき，<strong>自動的にプログラムのバグを検出する</strong>．AFLにはbashやtcpdump, OpenSSHといったさまざまなソフトウェアのバグを検出した実績があり，いまや脆弱性分析の研究になくてはならない存在だ．一般的なファジングはプログラムの浅い箇所にしか到達できない．AFLは，大量の正常な入力をトリミングしてシードとするコーパス蒸留 (corpus distillation) と，遺伝的アルゴリズムを用いてシードを変異させる<a href="http://ieeexplore.ieee.org/document/4682289/" target="_blank" rel="external">GAFuzzing</a>のいいとこ取りを図ったものだ．その実行フローは次のようになる：</p>
+<ol>
+<li>ユーザーから与えられた初期テストケースをキューに入れる</li>
+<li>キューから次の入力テストケースをひとつ取り出し，</li>
+<li>プログラムの振る舞いに影響を与えない最小サイズにトリミングする</li>
+<li>バランスのよい探索となるよう，さまざまな変異戦略を用いて入力を繰り返し変異させる</li>
+<li>新たな状態遷移が計測されたら，出力をキューに入れる</li>
+<li>2に戻る</li>
+</ol>
+<p>　ここでAFLはカバレッジ計測のため，解析対象のプログラムに計測用のコードを埋め込む．これには，解析対象のソースコードが手元にある場合gccやclangの独自フロントエンドが，解析対象のソースコードが手元にない場合QEMUが用いられる．<br>　ファジング機能の中核は，<code>afl-fuzz.c</code>の<code>main()</code>から呼び出される<code>fuzz_one()</code>にある．実装されている変異戦略は次の通り：</p>
+<ul>
+<li>SIMPLE BITFLIP</li>
+<li>ARITHMETIC INC/DEC</li>
+<li>INTERESTING VALUES</li>
+<li>DICTIONARY STUFF</li>
+<li>RANDOM HAVOC</li>
+<li>SPLICING</li>
+</ul>
+<p>　CGCで優勝したCMUのMAYHEMは，<a href="https://twitter.com/thedavidbrumley/status/762107471771021313" target="_blank" rel="external">このAFLにシンボリック実行機能を追加していたようだ</a>．MAYHEMといえば同名のシンボリック実行エンジンの<a href="https://users.ece.cmu.edu/~arebert/papers/mayhem-oakland-12.pdf" target="_blank" rel="external">論文[PDF]</a>がIEEE S&amp;P 2012で発表されているが，当時からの変更点がどれほどなのかはわからない．<br>　また，AFLの拡張に，解析対象のパスを枝刈りすることで高速化を図った<a href="https://github.com/mboehme/aflfast" target="_blank" rel="external">AFLFast</a>がある．これもCGC決勝進出チームによるもので，<a href="https://comp.nus.edu.sg/~mboehme/paper/CCS16.pdf" target="_blank" rel="external">論文[PDF]</a>はACM CCS 2016に採択されている．600行程度のパッチでトップカンファレンス．ちょっと妬ましい．</p>
+<h1 id="Driller"><a href="#Driller" class="headerlink" title="Driller"></a>Driller</h1><p>　<a href="https://github.com/shellphish/driller" target="_blank" rel="external">Driller</a>はangrの開発陣によるAFLの拡張．<a href="https://www.internetsociety.org/sites/default/files/blogs-media/driller-augmenting-fuzzing-through-selective-symbolic-execution.pdf" target="_blank" rel="external">論文[PDF]</a>はNDSS 2016に採択されている．AFLのREADMEには次のようにある：</p>
+<blockquote>
+<p>Other, more sophisticated research has focused on techniques such as program flow analysis (“concolic execution”), symbolic execution, or static analysis. All these methods are extremely promising in experimental settings, but tend to suffer from reliability and performance problems in practical uses - and currently do not offer a viable alternative to “dumb” fuzzing techniques.</p>
+</blockquote>
+<p>　シンボリック（コンコリック）実行は実用的ではないと切って捨てている．DrillerはangrとAFLを組み合わせることで，この批判を克服し，ファジングとシンボリック実行のいいとこ取りを図ったものだ：</p>
+<p><img src="/image/driller/driller.png" width="100%" height="100%"></p>
+<p>　たとえば，次のコードの解析には，ファジングよりシンボリック実行が適している：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div></pre></td><td class="code"><pre><div class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">(<span class="keyword">void</span>)</span></span></div><div class="line">&#123;</div><div class="line">    <span class="keyword">int</span> x;</div><div class="line">    read(<span class="number">0</span>, &amp;x, <span class="keyword">sizeof</span>(x));</div><div class="line">    <span class="keyword">if</span>(x == <span class="number">0x123ABCD</span>)</div><div class="line">        vulnerable();</div><div class="line">&#125;</div></pre></td></tr></table></figure>
+<p>　なぜなら，ファジングによって<code>0x123ABCD</code>という値を生成するには大量の試行を必要とするからだ．一方で，次のコードの解析には，シンボリック実行よりファジングが適している：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div></pre></td><td class="code"><pre><div class="line"><span class="function"><span class="keyword">int</span> <span class="title">check</span><span class="params">(<span class="keyword">char</span> *x, <span class="keyword">int</span> depth)</span></span></div><div class="line">&#123;</div><div class="line">    <span class="keyword">if</span>(depth &gt;= <span class="number">100</span>)&#123;</div><div class="line">        <span class="keyword">return</span> <span class="number">0</span>;</div><div class="line">    &#125;<span class="keyword">else</span>&#123;</div><div class="line">        <span class="keyword">int</span> count = (*x == <span class="string">'B'</span>) ? <span class="number">1</span> : <span class="number">0</span>;</div><div class="line">        count += check(x+<span class="number">1</span>, depth+<span class="number">1</span>);</div><div class="line">        <span class="keyword">return</span> count;</div><div class="line">    &#125;</div><div class="line">&#125;</div><div class="line"></div><div class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">(<span class="keyword">void</span>)</span></span></div><div class="line">&#123;</div><div class="line">    <span class="keyword">char</span> x[<span class="number">100</span>];</div><div class="line">    read(<span class="number">0</span>, x, <span class="number">100</span>);</div><div class="line"></div><div class="line">    <span class="keyword">if</span>(check(x, <span class="number">0</span>) == <span class="number">25</span>)</div><div class="line">        vulnerable();</div><div class="line">&#125;</div></pre></td></tr></table></figure>
+<p>　なぜなら，単純なシンボリック実行ではパス爆発を解決できないからだ．<br>　Drillerは両手法の長所と短所を踏まえた上で，それらを堅実に組み合わせている．やはりハッシュ関数の充足はDrillerをもってしても難しいようだが，現行MAYHEMもAFLとシンボリック実行を併用しているようだし，このアプローチが現在の着地点なのだろう．</p>
+<h1 id="おわりに"><a href="#おわりに" class="headerlink" title="おわりに"></a>おわりに</h1><p>　CGCとそれにともなう研究によって，脆弱性分析の自動化手法は大きな進歩を遂げつつあることが伝わっただろうか．学会のOSS重視傾向も相まって，さまざまなツールを手元で試せるようになってきている．大変ありがたいことだ．</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://ntddk.github.io/2016/08/27/angr-afl-driller/" data-id="cj13oizg00003pcosg1iso6dt" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/exploiting/">exploiting</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/symbolic-execution/">symbolic execution</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+    <article id="post-autoprobe" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    
+      <header class="article-header">
+        
+  
+    <a class="article-title" href="/2015/12/11/autoprobe/">マルウェアの動的解析に基づくC&amp;Cサーバの探索</a>
+  
+
+      </header>
+    
+    <time class="article-date" datetime="2015-12-11T03:00:00.000Z" itemprop="datePublished">12-11-2015</time>
+    
+  </div>
+  <div class="article-inner">
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p>　本稿は<a href="http://www.adventar.org/calendars/784" target="_blank" rel="external">情報セキュリティ系論文紹介 Advent Calendar 2015</a>の11日目である．</p>
+<h1 id="TL-DR"><a href="#TL-DR" class="headerlink" title="TL;DR:"></a>TL;DR:</h1><p>　テイント解析（taint analysis）やプログラムスライシング（program slicing），記号的実行（symbolic execution）やファジング（fuzzing）といったバイナリ解析技術を総動員して，マルウェアが通信するC&amp;Cサーバのフィンガープリントを<strong>C&amp;Cサーバと通信せずとも</strong>生成する手法–AUTOPROBE[1]を紹介する．</p>
+<h1 id="背景"><a href="#背景" class="headerlink" title="背景"></a>背景</h1><p>　マルウェアによるサイバー犯罪はC&amp;Cサーバやコンフィグファイルの配布元，二次検体の配布元など様々な悪性サーバ（malicious server）からなるインフラによって支えられている．攻撃者はこれらの悪性サーバを頻繁に閉鎖・移転させて対策から逃れようとする．とりわけ攻撃者の命令を送信してマルウェアの動作を決定するC&amp;Cサーバはその後の攻撃の起点となるため早期発見が望ましい．したがって不審なサーバがC&amp;Cサーバかどうか判定するフィンガープリントが必要となる．<br>　しかしながら従来のフィンガープリント生成手法にはC&amp;Cサーバとの長期的な通信を前提としている[2]，サーバとして動作するマルウェアを前提としている[3]といった問題点があった．</p>
+<h1 id="問題定義"><a href="#問題定義" class="headerlink" title="問題定義"></a>問題定義</h1><p>　あるマルウェアのファミリFに属する検体Pを入力として受け取り，Fが用いるC&amp;Cサーバのフィンガープリントφを出力することがAUTOPROBEの目的である．C&amp;Cサーバ側のコードは参照できず，マルウェアの検体はシンボル情報やソースコードを含んでいなくともよい．またマルウェアは複数のリクエストをC&amp;Cサーバに送信するものとする．</p>
+<h1 id="提案手法"><a href="#提案手法" class="headerlink" title="提案手法"></a>提案手法</h1><p>　あるサーバにマルウェアと同様のリクエストを送って，マルウェアがコマンドとして解釈できるレスポンスが返ってきたら，そのサーバは疑いようもなくC&amp;Cサーバである–AUTOPROBEの鍵となる発想は至極単純だ．<br>　AUTOPROBEは検体の命令・API・システムコールの実行を–おそらくQEMUによって–トレースし，リクエストを生成する処理とレスポンスをハンドルする処理をそれぞれマルウェアから抽出する．つづいて前者によって不審なサーバに対するリクエストを生成し，後者によってレスポンスをハンドルする．レスポンスハンドリングの可否をもってフィンガープリントとするから，その処理の抽出さえできれば不審なサーバがC&amp;Cサーバかどうか判定するまで実際のC&amp;Cサーバと通信する必要はない–でもどうやって？</p>
+<h2 id="リクエスト生成"><a href="#リクエスト生成" class="headerlink" title="リクエスト生成"></a>リクエスト生成</h2><p>　マルウェアの多くは時間や擬似乱数，OS情報などの環境依存の値によって動作を変更する．たとえばWin32/LoadMoney.AFはレジストリキーの有無によって送信するリクエストを変更する．</p>
+<p><img src="/image/autoprobe/win32_loadmoney.af.png" width="50%" height="50%"></p>
+<p>　不審なサーバがC&amp;Cサーバかどうか判定するためには攻撃者の期待するリクエストをより多く送信しより多くレスポンスを得たい．そこでAUTOPROBEは以下のアルゴリズムにしたがって複数の実行トレースを得る．これは条件分岐の度に直前のシステムコールを参照する，ある種の深さ優先探索として実装される．</p>
+<p><img src="/image/autoprobe/request.png" width="50%" height="50%"></p>
+<p>　さらにAUTOPROBEはトレースをスライスし，システムコールの結果に依存する値を環境依存の値として決定論的な値・定数と区別する．ここで環境依存の値を書き換えれば攻撃者の期待するリクエストを送信できるようになる．また環境依存の値に影響するシステムコールの戻り値に時間，IPアドレス，擬似乱数，OS情報など200種類のラベルを設定しているとのことだ．</p>
+<h2 id="レスポンスハンドリング"><a href="#レスポンスハンドリング" class="headerlink" title="レスポンスハンドリング"></a>レスポンスハンドリング</h2><p>　生成したリクエストをC&amp;Cサーバに送信してレスポンスを得たら，AUTOPROBEはレスポンスの各バイトを記号値として扱い，実行トレースから検体の分岐制約を充足する解およびスライスθ<sub>1</sub>を得る．ここで探索の終了条件は<code>closesocket</code>や<code>exitprocess</code>に到達した場合，データを受信してから50個の条件分岐にわたってそのデータを参照するものが存在しない場合である．つづいてレスポンスとして正しく解釈できない値を検体に与え，実行トレースから分岐制約を充足する解およびスライスθ<sub>2</sub>を得る．ここでηは以下の式によって得られる実行経路の類似度である．</p>
+<p><img src="/image/autoprobe/slice.png" width="50%" height="50%"></p>
+<p>　bnとfnはそれぞれ各スライスに含まれるユニークなコードブロックとシステムコールの数を示す．AUTOPROBEはηが閾値10を下回ればレスポンスを正しく解釈していない実行経路とみなしてスライスを破棄し，上回れば別々のハンドラであるとしてそれぞれの分岐制約をフィンガープリントとして保持する．たとえばこんなふうに．</p>
+<p><img src="/image/autoprobe/equations.png" width="50%" height="50%"></p>
+<p>　C&amp;Cサーバからレスポンスを得られなければ，AUTOPROBEは記号的実行とファジング，フラグレジスタの書き換えによる強制実行（forced execution）を併用してレスポンスに依存する実行経路を探索する．</p>
+<p><img src="/image/autoprobe/response.png" width="55%" height="55%"></p>
+<p>　このファジングでは検体にランダム値を与えるが，検体が用いるアルゴリズムがHTTPなど既知のものであればエラーメッセージのハンドラを起点に探索する．<br>　AUTOPROBEはこのように探索したレスポンスのハンドラをフィンガープリントとするが，期待されるレスポンスが得られずさきほどのアルゴリズムによって探索した場合は以下のようにC&amp;Cサーバの尤もらしさを算出する．</p>
+<p><img src="/image/autoprobe/score.png" width="50%" height="50%"></p>
+<h1 id="評価"><a href="#評価" class="headerlink" title="評価"></a>評価</h1><p>　論文ではふたつのデータセットを用いてAUTOPROBEの性能を評価している．ひとつはSality, ZeroAccess, Ramnit, Bamital, Taidoorを含む37ファミリ10亜種計370検体．もうひとつはネットワーク通信の特徴量に基づいてフィンガープリントを生成する既存研究–CYBERPROBE[2]で用いられた19ファミリ． “which have been kindly provided to us by the authors of CYBERPROBE”って書いてるけどAUTOPROBEと同じメンバーじゃねえか．<br>　検体の実行時間は5分．</p>
+<h2 id="リクエスト生成-1"><a href="#リクエスト生成-1" class="headerlink" title="リクエスト生成"></a>リクエスト生成</h2><p>　まずはリクエストの生成から．可能であればC&amp;Cサーバとの接続をともなうがAlexaトップ10,000サイトは除外している．ここでAUTOPROBEはC&amp;Cサーバに接続せずとも検体のバイナリを分析してCYBERPROBEと同様の結果を得ている．</p>
+<p><img src="/image/autoprobe/request_eval.png"></p>
+<p>　AUTOPROBEはふたつのデータセットに含まれる56ファミリのトレースから105のリクエストを生成した．生成にかかった時間は平均13.2分．リクエストはすべてHTTPであったとのこと．</p>
+<h2 id="レスポンスハンドリング-1"><a href="#レスポンスハンドリング-1" class="headerlink" title="レスポンスハンドリング"></a>レスポンスハンドリング</h2><p>　生成したリクエストのうち76件がC&amp;Cサーバからのレスポンスを引き出した．さらにAUTOPROBEは<code>HTTP 200</code>レスポンスコードを含む同数のランダムなレスポンスを生成し，検体に与えた．これはレスポンスハンドリングの可否によって検体の異なる挙動を確認したいためだ．結果として76件のテストケース中71件（93％）で検体は異なる挙動を示した–<strong>期待される受信データを得たマルウェアは一般に10以上のシステムコールと50以上のコードブロックを実行する</strong>．残りの5件はC&amp;Cサーバではなかった．つまりAUTOPROBEはマルウェアの通信先がC&amp;Cサーバかどうか正しく判定できている．</p>
+<h2 id="ケーススタディ"><a href="#ケーススタディ" class="headerlink" title="ケーススタディ"></a>ケーススタディ</h2><p>　たとえばBamitalのリクエストはファイル名・<code>GetVersionEx</code>によって得たOS情報・DGA (domain generation algorithm) によって生成したホスト名を含んでいた．AUTOPROBEはこれらの値が依存するシステムコールを得ている．</p>
+<p><img src="/image/autoprobe/bamital.png" width="50%" height="50%"></p>
+<p>　C&amp;Cサーバと接続せずとも<code>HTTP/1.1 200 OK</code>を与えればBamitalのハンドラは分析できるとのこと．<br>　また標的型攻撃に用いられるTaidoorのリクエストは<code>GetAdaptersInfo</code>によって得たMACアドレスに依存する値を含んでいた．これによってTaidoorのC&amp;Cサーバは感染端末のみで動作するレスポンスを送信していたようだ．<br>　ドライブバイダウンロード検体であるSalityのC&amp;Cサーバは<code>spm/s_tasks.php</code>, <code>logos_s.gif</code>, <code>231013_d.exe</code>というファイルをレスポンスに含んでいた．AUTOPROBEはこれらのファイルの存在するサーバをSalityのC&amp;Cサーバとみなす．などなど．</p>
+<h2 id="限定的な探索"><a href="#限定的な探索" class="headerlink" title="限定的な探索"></a>限定的な探索</h2><p>　Malware Domain Listに含まれる9,500アドレスの近傍/24サブネット・2.6Mアドレスのスキャン結果．</p>
+<p><img src="/image/autoprobe/localized.png" width="60%" height="60%"></p>
+<p>　VirusTotal, Malware Domain List, そしてURLQueryに発見されていないC&amp;Cサーバを特定できている．</p>
+<h2 id="インターネット全体の探索"><a href="#インターネット全体の探索" class="headerlink" title="インターネット全体の探索"></a>インターネット全体の探索</h2><p>　ここではBGPからインターネット全体をスキャンし，7,100万ものHTTPサーバを発見している．</p>
+<p><img src="/image/autoprobe/horizontal.png"></p>
+<p>　このうちマルウェア3ファミリのC&amp;Cサーバをどれだけ発見できるかCYBERPROBEと比較した結果．</p>
+<p><img src="/image/autoprobe/comparison.png"></p>
+<p>　CYBERPROBEが40件のC&amp;Cサーバを特定しているのにたいしてAUTOPROBEは54件のC&amp;Cサーバを特定している．<br>　高度化するマルウェアが通信内容を難読化・秘匿する傾向にあることを鑑みると，CYBERPROBEのようにネットワーク通信の特徴量を用いる手法よりもAUTOPROBEのようにバイナリ解析を応用した手法こそ吟味されるべきだろう．</p>
+<h1 id="感想"><a href="#感想" class="headerlink" title="感想"></a>感想</h1><p>　AUTOPROBEは折しも私が昨年度のインターンシップでほとんど同じようなテーマに取り組んでいたとき発表された．テイント解析のソースを受信データではなくシステムコールの結果に設定することで，リクエストのセマンティクスを復元しようとするAUTOPROBEの発想は野心的であり，さまざまなバイナリ解析技術を結集して未知のC&amp;Cサーバを発見する手際は鮮やかというほかない．<br>　私は来年書くことになる卒業論文のテーマとして，インターネット接続のない閉環境におけるマルウェアの分析に本手法を応用できないか検討している．Ryzhykら[4]はデバイスドライバと環境（デバイスおよびOS）との相互作用を有限オートマトンを用いて表現し，デバイスドライバを半自動的に合成する手法を提案している．問題領域は異なるがこうした手法も検討したい．</p>
+<h1 id="用語解説"><a href="#用語解説" class="headerlink" title="用語解説"></a>用語解説</h1><ul>
+<li>テイント解析<ul>
+<li>任意のデータに設定したタグをルールにしたがって伝搬させることで，データ間の依存関係を分析する手法</li>
+</ul>
+</li>
+<li>プログラムスライシング<ul>
+<li>任意のデータに依存する処理部分をプログラムから抽出する手法</li>
+</ul>
+</li>
+<li>記号的実行<ul>
+<li>プログラムの分岐条件を充足論理問題とし，制約を充足する解を得る手法</li>
+</ul>
+</li>
+<li>ファジング<ul>
+<li>開発者が意図しない入力を自動生成してプログラムに与えることで脆弱性を顕在化させる手法</li>
+</ul>
+</li>
+</ul>
+<h1 id="参考文献"><a href="#参考文献" class="headerlink" title="参考文献"></a>参考文献</h1><ul>
+<li>[1] Zhaoyan Xu, Antonio Nappa, Robert Baykov, Guangliang Yang, Juan Caballero, and Guofei Gu, “<a href="http://www.cs.wm.edu/~ksun/csci780-f14/papers/AutoProbe-CCS14.pdf" target="_blank" rel="external">AUTOPROBE: Towards Automatic Active Malicious Server Probing Using Dynamic Binary Analysis[PDF]</a>,” In Proc. of the 21st ACM Conference on Computer and Communications Security (CCS’14), 2014.</li>
+<li>[2] Antonio Nappa, Zhaoyan Xu, M. Zubair Rafique, Juan Caballero, and Guofei Gu, “<a href="http://faculty.cs.tamu.edu/guofei/paper/CyberProbe_NDSS14.pdf" target="_blank" rel="external">Cyberprobe: Towards Internet-Scale Active Detection of Malicious Servers[PDF]</a>,” In Network and Distributed System Security Symposium (NDSS’14), 2014.</li>
+<li>[3] Zhaoyan Xu, Lingfeng Chen, Guofei Gu, and Christopher Kruegel, “<a href="http://dl.acm.org/citation.cfm?id=2382257" target="_blank" rel="external">Peerpress: Utilizing Enemies’ P2P Strength against Them</a>,” In ACM Conference on Computer and Communications Security (CCS’12), 2012.</li>
+<li>[4] Leonid Ryzhyk, Adam Walker, John Keys, Alexander Legg, Arun Raghunath, Michael Stumm, and Mona Vij, “<a href="https://www.usenix.org/conference/osdi14/technical-sessions/presentation/ryzhyk" target="_blank" rel="external">User-Guided Device Driver Synthesis</a>,” In Proc. of the 11th USENIX Conference on Operating Systems Design and Implementation (OSDI’14), 2014.</li>
+</ul>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://ntddk.github.io/2015/12/11/autoprobe/" data-id="cj13oizgg0006pcostpriencm" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/symbolic-execution/">symbolic execution</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/taint-analysis/">taint analysis</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+    <article id="post-is-linear-obfuscation-a-threat" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    
+      <header class="article-header">
+        
+  
+    <a class="article-title" href="/2015/11/09/is-linear-obfuscation-a-threat/">コラッツの問題を用いた難読化は脅威なのか</a>
+  
+
+      </header>
+    
+    <time class="article-date" datetime="2015-11-09T08:30:00.000Z" itemprop="datePublished">11-09-2015</time>
+    
+  </div>
+  <div class="article-inner">
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h1 id="TL-DR"><a href="#TL-DR" class="headerlink" title="TL;DR:"></a>TL;DR:</h1><p>　ソフトウェアの多くは外部からの入力に依存する実行パス（trigger-based code）をもつ．<br>　これを記号的実行（symbolic execution, シンボリック実行）などの解析手法から隠蔽する手法として，コラッツの問題を用いた線型難読化（linear obfuscation）がある[1]．<br>　本稿ではしかし，線型難読化されたコードはコンパイラ最適化によってある程度除去できることを示す．</p>
+<h1 id="コラッツの問題"><a href="#コラッツの問題" class="headerlink" title="コラッツの問題"></a>コラッツの問題</h1><p>　コラッツの問題は数論の未解決問題のひとつである．<br>　任意の1でない自然数nに対して，nが偶数ならば2で割り，nが奇数ならば3倍して1を足す．この操作を繰り返していくと，どのような自然数nから出発しても，有限回の操作のうちに必ず1に到達する．<br>　この定理は経験則的に正しいと考えられているが，いまだ証明はなされていない．</p>
+<h1 id="線型難読化"><a href="#線型難読化" class="headerlink" title="線型難読化"></a>線型難読化</h1><p>　たとえば次のプログラム<code>tr.c</code>は外部からの入力に依存する実行パスをもつ．</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div></pre></td><td class="code"><pre><div class="line"><span class="comment">// tr.c</span></div><div class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;stdio.h&gt;</span></span></div><div class="line"></div><div class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">(<span class="keyword">int</span> argc, <span class="keyword">char</span> *argv[])</span></span></div><div class="line">&#123;</div><div class="line">    <span class="keyword">int</span> x=argc;</div><div class="line">    <span class="keyword">if</span>(x==<span class="number">2</span>)</div><div class="line">        <span class="built_in">printf</span>(<span class="string">"triggered!\n"</span>);</div><div class="line"></div><div class="line">    <span class="keyword">return</span> <span class="number">0</span>;</div><div class="line">&#125;</div></pre></td></tr></table></figure>
+<p>　LLVM bitcodeレベルでの<code>tr.c</code>の制御フローグラフは次のようになる．</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div></pre></td><td class="code"><pre><div class="line"># clang -emit-llvm -c -g tr.c</div><div class="line"># opt tr.bc -dot-cfg &gt; /dev/null</div><div class="line"># dot -Tpng cfg.main.dot &gt; tr.png</div></pre></td></tr></table></figure>
+<p><img src="/image/tr.png"></p>
+<p>　この単純なプログラムにたいして，コラッツの問題にもとづくループを挿入する．</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div><div class="line">22</div><div class="line">23</div><div class="line">24</div></pre></td><td class="code"><pre><div class="line"><span class="comment">// tr2.c</span></div><div class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;stdio.h&gt;</span></span></div><div class="line"></div><div class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">(<span class="keyword">int</span> argc, <span class="keyword">char</span> *argv[])</span></span></div><div class="line">&#123;</div><div class="line">    <span class="keyword">int</span> x = argc;</div><div class="line">    <span class="keyword">int</span> y = x + <span class="number">1000</span>;</div><div class="line"></div><div class="line">    <span class="keyword">while</span>(y &gt; <span class="number">1</span>)</div><div class="line">    &#123;</div><div class="line">        <span class="keyword">if</span>(y % <span class="number">2</span> == <span class="number">1</span>)</div><div class="line">            y = <span class="number">3</span> * y + <span class="number">1</span>;</div><div class="line">        <span class="keyword">else</span></div><div class="line">            y = y / <span class="number">2</span>;</div><div class="line"></div><div class="line">        <span class="keyword">if</span>((x - y &gt; <span class="number">0</span>)&amp;&amp;(x + y &lt; <span class="number">4</span>))</div><div class="line">        &#123;</div><div class="line">            <span class="built_in">printf</span>(<span class="string">"triggered!\n"</span>);</div><div class="line">            <span class="keyword">break</span>;</div><div class="line">        &#125;</div><div class="line">    &#125;</div><div class="line"></div><div class="line">    <span class="keyword">return</span> <span class="number">0</span>;</div><div class="line">&#125;</div></pre></td></tr></table></figure>
+<p>　変数<code>y</code>は必ず1に到達する，いわば偽の変数である．<br>　難読化された<code>tr2.c</code>の制御フローグラフは次のようになる．</p>
+<p><img src="/image/tr2.png"></p>
+<p>　ループが挿入されたことによって実行パスが複雑化していることが見て取れる．</p>
+<h1 id="記号的実行"><a href="#記号的実行" class="headerlink" title="記号的実行"></a>記号的実行</h1><p>　では，線型難読化がどれほど記号的実行にたいして効力をもつか見てみよう．<br>　今回はLLVM bitcodeを扱う記号的実行ツール<a href="klee.github.io">KLEE</a>を用いる．<br>　まず次のコードを解析対象のソースに追記する必要がある．これは，変数<code>x</code>にたいして記号的実行を適用するという意味である．</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div></pre></td><td class="code"><pre><div class="line">@@ -3,6 +3,7 @@</div><div class="line"> int main(int argc, char *argv[])</div><div class="line"> &#123;</div><div class="line">     int x=argc;</div><div class="line">+    klee_make_symbolic(&amp;x, sizeof(x), &quot;x&quot;);</div><div class="line">     if(x==2)</div><div class="line">         printf(&quot;triggered!\n&quot;);</div></pre></td></tr></table></figure>
+<p>　次に，LLVM bitcodeを生成する．</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div></pre></td><td class="code"><pre><div class="line"># clang -emit-llvm -c -g tr.c</div><div class="line">tr.c:6:5: warning: implicit declaration of function &apos;klee_make_symbolic&apos; is</div><div class="line">      invalid in C99 [-Wimplicit-function-declaration]</div><div class="line">    klee_make_symbolic(&amp;x, sizeof(x), &quot;x&quot;);</div><div class="line">    ^</div><div class="line">1 warning generated.</div></pre></td></tr></table></figure>
+<p>　警告が出るが，気にしてはいけない．この関数呼び出しがKLEEにトラップされることになるのだ．<br>　ソースコードのないマルウェアなどを分析するにあたっては，IDAなどのデコンパイラでソースを出力し，型情報やシグナルハンドラなどの記述を整えたのち上記のようなコードを挿入するか，あるいはS2EやPANDAといった動的解析環境を頼ることになるだろう．<br>　それはさておき，KLEEを動かしてみよう．少し前までKLEEをビルドして動かすのはとても面倒だったが，いまではDocker Imageが提供されている．</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div></pre></td><td class="code"><pre><div class="line"># sudo docker pull klee/klee</div><div class="line"># sudo docker run --rm -ti klee/klee</div></pre></td></tr></table></figure>
+<p>　線型難読化をおこなう前の<code>tr.c</code>について記号的実行をおこなった結果を示す．</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div></pre></td><td class="code"><pre><div class="line">klee@4d625535c122:~$ time klee tr.bc</div><div class="line">KLEE: output directory is &quot;/home/klee/klee-out-1&quot;</div><div class="line">KLEE: WARNING: undefined reference to function: printf</div><div class="line">KLEE: WARNING ONCE: calling external: printf(39707328)</div><div class="line">triggered!</div><div class="line"></div><div class="line">KLEE: done: total instructions = 17</div><div class="line">KLEE: done: completed paths = 2</div><div class="line">KLEE: done: generated tests = 2</div><div class="line"></div><div class="line">real    0m0.032s</div><div class="line">user    0m0.009s</div><div class="line">sys     0m0.012s</div></pre></td></tr></table></figure>
+<p>　パスは2つしか存在しないため，32msecで解析が終わっている．<br>　ならば，線型難読化を施した後の<code>tr2.c</code>についてはどうか．</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div></pre></td><td class="code"><pre><div class="line">klee@4d625535c122:~$ time klee tr2.bc</div><div class="line">KLEE: output directory is &quot;/home/klee/klee-out-2&quot;</div><div class="line">KLEE: WARNING: undefined reference to function: printf</div><div class="line">KLEE: WARNING ONCE: calling external: printf(49859696)</div><div class="line">triggered!</div><div class="line">triggered!</div><div class="line">triggered!</div><div class="line">triggered!</div><div class="line">triggered!</div><div class="line">...</div><div class="line"></div><div class="line">KLEE: done: total instructions = 285809</div><div class="line">KLEE: done: completed paths = 158</div><div class="line">KLEE: done: generated tests = 158</div><div class="line"></div><div class="line">real    6m11.933s</div><div class="line">user    3m56.240s</div><div class="line">sys     2m14.245s</div></pre></td></tr></table></figure>
+<p>　さきほどに比べ，実行パスは158に増加し，解析に11622.9倍（！）もの時間がかかっている．<br>　今回の単純なプログラムでさえこのようになるならば，複数の入出力に依存する実行パスに線型難読化が施されたらどうなることか．</p>
+<h1 id="コンパイラ最適化"><a href="#コンパイラ最適化" class="headerlink" title="コンパイラ最適化"></a>コンパイラ最適化</h1><p>　難読化とはえてしてコンパイラ最適化の逆写像である．<br>　KLEEがLLVMにもとづいているということもあって，LLVMの最適化が線型難読化を除去できるかどうか興味をもった．検証してみよう．</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div></pre></td><td class="code"><pre><div class="line"># opt -O3 tr2.bc -o tr3.bc</div></pre></td></tr></table></figure>
+<p>　<code>-O3</code>をもって最適化した後の制御フローグラフは次のようになる．</p>
+<p><img src="/image/tr3.png"></p>
+<p>　最初の<code>tr.c</code>ほどではないが，いくらか単純になっていることがわかる．<code>printf()</code>も<code>puts()</code>に変換されている．<br>　では，実行パスは減少しているだろうか．記号的実行をおこなった結果は次の通り．</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div></pre></td><td class="code"><pre><div class="line">klee@4d625535c122:~$ time klee tr3.bc</div><div class="line">KLEE: output directory is &quot;/home/klee/klee-out-4&quot;</div><div class="line">KLEE: WARNING: undefined reference to function: puts</div><div class="line">KLEE: WARNING ONCE: calling external: puts(32090720)</div><div class="line">triggered!</div><div class="line">triggered!</div><div class="line">triggered!</div><div class="line">triggered!</div><div class="line">triggered!</div><div class="line">triggered!</div><div class="line">triggered!</div><div class="line">triggered!</div><div class="line">triggered!</div><div class="line"></div><div class="line">KLEE: done: total instructions = 3383</div><div class="line">KLEE: done: completed paths = 10</div><div class="line">KLEE: done: generated tests = 10</div><div class="line"></div><div class="line">real    0m2.845s</div><div class="line">user    0m2.490s</div><div class="line">sys     0m0.357s</div></pre></td></tr></table></figure>
+<p>　実行パスは10とさきほどの<code>tr2.c</code>よりも減少している．実行時間は<code>tr.c</code>の88.9倍であった．</p>
+<h1 id="おわりに"><a href="#おわりに" class="headerlink" title="おわりに"></a>おわりに</h1><p>　線型難読化は脅威ではないことがわかった–少なくとも提唱者の思惑ほどには．<br>　塵も積もれば山となるように，線型難読化を多数の箇所に施せばその効力は増すだろう．しかしそれはクラスタリングなどの手法で対処される可能性を高めるだけである．もちろん，どれほどの範囲で難読化を適用すれば効果的かという閾値を探ることに価値はある．<br>　LLVMの<code>-O3</code>最適化は複数の最適化パスを組み合わせ，再帰的に適用することによっておこなわれる．どのパスが線型難読化の除去にもっとも寄与しているか調べてみるとおもしろいかもしれない（やる気がない）．</p>
+<h1 id="参考文献"><a href="#参考文献" class="headerlink" title="参考文献"></a>参考文献</h1><ul>
+<li>[1]Zhi Wang, Jiang Ming, Chunfu Jia, Debin Gao, “<a href="http://flyer.sis.smu.edu.sg/esorics11.pdf" target="_blank" rel="external">Linear Obfuscation to Combat Symbolic Execution[PDF]</a>,” Proceedings of the 16th European Conference on Research in Computer Security(ESORICS’11), pp.210-226, 2011.</li>
+</ul>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://ntddk.github.io/2015/11/09/is-linear-obfuscation-a-threat/" data-id="cj13oizgg000hpcoskqov32zi" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/symbolic-execution/">symbolic execution</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+    <article id="post-automated-malware-analysis-using-decaf-in-seccamp15" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    
+      <header class="article-header">
+        
+  
+    <a class="article-title" href="/2015/08/16/automated-malware-analysis-using-decaf-in-seccamp15/">DECAFによるマルウェア自動解析</a>
+  
+
+      </header>
+    
+    <time class="article-date" datetime="2015-08-16T09:00:00.000Z" itemprop="datePublished">08-16-2015</time>
+    
+  </div>
+  <div class="article-inner">
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h1 id="はじめに"><a href="#はじめに" class="headerlink" title="はじめに"></a>はじめに</h1><p>2015.08.11~15にわたって開催された<a href="https://www.ipa.go.jp/jinzai/camp/2015/zenkoku2015.html" target="_blank" rel="external">セキュリティ・キャンプ全国大会 2015</a>に解析トラックの講師として参加した．講義では「仮想化技術を用いてマルウェア解析」と題して，QEMUをベースに開発が行われている<a href="https://github.com/sycurelab/DECAF" target="_blank" rel="external">DECAF</a>という解析プラットフォームを用いて演習を行った．</p>
+<h1 id="講義資料"><a href="#講義資料" class="headerlink" title="講義資料"></a>講義資料</h1><script async class="speakerdeck-embed" data-id="11c7632b9b844e199ac966e4494a1dd2" data-ratio="1.77777777777778" src="//speakerdeck.com/assets/embed.js"></script>
+
+<h1 id="講義内容"><a href="#講義内容" class="headerlink" title="講義内容"></a>講義内容</h1><p>演習では実際のマルウェアに用いられている解析妨害機能を備えたサンプルプログラムを扱った．素のDECAFには解析妨害機能への対策が施されていない．そこで，受講者にはDECAFのプラグインを拡張し，対策手法を実装して頂いた．<br>演習で用いたプログラムはGitHub上で公開している．</p>
+<ul>
+<li>解析妨害機能を備えたサンプルプログラム<ul>
+<li><a href="https://github.com/ntddk/blue" target="_blank" rel="external">ntddk/blue</a></li>
+</ul>
+</li>
+<li>DECAFプラグインのひな形<ul>
+<li><a href="https://github.com/ntddk/geteip" target="_blank" rel="external">ntddk/geteip</a></li>
+</ul>
+</li>
+</ul>
+<p>ひな形にある通り，IsDebuggerPresent()をフックするDECAFプラグインは以下のように書ける．</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div><div class="line">22</div><div class="line">23</div><div class="line">24</div><div class="line">25</div><div class="line">26</div><div class="line">27</div><div class="line">28</div><div class="line">29</div><div class="line">30</div><div class="line">31</div><div class="line">32</div><div class="line">33</div><div class="line">34</div><div class="line">35</div><div class="line">36</div><div class="line">37</div></pre></td><td class="code"><pre><div class="line"><span class="keyword">static</span> DECAF_Handle isdebuggerpresent_handle = DECAF_NULL_HANDLE;</div><div class="line"></div><div class="line"><span class="keyword">typedef</span> <span class="keyword">struct</span> &#123;</div><div class="line">        <span class="keyword">uint32_t</span> call_stack[<span class="number">1</span>]; <span class="comment">//paramters and return address</span></div><div class="line">        DECAF_Handle hook_handle;</div><div class="line">&#125; IsDebuggerPresent_hook_context_t;</div><div class="line"></div><div class="line"><span class="comment">/*</span></div><div class="line"> * BOOL IsDebuggerPresent(VOID);</div><div class="line"> */</div><div class="line"></div><div class="line"><span class="function"><span class="keyword">static</span> <span class="keyword">void</span> <span class="title">IsDebuggerPresent_ret</span><span class="params">(<span class="keyword">void</span> *param)</span></span></div><div class="line">&#123;</div><div class="line">        IsDebuggerPresent_hook_context_t *ctx = (IsDebuggerPresent_hook_context_t *)param;</div><div class="line">        hookapi_remove_hook(ctx-&gt;hook_handle);</div><div class="line">        DECAF_printf(<span class="string">"EIP = %08x, EAX = %d\n"</span>, cpu_single_env-&gt;eip, cpu_single_env-&gt;regs[R_EAX]);</div><div class="line">        <span class="built_in">free</span>(ctx);</div><div class="line">&#125;</div><div class="line"></div><div class="line"><span class="function"><span class="keyword">static</span> <span class="keyword">void</span> <span class="title">IsDebuggerPresent_call</span><span class="params">(<span class="keyword">void</span> *opaque)</span></span></div><div class="line">&#123;</div><div class="line">        DECAF_printf(<span class="string">"IsDebuggerPresent "</span>);</div><div class="line">        IsDebuggerPresent_hook_context_t *ctx = (IsDebuggerPresent_hook_context_t*)<span class="built_in">malloc</span>(<span class="keyword">sizeof</span>(IsDebuggerPresent_hook_context_t));</div><div class="line">        <span class="keyword">if</span>(!ctx) <span class="keyword">return</span>;</div><div class="line">        DECAF_read_mem(<span class="literal">NULL</span>, cpu_single_env-&gt;regs[R_ESP], <span class="number">4</span>, ctx-&gt;call_stack);</div><div class="line">        ctx-&gt;hook_handle = hookapi_hook_return(ctx-&gt;call_stack[<span class="number">0</span>], IsDebuggerPresent_ret, ctx, <span class="keyword">sizeof</span>(*ctx));</div><div class="line">&#125;</div><div class="line"></div><div class="line"><span class="function"><span class="keyword">static</span> <span class="keyword">void</span> <span class="title">geteip_loadmainmodule_callback</span><span class="params">(VMI_Callback_Params* params)</span></span></div><div class="line">&#123;</div><div class="line">        <span class="keyword">if</span>(<span class="built_in">strcmp</span>(params-&gt;cp.name,targetname) == <span class="number">0</span>)</div><div class="line">        &#123;</div><div class="line">                DECAF_printf(<span class="string">"Process %s you spcecified starts \n"</span>, params-&gt;cp.name);</div><div class="line">                target_cr3 = params-&gt;cp.cr3;</div><div class="line">                isdebuggerpresent_handle = hookapi_hook_function_byname(<span class="string">"kernel32.dll"</span>, <span class="string">"IsDebuggerPresent"</span>, <span class="number">1</span>, target_cr3, IsDebuggerPresent_call, <span class="literal">NULL</span>, <span class="number">0</span>);</div><div class="line">        &#125;</div><div class="line">&#125;</div></pre></td></tr></table></figure>
+<p>現在のプロセスがデバッガのコンテキストで実行されていない場合，IsDebuggerPresent()は0を返す．ここで，IsDebuggerPresent()の戻り値を0にするには，モジュール（この場合はkernel32.dll）から戻る段階でeaxを書き換えてやればよい．</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div></pre></td><td class="code"><pre><div class="line"><span class="function"><span class="keyword">static</span> <span class="keyword">void</span> <span class="title">IsDebuggerPresent_ret</span><span class="params">(<span class="keyword">void</span> *param)</span></span></div><div class="line">&#123;</div><div class="line">        IsDebuggerPresent_hook_context_t *ctx = (IsDebuggerPresent_hook_context_t *)param;</div><div class="line">        hookapi_remove_hook(ctx-&gt;hook_handle);</div><div class="line">        cpu_single_env-&gt;regs[R_EAX] = <span class="number">0</span>; <span class="comment">// 追加</span></div><div class="line">        DECAF_printf(<span class="string">"EIP = %08x, EAX = %d\n"</span>, cpu_single_env-&gt;eip, cpu_single_env-&gt;regs[R_EAX]);</div><div class="line">        <span class="built_in">free</span>(ctx);</div><div class="line">&#125;</div></pre></td></tr></table></figure>
+<p>このようにDECAFのプラグインを書くことで，ゲストOSに解析用のエージェントを挿入することなくAPIの戻り値を書き換えることができる．<br>APIの引数を書き換えたい場合はモジュールに入る段階でコンテキスト構造体の<code>call_stack[]</code>を書き換えてやればよい．</p>
+<h1 id="おわりに"><a href="#おわりに" class="headerlink" title="おわりに"></a>おわりに</h1><p>受講者にサンドボックス開発の楽しさと難しさを実感してもらえたなら，講師として冥利に尽きる．<br>サンプルプログラムには4種類の解析妨害機能を実装しており，APIフックで対処できるのはうち前半2つだけとなっている．限られた演習時間の制約上，3つ目以降の解析妨害機能を回避できた受講者はいなかった．解析トラックリーダーの岩村さんから，受講者の2割がギリギリ解けないような問題を作るようにと仰せつかっていたが，やや意地悪な問題設定だったと思う．<br>なお，今回は拙作のサンプルを用いたが，より多くの解析妨害機能を備えたOSSに<a href="https://github.com/a0rtega/pafish" target="_blank" rel="external">pafish</a>がある．pafishはBackdoor.Win32.Agent.dkbp(MD5: de1af0e97e94859d372be7fcf3a5daa5)など一部のマルウェアに流用されている．</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://ntddk.github.io/2015/08/16/automated-malware-analysis-using-decaf-in-seccamp15/" data-id="cj13oizgg0005pcoskak23umo" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/dynamic-binary-translation/">dynamic binary translation</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/symbolic-execution/">symbolic execution</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/taint-analysis/">taint analysis</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/virtual-machine-introspection/">virtual machine introspection</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+    <article id="post-v2e" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    
+      <header class="article-header">
+        
+  
+    <a class="article-title" href="/2014/12/09/v2e/">マルウェア解析におけるRecord and Replayの設計</a>
+  
+
+      </header>
+    
+    <time class="article-date" datetime="2014-12-09T09:00:00.000Z" itemprop="datePublished">12-09-2014</time>
+    
+  </div>
+  <div class="article-inner">
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h1 id="はじめに"><a href="#はじめに" class="headerlink" title="はじめに"></a>はじめに</h1><p>“<a href="http://www.cl.cam.ac.uk/research/srg/netos/vee_2012/papers/p227.pdf" target="_blank" rel="external">V2E: Combining Hardware Virtualization and Software Emulation for Transparent and Extensible Malware Analysis[PDF]</a>“という論文を通して，Record and Replayを用いた解析環境の設計を学ぶ．</p>
+<h1 id="著者"><a href="#著者" class="headerlink" title="著者"></a>著者</h1><p>この論文のラストオーサーであるYinはSyracuse Universityの助教である．彼はテイント解析の第一人者として知られ，現在は<a href="https://code.google.com/p/decaf-platform/" target="_blank" rel="external">DECAF</a>の開発を主導している．またBitBlaze ProjectのDawn Songや，マルウェア解析の大御所であるChristopher Kruegelと過去に共著を出している．<br>ファーストオーサーのYanは提案手法をAndroidに適用し，2013年に博士論文を著している．Android向けの拡張にあたっては，DECAFのサブプロジェクトであるDroidScopeを用いているようだ．</p>
+<h1 id="Record-and-Replay"><a href="#Record-and-Replay" class="headerlink" title="Record and Replay"></a>Record and Replay</h1><p>あるいはLogging and Replay, Lockstep, 順序再演法，最小情報トレースなどと呼ばれるこれらは，仮想マシンモニタ上のイベントを記録し，再生するための技術である．乱暴に言うとhistoryからdockerfileやvagrantfileを作成し，deployするようなものだ．<br>一般にステートマシンにおける命令の出力は，内部状態から一意に与えられる．そこで，ある環境の初期状態と入力のみを記録(Record)し，同じ環境を別の環境の上に再生(Raplay)するといった試みがなされてきた．実マシンにおいては，時刻や割り込みなどの非決定性とその記録の困難性からRecord and Replayは不可能であるとされる．だが，仮想マシンモニタの世界ではこれらの問題をある程度無視できる．実際，VMware Workstationなどにこの機能は実装されている．<br>本論文では，マルウェア解析に求められるサンドボックスの特性を加味したRecord and Replayについて論じられている．かつて大居さん(<a href="https://twitter.com/a4lg" target="_blank" rel="external">@a4lg</a>)が研究されていた内容に近い．</p>
+<h1 id="背景"><a href="#背景" class="headerlink" title="背景"></a>背景</h1><p>マルウェアを解析するためのサンドボックスは検出不可能(transparent)であり，なおかつ拡張可能であるべきだ．<br>いかに仮想マシンモニタの存在を隠蔽しようと，Timing Attackなどが成り立つ以上，transparentなサンドボックスを実現することは不可能である．しかし，Intel VTなどハードウェア仮想化技術を用いることで，ほぼtransparentな環境を作り出すことは可能である．例えば，<a href="http://ether.gtisc.gatech.edu/" target="_blank" rel="external">Ether</a>は命令・システムコール単位の解析機能を備えているが，Xenをベースに高いtransparent性を実現している．<br>だが，ハードウェア仮想化技術に依存した解析環境には拡張性の点で問題がある．特に，instrumentationによる詳細な解析が不可能であるという点は，大きな痛手である．<br>他方，QEMUなどのソフトウェアエミュレーションは動的バイナリ変換を用いることでDBI(dynamic binary instrumentation)と解析効率の向上を実現している．しかし，transparentなサンドボックスには至れない．<br>QEMUの動的バイナリ変換はバイナリをコードブロック単位で変換し，softmmuからTLBを参照してアドレス変換を行うというものだ．<br>そしてその性質から，以下のような自己書き換えコードによって検出されうる．<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div><div class="line">22</div><div class="line">23</div><div class="line">24</div><div class="line">25</div></pre></td><td class="code"><pre><div class="line">__asm&#123;</div><div class="line">	xor eax, eax</div><div class="line">	mov edi, target</div><div class="line">	mov esi, copy_insn</div><div class="line">	mov ecx, 3</div><div class="line"></div><div class="line">target:</div><div class="line">	rep movsw		// f3 66 a5</div><div class="line">	jmp qemu_found		// eb XX</div><div class="line">	nop			// 90</div><div class="line"></div><div class="line">non_qemu:</div><div class="line">	...</div><div class="line"></div><div class="line">qemu_found:</div><div class="line">	...</div><div class="line"></div><div class="line">copy_insn:</div><div class="line">	_emit 0xeb		// eb</div><div class="line">	_emit 0x01		// 01</div><div class="line">	_emit 0x90		// 90</div><div class="line">	_emit 0xeb</div><div class="line">	_emit 0x01</div><div class="line">	_emit 0x90</div><div class="line">&#125;</div></pre></td></tr></table></figure></p>
+<p>実マシンでは，<code>ecx*word=6</code>バイトが1回で書き換わるが，QEMUの動的バイナリ変換では2バイトずつ3回で書き換わる．そのため，1回目の書き換えで<code>0xeb 0x01 0xa5</code>すなわち<code>jmp +01</code>になってしまい，<code>qemu_found</code>にジャンプしてしまう．<br>その他には，ページ境界を越えてブロックの変換が行われた場合にページフォルトが発生してしまうことも考えられるし，ブロック境界でのみ割り込みが行われる，CPUサイクルの消費が著しいといった実マシンとの相違点もある．<br>さらに問題なのが，フラグの遅延評価だ．例えば，<code>cmp</code>と<code>jz</code>の組み合わせなどの条件分岐は，EFLAGSを更新する．だが，QEMUにおいては<code>cmp</code>が実行される段階でEFLAGSの計算は行われない．実際に計算されるのは<code>jz</code>の実行時，それも分岐を決定するためのZFのみが計算される．この設計はエミュレーションの高速化に寄与しているが，もちろん検出に用いることが可能だ．<br>当然ながら命令のエミュレーション自体にも限界がある．SIMDさえ厳しいのだ，システム管理モードやIntel TXTなんてものは考えたくないだろう．<br>このように，QEMUによるエミュレーションが検出される余地は枚挙に暇がない．<br>なお，解析環境検出をテーマとした最近の研究では，第2回システム系論文輪読会で<a href="http://ntddk.github.io/barecloud/">紹介した</a>BareCloudや忠鉢さん(<a href="https://twitter.com/yuzuhara" target="_blank" rel="external">@yuzuhara</a>)のTENTACLEなどがある．</p>
+<h1 id="研究目的"><a href="#研究目的" class="headerlink" title="研究目的"></a>研究目的</h1><p>ハードウェア仮想化技術を用いる解析環境とソフトウェアエミュレーションを用いる解析環境にはそれぞれ問題がある．そこで，ハードウェア仮想化技術を用いる解析環境でRecordを行い，ソフトウェアエミュレーションを用いる解析環境でReplayを行うことで，検出不可能性と拡張可能性という二つの目的について達成したのが，今回紹介するV2Eである．</p>
+<h1 id="形式的定義"><a href="#形式的定義" class="headerlink" title="形式的定義"></a>形式的定義</h1><p>本論文におけるRecord and Replayの設計はどのようなものか．<br>Recorderにおける遷移関数<code>f</code>について，毎時<sub><code>i</code></sub>におけるプログラムの状態を<code>S</code><sub><code>i</code></sub>とし，入力を<code>I</code><sub><code>i</code></sub>とする．すなわち<code>f</code>は<code>S</code><sub><code>i</code></sub><code>= f(S</code><sub><code>i-1</code></sub><code>, I</code><sub><code>i-1</code></sub><code>)</code>と表される．<br>次にReplayerにおける遷移関数<code>f&#39;</code>についてプログラムの初期状態を<code>S</code><sub><code>0</code></sub>とし，全ての入力を<code>I</code>としたとき，<code>f = f&#39;</code>と言えないだろうか．<br>これは二つのチューリング機械の同値性が解決可能であるかという問題に相当する．だが<code>EQ</code><sub><code>TM</code></sub><code>= {(M</code><sub><code>1</code></sub><code>, M</code><sub><code>2</code></sub>)<code>|M</code><sub><code>1</code></sub><code>とM</code><sub><code>2</code></sub><code>はTMであり，L(M</code><sub><code>1</code></sub><code>) = L(M</code><sub><code>2</code></sub><code>)}</code>は判定不可能とされ（『計算理論の基礎』における定理5.4），実装上でもハードウェアの割り込みなどの要因から<code>f != f&#39;</code>となってしまう．<br>そこでV2Eは，プログラムの初期状態と全ての入力を保存することに加え，<code>S</code><sub><code>j</code></sub><code>= S&#39;</code><sub><code>j</code></sub>となるような<sub><code>j</code></sub>について状態の変化を保存することにした．これは<code>⊿</code><sub><code>j</code></sub><code>= S</code><sub><code>j</code></sub><code>- S</code><sub><code>j-1</code></sub>と表される．<br>ここで，新たな遷移関数<code>f&#39;</code><sub><code>r</code></sub>を<code>S&#39;</code><sub><code>i</code></sub><code>= f&#39;</code><sub><code>r</code></sub><code>(S&#39;</code><sub><code>i-1</code></sub><code>, I</code><sub><code>i-1</code></sub><code>, ⊿</code><sub><code>i</code></sub><code>)</code>として定義する．これは，<code>⊿</code><sub><code>i</code></sub><code>!= null</code>のとき<code>S&#39;</code><sub><code>i-1</code></sub><code>+ ⊿</code><sub><code>i</code></sub>と同値であり，それ以外について<code>f&#39;(S</code><sub><code>i-1</code></sub><code>, I</code><sub><code>i-1</code></sub><code>)</code>と同値をとる．<br>なお，<code>S</code><sub><code>0</code></sub>, <code>I</code>, <code>⊿</code>および<code>f&#39;</code><sub><code>r</code></sub>, <code>S&#39;</code><sub><code>i</code></sub><code>= S</code><sub><code>i</code></sub>は<code>i ∈ [0, n]</code>について恒真である．<br>これを実装に起こすと，特定の命令やイベントが正しくエミュレート可能な場合は単にそれらをエミュレートし，そうでなければ状態の変化を記録し，Replayにあたって変更を適用するというアプローチになる．</p>
+<h1 id="理論と実際"><a href="#理論と実際" class="headerlink" title="理論と実際"></a>理論と実際</h1><p>プログラムの大部分を占める<code>mov</code>, <code>push</code>, <code>pop</code>などのデータ転送命令，<code>call</code>, <code>ret</code>, <code>jz</code>, <code>jmp</code>などの制御転送命令，<code>add</code>, <code>shl</code>などの整数演算命令におけるエミュレーションは失敗しないものと見做せる．これらはそのままRecorderでエミュレートされる．<br>一方で，割り込み，MMIO, Port IO, DMA, TSCについては，V2Eは既存研究を踏襲し，監視領域においてのみこれらをRecordするようになっている．<br>では，例外，モデル固有レジスタ，<code>cpuid</code>はどうすべきだろうか．既存手法は，これらのエミュレーションは困難であるという理由から，そもそも入力として扱わない戦略を採っていたようだ．V2Eではこれらを<code>⊿</code>, すなわちエミュレートが困難な状態の変化としてRecordすることで，Replayの正確性を高めている．<br>次に問題となるのが浮動小数点演算とSIMDの扱いだ．MMXやSSEを正確にエミュレートするのは難しい．だが，<code>⊿</code>として命令の結果を記録する設計は大幅なパフォーマンスの低下を招く．そこでV2EはReplayにあたってこれらの命令をパススルーする．もちろん，ReplayerはSIMDをサポートしているマシンで実行されることが前提にある．</p>
+<h1 id="Transparent-Recorder"><a href="#Transparent-Recorder" class="headerlink" title="Transparent Recorder"></a>Transparent Recorder</h1><p>RecorderはKVMを用いて実装されている．<br>V2EはRecord対象の領域とそれ以外のシステムを分割するため，TDP(two dimensional paging)を用いている．何のことかと思ったら，Intel EPTやAMD NPTの総称らしい．<br><img src="/image/tdp.jpg"><br>要するに，TDPとは仮想マシンと物理マシン間のページテーブルのことだ．通常のページングでは，メモリアクセスに応じてMMUによってページテーブルが参照され，仮想アドレスが物理アドレスへと変換される．TDPでは，ゲストマシンからの仮想メモリ空間へのアクセスに応じてCR3にセットされたページテーブルが参照され，ゲスト物理アドレスがホスト物理アドレスへと変換される．<br>この仕組を用いたV2Eは，<strong>監視対象用のTDPテーブルと，それ以外用のTDPテーブルを別々に作成する</strong>．マルウェアに属するページはCR3の監視に基づき監視対象用のTDPテーブルに書き込まれる．マルウェアとそれ以外の部分のインタラクションはTDPページフォルトや<code>VMExit</code>によって媒介される．共有されるデータは読み取り専用として双方に与えられる．なお，TDPページフォルトに応じてCPUの状態が入力<code>I</code><sub><code>i</code></sub>として保存される．</p>
+<h1 id="Precise-Replayer"><a href="#Precise-Replayer" class="headerlink" title="Precise Replayer"></a>Precise Replayer</h1><p>ReplayerはTEMUを用いて実装されている．バイナリ変換器に中間表現がなく，単純に古いQEMU 0.9.1をベースとしているのが玉に瑕だが，TEMUは動的テイント解析に求められる機能をほぼ網羅している．<br>TEMUはプラグインを共有ライブラリとしてロードし，コールバック関数からテイント解析の機能を呼び出すプラットフォームとなっている．V2EのReplayerは既存のプラグインであるtracecap, unpackerを用いる．だがRecordされたログには監視対象の情報のみが記述されているため，<br><code>return ((*TEMU_cpu_hflags &amp; HF_CPL_MASK) != 3)</code>といった，現在実行しているコードが解析対象のものかどうか判定するコードは除去されているようだ．TEMUのプラグインについては，こうした僅かな変更しか施されていない．<br>一方でその下で動くQEMUには結構手が加えられている．フラグの遅延評価は廃止され，ページフォルト以外の例外は除去されており，SIMDについては独自のヘルパー関数が追加されたようだ．QEMUのdyngenに手を加えるのはなかなか骨の折れる作業だと思う．<br>さて，Replayを行うためには，ReplayerはRecorderと同様のページングの仕組みをエミュレーションによって再現しなければならない．そこで，V2Eは物理ページコンテナという仕組みを用いている．これは，物理ページがログからロードされていることを示すものである．通常，物理ページコンテナは監視対象用のTDPテーブルを複製する．Replayされたプログラムが物理ページコンテナに存在しないページにアクセスした場合，Replayerは適切なタイミングでログからCPUの状態を復元し，ロードするようになっている．<br>V2Eにおけるテイント解析はおそらく，マルウェアのメモリ領域を正確に把握するためのものではない．それは，Recorderの段階でTDPテーブルの分割というアプローチによって実現されるべきものだからだ．TEMUのプラグインを使いたかったのだろうが，論文中からはあまりテイント解析を導入することのメリットが読み取れなかった．ここでのテイント解析は解析環境検出の対策に先立つものとして設定されているのだろうか．</p>
+<h1 id="評価"><a href="#評価" class="headerlink" title="評価"></a>評価</h1><p>解析環境検出については問題なし．<code>cpuid</code>, <code>rdtsc</code>, <code>cmpxch8b</code>, <code>icbp</code>, <code>rep stosb</code>, <code>fnstcw</code>といった命令や，一般保護例外などについてテストされている．なお，<code>rdtsc</code>については<code>VMRESUME</code>前にホストのTSCを参照することで対応している．<br>in-the-wildのマルウェアについても実験が行われており，アンパッカーとして期待できるパフォーマンスを見せている．<br>Recordにおける速度だが，コンテキストスイッチが頻繁に発生するカーネルモードルートキットで17倍，Internet Explorerで5倍と高速だ．KVMのシングルステップモードには3000倍のオーバーヘッドがあると言うのに．<br>全体的にpositiveな結果で，かなり良い．</p>
+<h1 id="おわりに"><a href="#おわりに" class="headerlink" title="おわりに"></a>おわりに</h1><p>マルウェアによる解析環境検出に対して，復数の環境を組み合わせたRecord and Replayを用いる研究について紹介した．何より，監視対象とそれ以外で別個にTDPテーブルを作るというアプローチが素晴らしい．自分も研究でテイント解析を扱っているが，この流れを包摂していきたい．<br>ただ，これはサンドボックス全般に言えることなのだが，感染ホストにおけるユーザーのブラウザ操作が条件分岐に影響するMITBマルウェアについて，どう対処すべきなのだろうか．正常系のユーザーのブラウザ操作をデータセットとしてRecorderに与えたいところだが，果たしてどうなるのか．<br>このエントリは<a href="http://www.adventar.org/calendars/440" target="_blank" rel="external">システム系論文紹介 Advent Calendar 2014</a>の9日目として書かれた．</p>
+<h1 id="参考文献"><a href="#参考文献" class="headerlink" title="参考文献"></a>参考文献</h1><ul>
+<li>Lok-Kwong Yan, Manjukumar Jayachandra, Mu Zhang and Heng Yin,<br>“<a href="http://www.cl.cam.ac.uk/research/srg/netos/vee_2012/papers/p227.pdf" target="_blank" rel="external">V2E: Combining Hardware Virtualization and Software Emulation for Transparent and Extensible Malware Analysis[PDF]</a>,”<br>Proceedings of the 8th ACM SIGPLAN/SIGOPS conference on Virtual Execution Environments, pp. 227-238, NY, USA, 2012.</li>
+<li>George W. Dunlap, Samuel T. King, Sukru Cinar, Murtaza A. Basrai and Peter M. Chen,<br>“<a href="http://web.engr.illinois.edu/~kingst/Research_files/dunlap02.pdf" target="_blank" rel="external">ReVirt: Enabling Intrusion Analysis through Virtual-Machine Logging and Replay[PDF]</a>,”<br>Proceedings of the 2002 Symposium on Operating Systems Design and Implementation, pp. 211-224, NY, USA, 2002.</li>
+<li>A. Dinaburg, P. Royal, M. Sharif and W. Lee.<br>“<a href="http://ether.gtisc.gatech.edu/ether_ccs_2008.pdf" target="_blank" rel="external">Ether: malware analysis via hardware virtualization extensions[PDF]</a>,”<br>Proceedings of the 15th ACM Conference on Computer and Communications Security, pp. 51–62, NY, USA, 2008.</li>
+<li>大居司,<br>“<a href="http://www.slideshare.net/a4lg/a-new-tracer-for-reverse-engineering" target="_blank" rel="external">リバースエンジニアリングのための新しいトレース手法</a>,”<br>PacSec 2010, 東京, 日本, 2010.</li>
+<li>Dhilung Kirat, Giovanni Vigna, and Christopher Kruegel,<br>“<a href="https://www.usenix.org/system/files/conference/usenixsecurity14/sec14-paper-kirat.pdf" target="_blank" rel="external">BareCloud: Bare-metal Analysis-based Evasive Malware Detection[PDF]</a>,”<br>Proceedings of the 23rd USENIX conference on Security Symposium, pp. 287-301, CA, USA, 2014.</li>
+<li>忠鉢洋輔, 愛甲健二,<br>“<a href="https://pacsec.jp/psj14/PSJ2014_chubachi_final_ja.pdf" target="_blank" rel="external">TENTACLE: Environment-Sensitive Malware Palpation[PDF]</a>,”<br>PacSec Tokyo 2014, 東京, 日本, 2014.</li>
+<li>M. Siper,<br>“<a href="http://www.cs.virginia.edu/~robins/Sipser_2006_Second_Edition_Problems.pdf" target="_blank" rel="external">Introduction to the Theory of Computation. International</a>,”<br>Thomson Publishing, 1996.</li>
+</ul>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://ntddk.github.io/2014/12/09/v2e/" data-id="cj13oizhq001fpcosh7624owf" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/dynamic-binary-translation/">dynamic binary translation</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/symbolic-execution/">symbolic execution</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/taint-analysis/">taint analysis</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/virtual-machine-introspection/">virtual machine introspection</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+    <article id="post-symexec-s2e" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    
+      <header class="article-header">
+        
+  
+    <a class="article-title" href="/2014/12/03/symexec-s2e/">選択的シンボリック実行ツールS2E</a>
+  
+
+      </header>
+    
+    <time class="article-date" datetime="2014-12-03T14:00:00.000Z" itemprop="datePublished">12-03-2014</time>
+    
+  </div>
+  <div class="article-inner">
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h1 id="はじめに"><a href="#はじめに" class="headerlink" title="はじめに"></a>はじめに</h1><p>選択的シンボリック実行について紹介する．</p>
+<h1 id="シンボリック実行"><a href="#シンボリック実行" class="headerlink" title="シンボリック実行"></a>シンボリック実行</h1><p>シンボリック実行とは，プログラムに含まれる変数に具体値を入力せず，その代わりとして値を代表するシンボルの操作を通じてプログラムを模擬的に実行し，結果を評価する技術である．シンボリック実行の目的は，コードカバレッジの拡大にある．シンボリック実行は全てのケースに対してforkする，あるいは，条件分岐の制約をもとにテストケースを生成するといった形態でソフトウェアテストに用いられている．<br>ひとまず，以前書いた<a href="http://ntddk.github.io/2014/09/12/symexec-intro/">シンボリック実行に入門しようとした</a>をご覧頂きたい．</p>
+<h1 id="選択的シンボリック実行"><a href="#選択的シンボリック実行" class="headerlink" title="選択的シンボリック実行"></a>選択的シンボリック実行</h1><p>選択的シンボリック実行(selective symbolic execution)は，シンボリック実行の弱点を改善すべく<a href="https://github.com/dslab-epfl/s2e" target="_blank" rel="external">S2E</a>にて提案，実装された．<br>シンボリック実行には実行パスにおける計算爆発(path explosion)の問題があった．プログラム中の全ての実行パスを通るための制約はあまりにも多い．そして，<strong>全ての実行パスというのは解析対象の実行パスだけではない</strong>．考えてもみよう，実システムでプログラムを実行した際，プログラムは自身以外の様々なものを呼び出す．呼び出されるlibcなどのライブラリ，そしてカーネルやデバイスドライバ，さらにそのファームウェアは，一体どこまで解析対象における実行パスの分岐に影響を与えるのか．<br>この頭が痛い問題に対応するべく編み出されたのが選択的シンボリック実行，すなわちシンボリック実行を行う範囲の限定である．S2Eはシンボリック実行を行いたい部分以外に具体値(concrete value)を用いることで，解析対象のプログラムだけにシンボリック実行を適用する(concolic testing)．具体的には，S2Eは指定した変数が使用されている部分のみシンボリック実行を適用している．</p>
+<h1 id="S2E"><a href="#S2E" class="headerlink" title="S2E"></a>S2E</h1><h2 id="動的バイナリ変換"><a href="#動的バイナリ変換" class="headerlink" title="動的バイナリ変換"></a>動的バイナリ変換</h2><p>S2Eは，QEMUをベースに開発された．QEMUはエミュレーションを実現するべく，以下のような流れで動的バイナリ変換を行う．</p>
+<p>1.ゲストコードの逆アセンブル<br>2.マイクロオペレーションに変換<br>3.コード辞書を参照してホストコードに変換</p>
+<p>S2Eはこのコード辞書をLLVM bitcodeに差し替えることで，x86のバイナリをLLVM bitcodeに変換する．そして，変換後のLLVM bitcodeをKLEEに渡すことで，シンボリック実行を行う．<br>このとき，<strong>解析対象の全部分がLLVM bitcodeに変換されるわけではない</strong>．<br><img src="/image/symexec-s2e_01.jpg"><br>指定した変数が使用されている部分のみシンボリック実行を適用すると書いたように，S2Eはシンボル化したデータにアクセスしているか否かによって，解析対象の実行方式を切り替えている．実行方式は以下の二通りだ．</p>
+<ol>
+<li>具体値にアクセスしている場合，通常通り実行</li>
+<li>シンボルにアクセスしている場合，LLVM bitcodeに変換してKLEE上で実行</li>
+</ol>
+<p>これは，解析対象を多数のコードブロックに分割するというQEMUのバイナリ変換方式に極めて依存している．</p>
+<h2 id="S2E-opcodes"><a href="#S2E-opcodes" class="headerlink" title="S2E opcodes"></a>S2E opcodes</h2><p>S2Eは独自の拡張命令S2E opcodesを用いてシンボリック実行のための機能をinstrumentする．S2E opcodesは以下のような機能を提供する．</p>
+<ul>
+<li><code>S2SYM</code>: データのシンボル化</li>
+<li><code>S2ENA</code>: 複数パスの実行を有効化</li>
+<li><code>S2DIS</code>: 複数パスの実行を無効化</li>
+<li><code>S2OUT</code>: デバッグ情報の出力</li>
+</ul>
+<p>この中身は<code>s2e-x86.h</code>や<code>s2e.h</code>に記述されている．例として<code>S2SYM</code>の実装を見てみよう．<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div></pre></td><td class="code"><pre><div class="line">#define S2E_INSTRUCTION_COMPLEX(val1, val2)             \</div><div class="line">    &quot;.byte 0x0F, 0x3F\n&quot;                                \</div><div class="line">    &quot;.byte 0x00, 0x&quot; #val1 &quot;, 0x&quot; #val2 &quot;, 0x00\n&quot;      \</div><div class="line">    &quot;.byte 0x00, 0x00, 0x00, 0x00\n&quot;</div><div class="line"></div><div class="line">#define S2E_INSTRUCTION_SIMPLE(val)                     \</div><div class="line">    S2E_INSTRUCTION_COMPLEX(val, 00)</div><div class="line"></div><div class="line">~ 略 ~</div><div class="line"></div><div class="line">static inline void s2e_make_symbolic(void *buf, int size, const char *name)</div><div class="line">&#123;</div><div class="line">    __s2e_touch_string(name);</div><div class="line">    __s2e_touch_buffer(buf, size);</div><div class="line"></div><div class="line">    __asm__ __volatile__(</div><div class="line">        S2E_INSTRUCTION_SIMPLE(03)</div><div class="line">        : : &quot;a&quot; (buf), &quot;d&quot; (size), &quot;c&quot; (name) : &quot;memory&quot;</div><div class="line">    );</div><div class="line">&#125;</div></pre></td></tr></table></figure></p>
+<p>例えば，解析対象のソースコード上で<code>s2e_make_symbolic()</code>の引数にシンボル化したい変数を渡すことで，この関数を利用することができる．</p>
+<h2 id="Windowsデバイスドライバに対する選択的シンボリック実行"><a href="#Windowsデバイスドライバに対する選択的シンボリック実行" class="headerlink" title="Windowsデバイスドライバに対する選択的シンボリック実行"></a>Windowsデバイスドライバに対する選択的シンボリック実行</h2><p><a href="https://dslabredmine.epfl.ch/embedded/s2e/Windows/DriverTutorial.html" target="_blank" rel="external">Analyzing Windows Drivers: Step-by-Step Tutorial</a>という公式チュートリアルでは，プラグインを用いてWindowsデバイスドライバにアノテーションを付加する方法が紹介されている．<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div></pre></td><td class="code"><pre><div class="line">function annotation_example(state, plg)</div><div class="line">   -- Write custom Lua code here (e.g., to inject symbolic values)</div><div class="line">end</div><div class="line"></div><div class="line">pluginsConfig.Annotation =</div><div class="line">&#123;</div><div class="line">    init1 = &#123;</div><div class="line">        active=true,</div><div class="line">        module=&quot;pcntpci5_sys_1&quot;,</div><div class="line">        address=0x169c9,</div><div class="line">        instructionAnnotation=&quot;annotation_example&quot;</div><div class="line">    &#125;</div><div class="line">&#125;</div></pre></td></tr></table></figure></p>
+<p>チュートリアルの例ではpcntpci5.sysというドライバが0x169c9というアドレスを呼び出す際に<code>annotation_example()</code>が実行される．BSoDもフックできるので，NotMyFaultドライバで遊ぼう．</p>
+<h2 id="オーバーヘッド"><a href="#オーバーヘッド" class="headerlink" title="オーバーヘッド"></a>オーバーヘッド</h2><p>いつだって問題となるのは実行速度だ．論文によると，S2Eは具体値による実行時(concrete mode)にQEMUの6倍，シンボリック実行時にQEMUの78倍のオーバーヘッドが生ずるとされている．注意したいのは，実機の78倍ではなくQEMUの78倍である点だ．</p>
+<h1 id="おわりに"><a href="#おわりに" class="headerlink" title="おわりに"></a>おわりに</h1><p>S2Eについて紹介した．<br>このエントリは<a href="http://connpass.com/event/9500/" target="_blank" rel="external">ソフトウェアテストあどべんとかれんだー2014</a>の3日目として書かれた．</p>
+<h1 id="参考文献"><a href="#参考文献" class="headerlink" title="参考文献"></a>参考文献</h1><p>より詳しくは以下の論文を参照されたい．これも全てVitaly Chipounovって奴の仕業なんだ．</p>
+<ul>
+<li>Vitaly Chipounov, George Candea,<br>“<a href="http://infoscience.epfl.ch/record/149975/files/x86-llvm-translator-chipounov_2.pdf" target="_blank" rel="external">Dynamically Translating x86 to LLVM using QEMU[PDF]</a>,”<br>Technical Report EPFL-TR-149975, Ecole Polytechnique Fédérale de Lausanne, Switzerland, March 2010.</li>
+<li>Volodymyr Kuznetsov, Vitaly Chipounov, George Candea,<br>“<a href="http://dslab.epfl.ch/pubs/ddt.pdf" target="_blank" rel="external">Testing Closed-Source Binary Device Drivers with DDT[PDF]</a>,”<br>Proceedings of the 2010 USENIX conference on USENIX annual technical conference, pp.12-12, Boston, MA, June 2010.</li>
+<li>Vitaly Chipounov, Volodymyr Kuznetsov, George Candea,<br>“<a href="http://dslab.epfl.ch/pubs/s2e.pdf" target="_blank" rel="external">S2E: a platform for in-vivo multi-path analysis of software systems[PDF]</a>,”<br>Proceedings of the sixteenth international conference on Architectural support for programming languages and operating systems, pp.265-278, Newport Beach, CA, March 2011.</li>
+<li>Vitaly Chipounov, Volodymyr Kuznetsov George Candea,<br>“<a href="http://dslab.epfl.ch/pubs/s2e-tocs.pdf" target="_blank" rel="external">The S2E Platform: Design, Implementation, and Applications[PDF]</a>,”<br>ACM Transactions on Computer Systems, Volume 30, Issue 1, Article No. 2, February 2012.</li>
+</ul>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://ntddk.github.io/2014/12/03/symexec-s2e/" data-id="cj13oizhb0017pcos3tzg2p8y" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/dynamic-binary-translation/">dynamic binary translation</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/symbolic-execution/">symbolic execution</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+    <article id="post-vine-howto" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    
+      <header class="article-header">
+        
+  
+    <a class="article-title" href="/2014/09/28/vine-howto/">Vineを動かす</a>
+  
+
+      </header>
+    
+    <time class="article-date" datetime="2014-09-27T20:56:08.000Z" itemprop="datePublished">09-28-2014</time>
+    
+  </div>
+  <div class="article-inner">
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h1 id="はじめに"><a href="#はじめに" class="headerlink" title="はじめに"></a>はじめに</h1><p>ここでは，<a href="http://bitblaze.cs.berkeley.edu/" target="_blank" rel="external">BitBlaze</a>のうち，静的解析に特化したコンポーネントであるVineを動かしてみる．</p>
+<h1 id="BitBlaze"><a href="#BitBlaze" class="headerlink" title="BitBlaze"></a>BitBlaze</h1><p>BitBlazeはDawn Songらによるバイナリ解析プラットフォームで，2008年に<a href="http://bitblaze.cs.berkeley.edu/papers/bitblaze_iciss08.pdf" target="_blank" rel="external">BitBlaze: A New Approach to Computer Security via Binary Analysis [PDF]</a>が発表されて以来，数多くの研究に用いられてきた．BitBlazeは，動的解析コンポーネントの<a href="http://bitblaze.cs.berkeley.edu/temu.html" target="_blank" rel="external">TEMU</a>，静的解析コンポーネントの<a href="http://bitblaze.cs.berkeley.edu/vine.html" target="_blank" rel="external">Vine</a>，動的シンボリック実行コンポーネントの<a href="http://bitblaze.cs.berkeley.edu/rudder.html" target="_blank" rel="external">Rudder</a>から構成される．このうち，TEMUとVineのソースコードが公開されている．</p>
+<h2 id="TEMU-The-BitBlaze-Dynamic-Analysis-Component"><a href="#TEMU-The-BitBlaze-Dynamic-Analysis-Component" class="headerlink" title="TEMU: The BitBlaze Dynamic Analysis Component"></a>TEMU: The BitBlaze Dynamic Analysis Component</h2><p>TEMUはQEMUをベースとしたエミュレータで，テイント解析(taint analysis)の機能を備えている．テイント解析とは，タグを設定したデータの伝搬を追跡することで，データ同士の依存関係を解析する技術である．TEMUはtracecapというプラグインを用いて，ゲストOS上で動作するアプリケーションのトレースログを取得することができる．</p>
+<h2 id="Vine-The-BitBlaze-Static-Analysis-Component"><a href="#Vine-The-BitBlaze-Static-Analysis-Component" class="headerlink" title="Vine: The BitBlaze Static Analysis Component"></a>Vine: The BitBlaze Static Analysis Component</h2><p>Vineは，逆アセンブリやTEMUのトレースファイルから，中間表現VineILや最弱事前条件，STP formulaなどを出力する．公開されているVineには，TEMU/tracecapのトレースファイルとしてfive.traceが同梱されている．これを例にVineの機能を見てみよう．</p>
+<h1 id="Vineのインストール"><a href="#Vineのインストール" class="headerlink" title="Vineのインストール"></a>Vineのインストール</h1><p><a href="http://bitblaze.cs.berkeley.edu/release/vine-1.0/howto.html" target="_blank" rel="external">Vine installation and user manual</a>の通り．OCamlで記述されているため，関連のパッケージを導入する必要がある．また，32bit環境での動作を前提としている．</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div></pre></td><td class="code"><pre><div class="line">sudo apt-get install g++ ocaml ocaml-findlib libgdome2-ocaml-dev camlidl \ </div><div class="line">                     libextlib-ocaml-dev ocaml-native-compilers \ </div><div class="line">                     libocamlgraph-ocaml-dev binutils-dev texlive \ </div><div class="line">                     texlive-latex-extra transfig hevea</div></pre></td></tr></table></figure>
+<h1 id="trace-reader"><a href="#trace-reader" class="headerlink" title="trace_reader"></a>trace_reader</h1><p>TEMU/tracecapが出力するトレースファイルはhuman-readableではなく，閲覧はVineのtrace_readerを介して行う必要がある．five.traceでは，T1がタグの識別子となっており，T0はデータに設定されたタグが存在しないことを意味する．なお，ここではキーボードからの入力にタグが設定されている．</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div></pre></td><td class="code"><pre><div class="line">../trace_utils/trace_reader -trace five.trace | grep T1 | head -n 20</div><div class="line">42075911:	movzbl (%eax),%eax	R@eax[0x40014000][4]	T0	M@0x40014000[0x00000035][1]	T1 &#123;1 (1001, 0) ()()()&#125;</div><div class="line">42077e0c:	cmp    $0xffffffff,%eax	I@0x00000000[0xffffffff][1]	T0	R@eax[0x00000035][4]	T1 &#123;1 (1001, 0) ()()()&#125;</div><div class="line">42077e14:	movzbl (%edx),%eax	R@eax[0x00000035][4]	T1 &#123;1 (1001, 0) ()()()&#125;	M@0x40014000[0x00000035][1]	T1 &#123;1 (1001, 0) ()()()&#125;</div><div class="line">4205abc5:	mov    %eax,-0xac(%ebp)	R@eax[0x00000035][4]	T1 &#123;1 (1001, 0) ()()()&#125;	M@0xbffff69c[0x00000000][4]	T0</div><div class="line">4205abce:	mov    -0xa8(%ebp),%eax	R@eax[0x00000035][4]	T1 &#123;1 (1001, 0) ()()()&#125;	M@0xbffff6a0[0x00000000][4]	T0</div><div class="line">4205abd5:	cmpl   $0xffffffff,-0xac(%ebp)	I@0x00000000[0xffffffff][1]	T0	M@0xbffff69c[0x00000035][4]	T1 &#123;1 (1001, 0) ()()()&#125;</div><div class="line">4205abf5:	mov    -0xac(%ebp),%edx	R@edx[0x40014001][4]	T0	M@0xbffff69c[0x00000035][4]	T1 &#123;1 (1001, 0) ()()()&#125;</div><div class="line">4205ac0b:	cmpl   $0xffffffff,-0xac(%ebp)	I@0x00000000[0xffffffff][1]	T0	M@0xbffff69c[0x00000035][4]	T1 &#123;1 (1001, 0) ()()()&#125;</div><div class="line">4205ac14:	movzbl -0xac(%ebp),%eax	R@eax[0x42130b80][4]	T0	M@0xbffff69c[0x00000035][1]	T1 &#123;1 (1001, 0) ()()()&#125;</div><div class="line">4205ac24:	push   %eax	R@eax[0x00000035][4]	T1 &#123;1 (1001, 0) ()()()&#125;	M@0xbffff604[0x4213030c][4]	T0</div><div class="line">4205ac25:	mov    0x8(%ebp),%eax	R@eax[0x00000035][4]	T1 &#123;1 (1001, 0) ()()()&#125;	M@0xbffff750[0x4212d980][4]	T0</div><div class="line">4207793a:	mov    0xc(%ebp),%edx	R@edx[0x00000035][4]	T1 &#123;1 (1001, 0) ()()()&#125;	M@0xbffff604[0x00000035][4]	T1 &#123;1 (1001, 0) ()()()&#125;</div><div class="line">42077945:	cmp    %dl,-0x1(%eax)	R@dl[0x00000035][1]	T1 &#123;1 (1001, 0) ()()()&#125;	M@0x40014000[0x00000035][1]	T1 &#123;1 (1001, 0) ()()()&#125;</div><div class="line">42077974:	movzbl %dl,%eax	R@dl[0x00000035][1]	T1 &#123;1 (1001, 0) ()()()&#125;	R@eax[0x40014000][4]	T0</div><div class="line">42077960:	cmp    $0xffffffff,%eax	I@0x00000000[0xffffffff][1]	T0	R@eax[0x00000035][4]	T1 &#123;1 (1001, 0) ()()()&#125;</div><div class="line">4205ac39:	movzbl -0x9d(%ebp),%eax	R@eax[0x00000035][4]	T1 &#123;1 (1001, 0) ()()()&#125;	M@0xbffff6ab[0x00000064][1]	T0</div><div class="line">4205c550:	mov    $0xa,%edx	I@0x00000000[0x0000000a][4]	T0	R@edx[0x00000035][4]	T1 &#123;1 (1001, 0) ()()()&#125;</div><div class="line">4205c566:	cmpl   $0xffffffff,-0xac(%ebp)	I@0x00000000[0xffffffff][1]	T0	M@0xbffff69c[0x00000035][4]	T1 &#123;1 (1001, 0) ()()()&#125;</div><div class="line">4205dcd1:	movzbl (%eax),%edi	R@edi[0x00000000][4]	T0	M@0x40014000[0x00000035][1]	T1 &#123;1 (1001, 0) ()()()&#125;</div><div class="line">4205dcd8:	mov    %edi,-0xac(%ebp)	R@edi[0x00000035][4]	T1 &#123;1 (1001, 0) ()()()&#125;	M@0xbffff69c[0x00000035][4]	T1 &#123;1 (1001, 0) ()()()&#125;</div></pre></td></tr></table></figure>
+<h1 id="VineIL"><a href="#VineIL" class="headerlink" title="VineIL"></a>VineIL</h1><p>Vineが生成するVineILは静的単一代入形式の中間表現であり，CFGの情報が損なわれることはない．中間表現の生成をinstruction liftingという．なお，VineILはValgrindの中間表現を扱うライブラリVEXをもとに生成される．</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div><div class="line">22</div><div class="line">23</div></pre></td><td class="code"><pre><div class="line">~/vine/examples$ ../trace_utils/appreplay -trace five.trace -ir-out five.ir</div><div class="line">~/vine/examples$ cat five.ir | awk &apos;NR==1000,NR==1020&apos;</div><div class="line">R_CC_OP_16:reg32_t = 0xd:reg32_t;</div><div class="line">T_32t9_1114:reg32_t = cast(T_8t3_1108:reg8_t)U:reg32_t;</div><div class="line">R_CC_DEP1_17:reg32_t = T_32t9_1114:reg32_t;</div><div class="line">R_CC_DEP2_18:reg32_t = 0:reg32_t;</div><div class="line">R_CC_NDEP_19:reg32_t = 0:reg32_t;</div><div class="line">/*eflags thunk: logic*/</div><div class="line"></div><div class="line">R_CF_10:reg1_t = false;</div><div class="line">T_7_1115:reg8_t = cast(T_32t9_1114:reg32_t)L:reg8_t;</div><div class="line">R_PF_11:reg1_t =</div><div class="line">!cast(</div><div class="line">      ((T_7_1115:reg8_t &gt;&gt; 7:reg32_t ^ T_7_1115:reg8_t &gt;&gt; 6:reg32_t)</div><div class="line">         ^ (T_7_1115:reg8_t &gt;&gt; 5:reg32_t ^ T_7_1115:reg8_t &gt;&gt; 4:reg32_t))</div><div class="line">       ^ </div><div class="line">         ((T_7_1115:reg8_t &gt;&gt; 3:reg32_t ^ T_7_1115:reg8_t &gt;&gt; 2:reg32_t)</div><div class="line">            ^ (T_7_1115:reg8_t &gt;&gt; 1:reg32_t ^ T_7_1115:reg8_t))</div><div class="line">         )L:reg1_t;</div><div class="line">R_AF_12:reg1_t = false;</div><div class="line">R_ZF_13:reg1_t = T_32t9_1114:reg32_t == 0:reg32_t;</div><div class="line">R_SF_14:reg1_t = 1:reg32_t == (1:reg32_t &amp; T_32t9_1114:reg32_t &gt;&gt; 7:reg32_t);</div><div class="line">R_OF_15:reg1_t = false;</div></pre></td></tr></table></figure>
+<p>出力している行の番号は適当．</p>
+<h1 id="最弱事前条件"><a href="#最弱事前条件" class="headerlink" title="最弱事前条件"></a>最弱事前条件</h1><p>最弱事前条件(weakest precondition)はDijkstraによる述語変換意味論の基礎を成す概念である．Sを条件，式をRとした際，最弱事前条件WP(S, R)は，Rを実行する前にS’が成り立っていればSの実行後にSが成り立つ最も弱い条件S’を表す．単純な例だと，以下のように表現される．</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div></pre></td><td class="code"><pre><div class="line">WP(S, x=e) = S[e/x]</div><div class="line">WP(new == org,  new = new+taint) </div><div class="line">=  new+taint == org</div></pre></td></tr></table></figure>
+<p>Vineにおける最弱事前条件の出力は，以下のようになる．</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div><div class="line">22</div><div class="line">23</div><div class="line">24</div></pre></td><td class="code"><pre><div class="line">~/vine/examples$ ../trace_utils/appreplay -trace five.trace -wp-out five.wp</div><div class="line">~/vine/examples$ grep let five.wp | head -n 20</div><div class="line">let post_1681:reg1_t = true in</div><div class="line">let R_EAX_1682:reg32_t = 0x40014000:reg32_t in</div><div class="line">let idx_1683:reg32_t = 0x40014000:reg32_t in</div><div class="line">let val_1684:reg8_t = INPUT_1001_0000_61:reg8_t in</div><div class="line">let temp_1685:reg8_t = val_1684:reg8_t &amp; 0xff:reg8_t in</div><div class="line">let temp_1686:reg8_t = temp_1685:reg8_t &gt;&gt; 0:reg8_t in</div><div class="line">let towrite_1688:reg8_t = cast(temp_1686:reg8_t)L:reg8_t in</div><div class="line">let mem_arr_1687:reg8_t[4294967296] =</div><div class="line">    let mem_arr_57[0x40014000:reg32_t]:reg8_t = towrite_1688:reg8_t in</div><div class="line">    mem_arr_57:reg8_t[4294967296]</div><div class="line">in</div><div class="line">let R_EAX_1689:reg32_t = 0x40014000:reg32_t in</div><div class="line">let R_GDT_1690:reg32_t = 0xc02dbd80:reg32_t in</div><div class="line">let R_LDT_1691:reg32_t = 0xc02dcc58:reg32_t in</div><div class="line">let R_DFLAG_1692:reg32_t = 1:reg32_t in</div><div class="line">let T_32t0_1693:reg32_t = R_EAX_1689:reg32_t in</div><div class="line">let T_8t2_1694:reg8_t = mem_arr_1687[0x40014000:reg32_t]:reg8_t in</div><div class="line">let T_32t1_1695:reg32_t = cast(T_8t2_1694:reg8_t)U:reg32_t in</div><div class="line">let R_EAX_1696:reg32_t = T_32t1_1695:reg32_t in</div><div class="line">let temp_1697:reg32_t = R_EAX_1696:reg32_t &amp; 0xffff00ff:reg32_t in</div><div class="line">let temp_1698:reg32_t = cast(0:reg8_t)U:reg32_t in</div><div class="line">let temp_1699:reg32_t = temp_1698:reg32_t &lt;&lt; 8:reg8_t in</div></pre></td></tr></table></figure>
+<p>このような手法でソースコードの存在しないバイナリから最弱事前条件を抽出し，仕様書を復元する試みがあるらしい．ゾッとする．</p>
+<h1 id="STP-formula"><a href="#STP-formula" class="headerlink" title="STP formula"></a>STP formula</h1><p>Vineは，TEMUのトレースファイルからSTP formulaを出力する．STP formulaとはSMTソルバであるSTP用のフォーマットである．</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div><div class="line">22</div></pre></td><td class="code"><pre><div class="line">~/vine/examples$ ../trace_utils/appreplay -trace five.trace -stp-out five.stp</div><div class="line">~/vine/examples$ head -n 20 five.stp</div><div class="line">% free variables: </div><div class="line">mem_arr_57 : ARRAY BITVECTOR(64) OF BITVECTOR(8);</div><div class="line">INPUT_1001_0000_61 : BITVECTOR(8);</div><div class="line">% end free variables.</div><div class="line"> </div><div class="line"> </div><div class="line">ASSERT( 0bin1 =</div><div class="line">(LET post_1681 =</div><div class="line">    0bin1</div><div class="line">IN</div><div class="line">(LET R_EAX_1682 =</div><div class="line">    0hex40014000</div><div class="line">IN</div><div class="line">(LET idx_1683 =</div><div class="line">    0hex40014000</div><div class="line">IN</div><div class="line">(LET val_1684 =</div><div class="line">    INPUT_1001_0000_61</div><div class="line">IN</div><div class="line">(LET temp_1685 =</div></pre></td></tr></table></figure>
+<p>SMTソルバは充足可能性問題を解く．では，ここで与えられる命題とは何か．それは，任意の初期値がトレースファイルの結果と一致するというものだ．STPは命題が充足可能か解こうとし，充足不能であった場合は反例を出力する．</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div></pre></td><td class="code"><pre><div class="line">~/vine/examples$ cat &gt;&gt;five.stp</div><div class="line">QUERY(FALSE);</div><div class="line">COUNTEREXAMPLE;</div></pre></td></tr></table></figure>
+<p>ここで出力される反例は，実行経路に影響を与えた入力値となるようだ．five.traceでは，0x35(ASCIIで5)という入力値が分岐に影響を与えている．</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div></pre></td><td class="code"><pre><div class="line">~/vine/examples$ ../stp/stp five.stp</div><div class="line">Invalid.</div><div class="line">ASSERT( INPUT_1001_0_61  = 0hex35  );</div></pre></td></tr></table></figure>
+<p>これはトレースファイルに対する静的なシンボリック実行だと言える．シンボリック実行とは，記号によって表現したプログラムの変数を操作することで，実行経路に影響する制約を抽出する静的解析の手法である．シンボリック実行は到達定義の解析などモデルベーステストの領域で発展してきたが，マルウェアの挙動解析に役立てられないだろうか．</p>
+<h1 id="BAP"><a href="#BAP" class="headerlink" title="BAP"></a>BAP</h1><p><a href="http://bap.ece.cmu.edu" target="_blank" rel="external">BAP</a>はDavid BrumleyらによるVineの再実装である．彼らはCMUに所属しており，PPPのメンバーでもある．彼らは脆弱性解析の自動化をmotivationとしてBitBlazeを扱ってきた．BAPはVineをより発展させたプロジェクトであり，逆アセンブリやTEMUのトレースファイルから中間表現BILを生成するほか，CFGのみならずCDG(control dependence graphs)やDDG(data dependence graphs)の出力をサポートしているようだ．</p>
+<h1 id="おわりに"><a href="#おわりに" class="headerlink" title="おわりに"></a>おわりに</h1><p>TEMUのトレースファイルについて，ざっくりVineによる静的解析を行った．とりあえず動かしてみただけなので，コードを噛み砕く必要がある．気になるのはやはり中間表現のフォーマットだ．一度，QEMU，Valgrind，DynamoRIO，LLVM，Vine，BAPなどの中間表現について，対応を整理したほうが良いかもしれない．</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://ntddk.github.io/2014/09/28/vine-howto/" data-id="cj13oizhq001hpcoslh7qx8uk" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/dynamic-binary-translation/">dynamic binary translation</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/symbolic-execution/">symbolic execution</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/taint-analysis/">taint analysis</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+    <article id="post-symexec-intro" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    
+      <header class="article-header">
+        
+  
+    <a class="article-title" href="/2014/09/12/symexec-intro/">シンボリック実行に入門しようとした</a>
+  
+
+      </header>
+    
+    <time class="article-date" datetime="2014-09-11T17:50:52.000Z" itemprop="datePublished">09-12-2014</time>
+    
+  </div>
+  <div class="article-inner">
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h1 id="はじめに"><a href="#はじめに" class="headerlink" title="はじめに"></a>はじめに</h1><p>シンボリック実行(symbolic execution)という用語をセキュリティ系の論文でよく見かけるようになった．ここでは，シンボリック実行の基礎となる理論を辿る．筆者はソフトウェアテストの研究には疎く，おそらく本稿には若干以上の誤謬と誤解が含まれているだろう．ぜひ識者の教示を乞いたい．</p>
+<h1 id="発祥"><a href="#発祥" class="headerlink" title="発祥"></a>発祥</h1><p>シンボリック実行は主にソフトウェアテストの領域で古くから研究されてきたトピックである．シンボリック実行という用語の初出は遡ること38年前，James C. Kingらによる<a href="https://courses.engr.illinois.edu/cs477/sp2011/king76symbolicexecution.pdf" target="_blank" rel="external">Symbolic Execution and Program Testing [PDF]</a>という論文だ．Dijkstraがgoto文の濫用による大域脱出を批判したのが1968年であり，Guarded Command Languageを提案したのが1975年のことである．この論文が発表された1976年当時はまさに構造化プログラミングというパラダイムがコンピュータサイエンスの世界を席捲していた時代であった．私が生まれる20年以上前のことで，当時の問題意識を肌身で感じることができないのが少し残念に思える．感覚としては白亜紀のようなもので，主要な登場人物もDijkstraやらKnuthやら，恐竜かよ．<br>さて，シンボリック実行とはどのような提案だったか．まず，シンボリック実行の目的は「どの入力値でどの実行経路を通るか特定する」ことである．そのためにはどうすればよいだろうか？シンボリック実行はその名の通り，プログラムの変数をシンボル(記号)として表現する．論文中のスニペットはあまりにも古めかしいので，<a href="http://en.wikipedia.org/wiki/Symbolic_execution" target="_blank" rel="external">Symbolic execution - Wikipedia, the free encyclopedia</a>を例に考えよう．残念ながら日本語記事はないものの，原理は単純明快．</p>
+<pre><code>y = read()
+y = 2 * y
+if (y == 12)
+    fail()
+print(&quot;OK&quot;)
+</code></pre><p>シンボリック実行では入力に具体値を与えない．例えば，変数yに割り当てられる入力値をsというシンボルで表現する．見ての通り，このルーチンはif文で2つの実行経路に分岐するが，この分岐の条件を制約と呼ぶ．ここでの制約は<code>2 * s == 12</code>となる．実行経路を分岐させる条件となる入力値は，式を解けば分かる．言うまでもなく<code>6</code>だ．おっと，これは充足可能性問題というやつじゃないか？その通り，シンボリック実行では制約を解くにあたって制約充足ソルバ(constraint solver)を用いる．ここでは，<code>2 * s == 12</code>という制約が<code>¬s1 ∧ ¬s2 ∧ ¬s3 ∧ ¬s4 ∧ s5 ∧ s6 ∧ ¬s7 ∧ ¬0</code>という連言標準形で表される．<code>2 * s</code>は<code>s1s2s3s4s5s6s70</code>に，<code>12</code>は<code>00001100</code>となる．<br>このように，具体値を与えないまま，必ず1つの実行経路を通る制約(path constraints)を求め，条件分岐に影響する入力値の制約を特定する手法がシンボリック実行である．シンボリック「実行」と銘打っていても，実際にプログラムを実行しているわけではない．飽くまでシンボルの操作を通して，擬似的にプログラムを実行しているのだ．</p>
+<h1 id="Concolic-Testing-Dynamic-Symbolic-Execution"><a href="#Concolic-Testing-Dynamic-Symbolic-Execution" class="headerlink" title="Concolic Testing/Dynamic Symbolic Execution"></a>Concolic Testing/Dynamic Symbolic Execution</h1><p>では，シンボリック実行は銀の弾丸たりえるか？そんなわけがない．真っ先に以下の課題に直面してしまう．</p>
+<ul>
+<li>計算爆発</li>
+<li>制約充足ソルバで解くことができない制約</li>
+<li>入力値が一意に定まらない</li>
+</ul>
+<p>そこで，<a href="http://mir.cs.illinois.edu/marinov/publications/SenETAL05CUTE.pdf" target="_blank" rel="external">CUTE: A Concolic Unit Testing Engine for C [PDF]</a>において，concolic testingという手法が提案された．concolicとは耳慣れない言葉だが，どういった意味だろうか？これは，symbolic(シンボル)とconcrete(具体値)からなる造語で，concolic testingとはシンボリック実行に具体値(concrete value)を持ち込んだ手法である．またの名を動的シンボリック実行．<br>具体値を持ち込むとはどういうことか？動的シンボリック実行では，制約充足ソルバが不得手とする非線形な制約に到達した場合，その箇所だけ実際に実行(concrete execution)することで，具体値を代入する．これによって，コードカバレッジを拡大するというのが狙いである．現在「シンボリック実行」と呼ばれているのは概ね動的シンボリック実行である．</p>
+<h1 id="KLEE"><a href="#KLEE" class="headerlink" title="KLEE"></a>KLEE</h1><p><a href="http://klee.github.io/klee/" target="_blank" rel="external">KLEE</a>はシンボリック実行にLLVM bitcodeを導入したプロジェクトである．チュートリアルは<a href="http://feliam.wordpress.com/2010/10/07/the-symbolic-maze/" target="_blank" rel="external">The Symbolic Maze! - Feliam’s Blog</a>が秀逸．<br>使い方は簡単で，解析対象のソースコードに<code>#include &lt;klee/klee.h&gt;</code>と<code>klee_make_symbolic()</code>とを追加するだけで準備は完了する．<code>klee_make_symbolic()</code>にはシンボリック実行を適用したい変数のアドレスとサイズ，名前を引数として与える．</p>
+<pre><code>llvm-gcc --emit-llvm -c -g [file].c
+klee [file].o
+</code></pre><p>LLVM bitcodeとしてコンパイルし，KLEEに与えて実行すると，ktestという形式のテストケースが生成される．</p>
+<pre><code>ktest-tool --write-ints klee-last/[file].ktest 
+</code></pre><p>ktest-toolを実行すると，入力値が出力される．</p>
+<pre><code>ktest file : ‘klee-last/test000001.ktest’
+args : [&apos;[file].o&apos;]
+num objects: 1
+object 0: name: ‘hoge’
+object 0: size: 4
+object 0: data: ‘fuga′
+</code></pre><p>これによって，KLEEは90%以上のコードカバレッジを実現する．論文の評価実験では，Coreutilsについて，15年に渡って作成されてきたテストスイートよりも高いカバレッジをたったの89時間で達成している．<br>KLEEは多くの研究者に利用されており，シンボリック実行に関する研究のstate-of-the-artはKLEEを分散化した<a href="https://code.comsys.rwth-aachen.de/redmine/projects/kleenet-public" target="_blank" rel="external">KleeNet</a>だと聞いている．<br>しかし，もちろんKLEEは万能ではない．特にループ文の解釈がうまくいかないことが多く，これはシンボリック実行が抱える永年の課題である．</p>
+<h1 id="STP"><a href="#STP" class="headerlink" title="STP"></a>STP</h1><p>KLEEは<a href="https://sites.google.com/site/stpfastprover/" target="_blank" rel="external">STP Constraint Solver</a>という制約充足ソルバを用いている．STPは制約充足ソルバの中でもSMT(Satisfiable Modulo Theories)ソルバと呼ばれるものに相当する．SAT(SATisfiability problem)ソルバはブール式のみを扱うが，SMTソルバはこれに加えて配列やビットベクトル，加減算大小比較など様々な背景理論を用いることができる．STPではAND，OR，NOT，XORといった演算についてもサポートされ，式の最適化についても工夫されているようだ．</p>
+<h1 id="S2E"><a href="#S2E" class="headerlink" title="S2E"></a>S2E</h1><p>少しばかり，リバースエンジニアリングにも目を向けてみよう．解析対象のソースコードが存在しない場合，どうやってシンボリック実行を適用すればよいだろうか？解決策のひとつとして挙げられるのが<a href="https://github.com/dslab-epfl/s2e" target="_blank" rel="external">S2E</a>である．<br>S2EはQEMUの動的バイナリ変換(dynamic binary translation)を用いる．QEMUの動的バイナリ変換機能をTCG(Tiny Code Generator)といい，これによって例えばARM向けにビルドされたバイナリをx86の計算機で動かすといった機能が実現される．<br>まず，QEMUは対象のバイナリを逆アセンブルし，複数のブロックに分割する．このブロックをTB(translation block)といい，定義は<code>translate-all.h</code>に記述されている．TBは分岐命令やページの境界によって区切られる．そして，ブロック単位で逆アセンブルしたコードを<code>gen_intermediate_code()</code>という関数で中間コードに変換し，<code>tcg_gen_code()</code>という関数で他のアーキテクチャの命令とマッピングする．これらは<code>target-[arch]/translate.c</code>および<code>tcg/tgc.c</code>に記述されている．こうして変換されたコードは，TB単位でキャッシュされる．実行にあたっては，変換されたTBをchainとして繋いでいく．この処理は，<code>main()</code>から<code>cpu_exec()</code>を経由して呼ばれる<code>tb_find_fast()</code>や<code>tb_find_slow()</code>に記述されている．こうして，QEMUは異なるアーキテクチャ向けバイナリの実行を可能にしている．<br>S2Eは，QEMUのTCGを用いてPEファイルをLLVM bitcodeに変換し，KLEEに受け渡す．TCGは，中間コードを変換するにあたって，変換先のアーキテクチャの命令が記述された辞書を参照する．S2Eはこの辞書にLLVM bitcodeを登録することで，実行ファイルをLLVM bitcodeに「逆アセンブル」するのだ．<br>このようにして，S2Eはシンボリック実行を実現しているが，そもそもLLVM bitcodeに変換する必要はあるのだろうか？KLEEは確かに優れたツールだが，バイナリに直接シンボリック実行を適用すれば良いのではないか？<br>これには理由がある．QEMUの中間コードも，LLVM bitcodeもレジスタが無限個存在するSSA(Static Single Assignment form，静的単一代入)形式をとっている．一方で，x86アーキテクチャはSSA形式ではない．x86における逆アセンブルコードにシンボリック実行を適用する例を考えよう．</p>
+<pre><code>mov esi, 0x09
+mov edx, 0x2014
+</code></pre><p>この場合，制約は<code>(esi == 0x09) and (edx == 0x2014)</code>となる．これなら問題はないが，以下の例はどうだろう．</p>
+<pre><code>mov esi, 0x09
+...
+mov esi, 0x2014
+</code></pre><p>同じレジスタに違う値が代入されている．この場合，制約は<code>(esi == 0x09) and (esi == 0x2014)</code>となってしまう．こうした理由から，シンボリック実行にはSSA形式への変換が必要となるようだ．</p>
+<h1 id="おわりに"><a href="#おわりに" class="headerlink" title="おわりに"></a>おわりに</h1><p>シンボリック実行の基礎を学んだつもりになった．この技術が情報セキュリティの分野でどう活きてくるのかについては，また改めて．進捗だめです．</p>
+<h1 id="参考文献"><a href="#参考文献" class="headerlink" title="参考文献"></a>参考文献</h1><ul>
+<li><a href="http://debugeng.com/concolic%20testing.pdf" target="_blank" rel="external">Concolic testingと背景技術 ~テスト技法の新動向~ [PDF]</a></li>
+<li><a href="http://blog.livedoor.jp/prjmng/archives/52297951.html" target="_blank" rel="external">テスト入力値の自動生成と、concolic testing - ソフトウェアの品質を学びまくる</a></li>
+</ul>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://ntddk.github.io/2014/09/12/symexec-intro/" data-id="cj13oizhb0015pcosicmje57x" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/dynamic-binary-translation/">dynamic binary translation</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/symbolic-execution/">symbolic execution</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+  
+</section>
+        
+      </div>
+      <footer id="footer">
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      &copy; 2017 ntddk<br>
+      <a href="https://github.com/ntddk/hexo-theme-jathena" target="_blank">JAthena</a> by <a href="http://ntddk.github.io" target="_blank">ntddk</a> | Powered by <a href="http://hexo.io/" target="_blank">Hexo</a>
+    </div>
+  </div>
+</footer>
+    </div>
+    
+
+<script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+
+
+  <link rel="stylesheet" href="/fancybox/jquery.fancybox.css">
+  <script src="/fancybox/jquery.fancybox.pack.js"></script>
+
+
+<script src="/js/script.js"></script>
+  </div>
+
+<!-- Begin: Injected MathJax -->
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Config({"tex2jax":{"inlineMath":[["$","$"],["\\(","\\)"]],"skipTags":["script","noscript","style","textarea","pre","code"],"processEscapes":true},"TeX":{"equationNumbers":{"autoNumber":"AMS"}}});
+</script>
+
+<script type="text/x-mathjax-config">
+    MathJax.Hub.Queue(function() {
+        var all = MathJax.Hub.getAllJax(), i;
+        for(i=0; i < all.length; i += 1) {
+            all[i].SourceElement().parentNode.className += ' has-jax';
+        }
+    });
+</script>
+
+<script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.0/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
+</script>
+<!-- End: Injected MathJax -->
+</body>
+</html>

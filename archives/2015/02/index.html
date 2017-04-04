@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+  <title>Archives: 2015/2 | 一生あとで読んでろ</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta property="og:type" content="website">
+<meta property="og:title" content="一生あとで読んでろ">
+<meta property="og:url" content="http://ntddk.github.io/archives/2015/02/index.html">
+<meta property="og:site_name" content="一生あとで読んでろ">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="一生あとで読んでろ">
+  
+  
+  <link href="//fonts.googleapis.com/css?family=Ubuntu" rel="stylesheet" type="text/css">
+  <link rel="stylesheet" href="/css/style.css">
+  
+</head>
+<body>
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/" id="logo">一生あとで読んでろ</a>
+      </h1>
+      
+        <h2 id="subtitle-wrap">
+          <a href="/" id="subtitle">技術ブログ</a>
+        </h2>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="sub-nav">
+        
+          <a id="nav-home-icon" class="nav-icon" href="/"></a>
+        
+          <a id="nav-about-icon" class="nav-icon" href="/about"></a>
+        
+        
+      </nav>
+    </div>
+  </div>
+</header>
+      <div class="outer">
+        <section id="main">
+  
+    <article id="post-before-c-constructor" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    
+      <header class="article-header">
+        
+  
+    <a class="article-title" href="/2015/02/24/before-c-constructor/">__attribute__((constructor))が呼ばれる前に</a>
+  
+
+      </header>
+    
+    <time class="article-date" datetime="2015-02-24T13:46:08.000Z" itemprop="datePublished">02-24-2015</time>
+    
+  </div>
+  <div class="article-inner">
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h1 id="attribute-constructor"><a href="#attribute-constructor" class="headerlink" title="__attribute__((constructor))"></a><code>__attribute__((constructor))</code></h1><p><code>main()</code>が呼ばれる前に関数を呼ぶ方法として，一般にgcc拡張である<code>__attribute__((constructor))</code>が利用されている．<br>例えば次のコードでは，<code>main()</code>の前に<code>constructor()</code>が呼び出される．</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div></pre></td><td class="code"><pre><div class="line">#include &lt;stdio.h&gt;</div><div class="line"></div><div class="line">__attribute__((constructor)) void constructor()&#123;</div><div class="line">  printf(&quot;constructor\n&quot;);</div><div class="line">&#125;</div><div class="line"></div><div class="line">int main()&#123;</div><div class="line">  printf(&quot;main\n&quot;);</div><div class="line">  return 0;</div><div class="line">&#125;</div></pre></td></tr></table></figure>
+<h1 id="libc-start-main"><a href="#libc-start-main" class="headerlink" title="__libc_start_main()"></a><code>__libc_start_main()</code></h1><p>gccが内部で呼び出すldは，glibcの初期化を行うためにcrt*.oを静的リンクする．これによって，<code>_start()</code>などのシンボルがバイナリに埋め込まれることになる．<br>ここで埋め込まれるシンボルには未定義なものが存在する．その一つとして，crt1.oに含まれる<code>__libc_start_main()</code>が挙げられる．<br>これは<code>main()</code>より先んじて呼び出される関数であり，暗黙的にcrt1.oがリンクの対象となる．しかし未定義であるがゆえに，先にソースコードに<code>__libc_start_main()</code>が宣言されていた場合，ldはこちらをシンボルとして採用してしまう．</p>
+<h1 id="どちらが先か"><a href="#どちらが先か" class="headerlink" title="どちらが先か"></a>どちらが先か</h1><p>上記を踏まえて，次のコードではどちらの関数が先に呼び出されるだろうか．</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div></pre></td><td class="code"><pre><div class="line">#include &lt;stdio.h&gt;</div><div class="line"></div><div class="line">__attribute__((constructor)) void constructor()&#123;</div><div class="line">  printf(&quot;constructor\n&quot;);</div><div class="line">&#125;</div><div class="line"></div><div class="line">int __libc_start_main()&#123;</div><div class="line">  printf(&quot;__libc_start_main\n&quot;);</div><div class="line">  return 0;</div><div class="line">&#125;</div><div class="line"></div><div class="line">int main()&#123;</div><div class="line">  printf(&quot;main\n&quot;);</div><div class="line">  return 0;</div><div class="line">&#125;</div></pre></td></tr></table></figure>
+<p>正解は<code>__libc_start_main()</code>だ．私は実行するまで分からなかった．</p>
+<h1 id="do-global-ctors-aux"><a href="#do-global-ctors-aux" class="headerlink" title="__do_global_ctors_aux()"></a><code>__do_global_ctors_aux()</code></h1><p>なぜ<code>__libc_start_main()</code>が<code>__attribute__((constructor))</code>よりも先に呼び出されるのか．それは<code>__attribute__((constructor))</code>が，<code>__do_global_ctors_aux()</code>によって実現されているからだ．<br><code>__do_global_ctors_aux()</code>は<code>_start()</code>, <code>__libc_start_main()</code>, <code>__libc_csu_init()</code>, <code>_init()</code>を通ってようやく呼び出される．そのため，<code>__libc_start_main()</code>の方がより先んじて呼び出されるのだ．</p>
+<h1 id="libc-csu-init"><a href="#libc-csu-init" class="headerlink" title="__libc_csu_init()"></a><code>__libc_csu_init()</code></h1><p>Sigreturn-oriented Programmingでにわかに脚光を浴びている<code>__libc_csu_init()</code>は<code>__libc_start_main()</code>の引数にセットされるコンストラクタだが，シンボルを上書きして<code>__libc_start_main()</code>の代わりにこちらを<code>main()</code>ないし<code>__attribute__((constructor))</code>の先に呼び出すこともできる．<br>当初私は<code>__attribute__((constructor))</code>はこの辺りから呼び出されるものだと誤解していた．</p>
+<h1 id="Windowsでは"><a href="#Windowsでは" class="headerlink" title="Windowsでは"></a>Windowsでは</h1><p>今回は触れないが，<code>.CRT$X??</code>のセクションや<code>Thread Local Storage</code>のコールバックによって同様の機能を実現できる．</p>
+<h1 id="参考文献"><a href="#参考文献" class="headerlink" title="参考文献"></a>参考文献</h1><ul>
+<li>高林哲, 鵜飼文敏, 佐藤祐介, 浜地慎一郎, 首藤 一幸,<br>“Binary Hacks - ハッカー秘伝のテクニック100選,”<br>オライリー・ジャパン, 2006.</li>
+<li>“Linux x86 Program Start Up,”<br><a href="http://dbp-consulting.com/tutorials/debugging/linuxProgramStartup.html" target="_blank" rel="external">http://dbp-consulting.com/tutorials/debugging/linuxProgramStartup.html</a></li>
+</ul>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://ntddk.github.io/2015/02/24/before-c-constructor/" data-id="cj13oizgg0007pcos3fw4844i" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/exploiting/">exploiting</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+  
+</section>
+        
+      </div>
+      <footer id="footer">
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      &copy; 2017 ntddk<br>
+      <a href="https://github.com/ntddk/hexo-theme-jathena" target="_blank">JAthena</a> by <a href="http://ntddk.github.io" target="_blank">ntddk</a> | Powered by <a href="http://hexo.io/" target="_blank">Hexo</a>
+    </div>
+  </div>
+</footer>
+    </div>
+    
+
+<script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+
+
+  <link rel="stylesheet" href="/fancybox/jquery.fancybox.css">
+  <script src="/fancybox/jquery.fancybox.pack.js"></script>
+
+
+<script src="/js/script.js"></script>
+  </div>
+</body>
+</html>

@@ -1,0 +1,1391 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+  <title>Archives | 一生あとで読んでろ</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta property="og:type" content="website">
+<meta property="og:title" content="一生あとで読んでろ">
+<meta property="og:url" content="http://ntddk.github.io/archives/index.html">
+<meta property="og:site_name" content="一生あとで読んでろ">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="一生あとで読んでろ">
+  
+  
+  <link href="//fonts.googleapis.com/css?family=Ubuntu" rel="stylesheet" type="text/css">
+  <link rel="stylesheet" href="/css/style.css">
+  
+</head>
+<body>
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/" id="logo">一生あとで読んでろ</a>
+      </h1>
+      
+        <h2 id="subtitle-wrap">
+          <a href="/" id="subtitle">技術ブログ</a>
+        </h2>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="sub-nav">
+        
+          <a id="nav-home-icon" class="nav-icon" href="/"></a>
+        
+          <a id="nav-about-icon" class="nav-icon" href="/about"></a>
+        
+        
+      </nav>
+    </div>
+  </div>
+</header>
+      <div class="outer">
+        <section id="main">
+  
+    <article id="post-thin-hypervisor-2017" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    
+      <header class="article-header">
+        
+  
+    <a class="article-title" href="/2017/03/04/thin-hypervisor-2017/">シン・ハイパーバイザ2017 (前編)</a>
+  
+
+      </header>
+    
+    <time class="article-date" datetime="2017-03-04T09:45:00.000Z" itemprop="datePublished">03-04-2017</time>
+    
+  </div>
+  <div class="article-inner">
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p>　いまさらながら，<a href="http://www.adventar.org/calendars/1401" target="_blank" rel="external">情報セキュリティ系論文紹介 Advent Calendar 2016</a>あるいは<a href="http://qiita.com/advent-calendar/2016/bitvisor" target="_blank" rel="external">BitVisor Advent Calendar 2016</a>に投稿されるはずだった文章を供養する．</p>
+<h1 id="はじめに"><a href="#はじめに" class="headerlink" title="はじめに"></a>はじめに</h1><p>　本稿では，シン，すなわち薄いハイパーバイザ (thin hypervisor) の動向を紹介する．<br>　薄いハイパーバイザとは，小規模であることを志向したハイパーバイザだ——ということにしておこう．小規模というのは，一部のイベントのみトラップするということだ．メリットとしては，実装・学習コストやオーバーヘッド，TCB (trusted computing base) を削減できる点が挙げられる．<br>　用語の初出はBitVisorの論文<a href="https://www.os.ecc.u-tokyo.ac.jp/papers/vee2009-shina.pdf" target="_blank" rel="external">[T. Shinagawa, et al. VEE’09]</a>だが，多くはWindows向けルートキットとして開発されたBlue Pillという手法<a href="http://www.blackhat.com/presentations/bh-usa-06/BH-US-06-Rutkowska.pdf" target="_blank" rel="external">[J. Rutkowska. Black Hat USA’06]</a>の流れを汲んでいる．そのため，ブート時からゲストを掌握するのではなく，のちほど——あえてchain of trustの構築を放棄して——カーネルドライバとしてロードされるものが一般的である．そのほか，単一のゲストのみ対象とする，セキュリティを意識しているといった傾向が見られる．<br>　前編となる今回は，3種類の薄いハイパーバイザを見ていく．</p>
+<h1 id="ksm"><a href="#ksm" class="headerlink" title="ksm"></a>ksm</h1><table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>リポジトリ</td>
+<td><a href="https://github.com/asamy/ksm" target="_blank" rel="external">https://github.com/asamy/ksm</a></td>
+</tr>
+<tr>
+<td>形態</td>
+<td>カーネルドライバ</td>
+</tr>
+<tr>
+<td>仮想化支援機能</td>
+<td>Intel VT-x with EPT</td>
+</tr>
+<tr>
+<td>サポートしている環境</td>
+<td>Windows 7/8/8.1/10, Linux</td>
+</tr>
+<tr>
+<td>言語</td>
+<td>C, アセンブリ言語</td>
+</tr>
+<tr>
+<td>ライセンス</td>
+<td>GNU GPL v2</td>
+</tr>
+</tbody>
+</table>
+<p>　ksmは高速，拡張可能かつ小規模であることを旨としているハイパーバイザで，アンチウイルスソフトウェアやサンドボックスへの利用を意識して開発されている．機能は以下の通り：</p>
+<ul>
+<li>IDT Shadowing</li>
+<li>EPT violation #VE (Broadwell以降)</li>
+<li>EPTP switching VMFUNC (Haswell以降，もしサポートされていなければVMCALLで代替)</li>
+<li>Builtin Userspace physical memory sandboxer (ビルドオプション)</li>
+<li>Builtin Introspection engine (ビルドオプション)</li>
+<li>APIC virtualization (実験的機能)</li>
+<li>VMX Nesting (実験的機能)</li>
+</ul>
+<p>　主なソースコードは以下の通り：</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="https://github.com/asamy/ksm/blob/master/main_nt.c" target="_blank" rel="external"><code>main_nt.c</code></a>, <a href="https://github.com/asamy/ksm/blob/master/main_linux.c" target="_blank" rel="external"><code>main_linux.c</code></a></td>
+<td>カーネルドライバのエントリポイント，<code>ioctl</code>ディスパッチ</td>
+</tr>
+<tr>
+<td><a href="https://github.com/asamy/ksm/blob/master/ksm.c" target="_blank" rel="external"><code>ksm.c</code></a></td>
+<td>ハイパーバイザ全体の初期化</td>
+</tr>
+<tr>
+<td><a href="https://github.com/asamy/ksm/blob/master/vmx.S" target="_blank" rel="external"><code>vmx.S</code></a>, <a href="https://github.com/asamy/ksm/blob/master/vmx.asm" target="_blank" rel="external"><code>vmx.asm</code></a></td>
+<td>IDTやEPT violationのトラップ，ゲストのレジスタ退避</td>
+</tr>
+<tr>
+<td><a href="https://github.com/asamy/ksm/blob/master/vcpu.c" target="_blank" rel="external"><code>vcpu.c</code></a></td>
+<td>VMCSの読み書き</td>
+</tr>
+<tr>
+<td><a href="https://github.com/asamy/ksm/blob/master/exit.c" target="_blank" rel="external"><code>exit.c</code></a></td>
+<td>VMExitのハンドラ</td>
+</tr>
+<tr>
+<td><a href="https://github.com/asamy/ksm/blob/master/um/um.c" target="_blank" rel="external"><code>um/um.c</code></a></td>
+<td>ユーザーランドのエージェント</td>
+</tr>
+<tr>
+<td><a href="https://github.com/asamy/ksm/blob/master/sandbox.c" target="_blank" rel="external"><code>sandbox.c</code></a></td>
+<td>サンドボックス機能</td>
+</tr>
+<tr>
+<td><a href="https://github.com/asamy/ksm/blob/master/introspect.c" target="_blank" rel="external"><code>introspect.c</code></a></td>
+<td>イントロスペクション機能</td>
+</tr>
+<tr>
+<td><a href="https://github.com/asamy/ksm/blob/master/epage.c" target="_blank" rel="external"><code>epage.c</code></a></td>
+<td>EPTフック機能</td>
+</tr>
+<tr>
+<td><a href="https://github.com/asamy/ksm/blob/master/mm.c" target="_blank" rel="external"><code>mm.c</code></a></td>
+<td>メモリ管理</td>
+</tr>
+<tr>
+<td><a href="https://github.com/asamy/ksm/blob/master/hotplug.c" target="_blank" rel="external"><code>hotplug.c</code></a></td>
+<td>CPUホットプラグに関する処理</td>
+</tr>
+</tbody>
+</table>
+<p>　カーネルドライバをロードし，ユーザーランドのエージェントから<code>ioctl</code>を発行，サンドボックス機能またはイントロスペクション機能，EPT機能を呼び出すという流れになっている．詳細は<a href="https://github.com/asamy/ksm/blob/master/Documentation/SPEC.rst" target="_blank" rel="external"><code>Documentation/SPEC.rst</code></a>を参照のこと．</p>
+<h1 id="SimpleVisor"><a href="#SimpleVisor" class="headerlink" title="SimpleVisor"></a>SimpleVisor</h1><table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>リポジトリ</td>
+<td><a href="https://github.com/ionescu007/SimpleVisor" target="_blank" rel="external">https://github.com/ionescu007/SimpleVisor</a></td>
+</tr>
+<tr>
+<td>形態</td>
+<td>カーネルドライバ</td>
+</tr>
+<tr>
+<td>仮想化支援機能</td>
+<td>Intel VT-x with EPT, AMD-V</td>
+</tr>
+<tr>
+<td>サポートしている環境</td>
+<td>Windows 8/8.1/10, UEFI</td>
+</tr>
+<tr>
+<td>言語</td>
+<td>C, アセンブリ言語</td>
+</tr>
+<tr>
+<td>ライセンス</td>
+<td>2 clause BSD</td>
+</tr>
+</tbody>
+</table>
+<p>　SimpleVisorは，名前の通り極力シンプルであることをめざしたハイパーバイザだ．全体で1700行程度．開発者はWindows Internalsの著者のひとりで，<a href="https://github.com/ionescu007/SimpleVisor/blob/master/README.md" target="_blank" rel="external"><code>README.md</code></a>にはこう書かれている：</p>
+<blockquote>
+<p>Have you always been curious on how to build a hypervisor? Has Intel’s documentation (the many hundreds of pages) gotten you down? Have the samples you’ve found online just made things more confusing, or required weeks of reading through dozens of thousands of lines and code? If so, SimpleVisor might be the project for you.</p>
+</blockquote>
+<p>　そういうわけで，SimpleVisorはIntel SDM (とくに，ハイパーバイザまわりは<a href="http://www.intel.co.jp/content/www/jp/ja/architecture-and-technology/64-ia-32-architectures-software-developer-vol-3c-part-3-manual.html" target="_blank" rel="external">Vol. 3C</a>) の解読にうんざりした人向けだ．学習にはもってこい．<code>CPUID</code>, <code>INVD</code>, <code>VMX</code>, <code>XSETBV</code>のみトラップするようになっており，ネストには対応していない．しかし，XenやBochsでさえ追いついていない最新の仮想化支援機能にいちはやく追随しようとしている．<br>　主なソースコードは以下の通り：</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="https://github.com/ionescu007/SimpleVisor/blob/master/nt/shvos.c" target="_blank" rel="external"><code>nt/shvos.c</code></a></td>
+<td>カーネルドライバのエントリポイント</td>
+</tr>
+<tr>
+<td><a href="https://github.com/ionescu007/SimpleVisor/blob/master/shv.c" target="_blank" rel="external"><code>shv.c</code></a></td>
+<td>VMExit/VMEntryのコールバック関数の登録</td>
+</tr>
+<tr>
+<td><a href="https://github.com/ionescu007/SimpleVisor/blob/master/shvvp.c" target="_blank" rel="external"><code>shvvp.c</code></a></td>
+<td>コールバック関数の実体，仮想CPUの初期化</td>
+</tr>
+<tr>
+<td><a href="https://github.com/ionescu007/SimpleVisor/blob/master/shvvmx.c" target="_blank" rel="external"><code>shvvmx.c</code></a></td>
+<td>VMCSの初期化</td>
+</tr>
+<tr>
+<td><a href="https://github.com/ionescu007/SimpleVisor/blob/master/shvvmxhv.c" target="_blank" rel="external"><code>shvvmxhv.c</code></a></td>
+<td>VMExitのハンドラ</td>
+</tr>
+<tr>
+<td><a href="https://github.com/ionescu007/SimpleVisor/blob/master/shvutil.c" target="_blank" rel="external"><code>shvutil.c</code></a></td>
+<td>GDTの変換</td>
+</tr>
+</tbody>
+</table>
+<p>　シンプル．</p>
+<h1 id="HyperPlatform"><a href="#HyperPlatform" class="headerlink" title="HyperPlatform"></a>HyperPlatform</h1><table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>リポジトリ</td>
+<td><a href="https://github.com/tandasat/HyperPlatform" target="_blank" rel="external">https://github.com/tandasat/HyperPlatform</a></td>
+</tr>
+<tr>
+<td>形態</td>
+<td>カーネルドライバ</td>
+</tr>
+<tr>
+<td>仮想化支援機能</td>
+<td>Intel VT-x with EPT</td>
+</tr>
+<tr>
+<td>サポートしている環境</td>
+<td>Windows 7/8.1/10</td>
+</tr>
+<tr>
+<td>言語</td>
+<td>C++, アセンブリ言語</td>
+</tr>
+<tr>
+<td>ライセンス</td>
+<td>MIT</td>
+</tr>
+</tbody>
+</table>
+<p>　HyperPlatformは，カーネルランドで動くコード，すなわちWindows向けルートキットやWindowsカーネル自体の解析を目的として開発されているハイパーバイザ．物理メモリと仮想メモリへのアクセス，関数呼び出し，命令単位のコード実行を監視できるようになっている<a href="https://recon.cx/2016/resources/slides/RECON-0xA-HyperPlatform-Satoshi.pdf" target="_blank" rel="external">[S. Tanda. REcon’16]</a>．<br>　主なソースコードは以下の通り：</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="https://github.com/tandasat/HyperPlatform/blob/master/HyperPlatform/driver.cpp" target="_blank" rel="external"><code>driver.cpp</code></a></td>
+<td>カーネルドライバのエントリポイント，各種コールバック関数の登録</td>
+</tr>
+<tr>
+<td><a href="https://github.com/tandasat/HyperPlatform/blob/master/HyperPlatform/log.cpp" target="_blank" rel="external"><code>log.cpp</code></a></td>
+<td>ログ出力</td>
+</tr>
+<tr>
+<td><a href="https://github.com/tandasat/HyperPlatform/blob/master/HyperPlatform/global_object.cpp" target="_blank" rel="external"><code>global_object.cpp</code></a></td>
+<td>グローバル変数の初期化</td>
+</tr>
+<tr>
+<td><a href="https://github.com/tandasat/HyperPlatform/blob/master/HyperPlatform/performance.cpp" target="_blank" rel="external"><code>performance.cpp</code></a></td>
+<td>パフォーマンス計測</td>
+</tr>
+<tr>
+<td><a href="https://github.com/tandasat/HyperPlatform/blob/master/HyperPlatform/util.cpp" target="_blank" rel="external"><code>util.cpp</code></a></td>
+<td><code>PTE_BASE</code>の取得，メモリアドレス変換，VMCALLのラッパなど</td>
+</tr>
+<tr>
+<td><a href="https://github.com/tandasat/HyperPlatform/blob/master/HyperPlatform/power_callback.cpp" target="_blank" rel="external"><code>power_callback.cpp</code></a></td>
+<td>電源状態のコールバック関数</td>
+</tr>
+<tr>
+<td><a href="https://github.com/tandasat/HyperPlatform/blob/master/HyperPlatform/hotplug_callback.cpp" target="_blank" rel="external"><code>hotplug_callback.cpp</code></a></td>
+<td>CPUホットプラグのコールバック関数</td>
+</tr>
+<tr>
+<td><a href="https://github.com/tandasat/HyperPlatform/blob/master/HyperPlatform/vm.cpp" target="_blank" rel="external"><code>vm.cpp</code></a></td>
+<td>仮想CPUの初期化，VMCSの読み書き</td>
+</tr>
+<tr>
+<td><a href="https://github.com/tandasat/HyperPlatform/blob/master/HyperPlatform/ept.cpp" target="_blank" rel="external"><code>ept.cpp</code></a></td>
+<td>EPTの構成</td>
+</tr>
+<tr>
+<td><a href="https://github.com/tandasat/HyperPlatform/blob/master/HyperPlatform/vmm.cpp" target="_blank" rel="external"><code>vmm.cpp</code></a></td>
+<td>命令のトラップ，VMExitのハンドラ</td>
+</tr>
+<tr>
+<td><a href="https://github.com/tandasat/HyperPlatform/blob/master/HyperPlatform/Arch/x64/x64.asm" target="_blank" rel="external"><code>Arch/x64/x64.asm</code></a>, <a href="https://github.com/tandasat/HyperPlatform/blob/master/HyperPlatform/Arch/x86/x86.asm" target="_blank" rel="external"><code>Arch/x86/x86.asm</code></a></td>
+<td>VMX命令呼び出しにともなう命令列</td>
+</tr>
+<tr>
+<td><a href="https://github.com/tandasat/HyperPlatform/blob/master/HyperPlatform/kernel_stl.cpp" target="_blank" rel="external"><code>kernel_stl.cpp</code></a></td>
+<td>ntoskrnl経由でカーネルドライバからSTLを利用する</td>
+</tr>
+</tbody>
+</table>
+<p>　エントリポイントから手続き的に書き下されていて，わかりやすい．ハイパーバイザとしての機能もさることながら，STLを強引に呼び出すハックがかっこいい．<br>　この拡張例には以下がある：</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="https://github.com/tandasat/MemoryMon" target="_blank" rel="external">MemoryMon</a></td>
+<td>カーネルランドへのコード挿入を検知する</td>
+</tr>
+<tr>
+<td><a href="https://github.com/tandasat/EopMon" target="_blank" rel="external">EopMon</a></td>
+<td>マルウェアによる特権昇格攻撃を検知する</td>
+</tr>
+<tr>
+<td><a href="https://github.com/tandasat/DdiMon" target="_blank" rel="external">DdiMon</a></td>
+<td>EPTを用いたAPIフック</td>
+</tr>
+<tr>
+<td><a href="https://github.com/tandasat/GuardMon" target="_blank" rel="external">GuardMon</a></td>
+<td>PatchGuardの挙動解析</td>
+</tr>
+</tbody>
+</table>
+<p>　いずれもカーネルドライバのエントリポイントで追加機能を初期化するしくみ．<br>　やや温め納豆は遠くなりにけり．</p>
+<h1 id="おわりに"><a href="#おわりに" class="headerlink" title="おわりに"></a>おわりに</h1><p>　いずれもSandy Bridge以降のいまどきの環境であれば動作する．<br>　卒業研究ではQEMUをベースとしたマルウェア解析環境を開発していたのだけど，やはり速度面に難があるし，このあたりの技術を再検討しないとなー．<br>　なお，今回取り上げなかったハイパーバイザには以下のようなものがある：</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="https://github.com/ainfosec/MoRE" target="_blank" rel="external">MoRE</a></td>
+<td>ルートキット文脈のハイパーバイザ．やや古い</td>
+</tr>
+<tr>
+<td><a href="https://github.com/DarthTon/HyperBone" target="_blank" rel="external">HyperBone</a></td>
+<td>HyperPlatformと似た機能をもつ．やや古い</td>
+</tr>
+<tr>
+<td><a href="https://github.com/linux-noah/noah" target="_blank" rel="external">Noah</a></td>
+<td>未踏のアレ．OS X上でLinuxバイナリを動かす．MacBook持ってないので試せないのだわ</td>
+</tr>
+<tr>
+<td><a href="https://github.com/Bareflank/hypervisor" target="_blank" rel="external">Bareflank</a></td>
+<td>type 1, 2, ドライバいずれの形態のVMMもサポートしたライブラリ．しかもC++で書ける</td>
+</tr>
+</tbody>
+</table>
+<p>　なかでもBareflankがヤバいので後編ではこれを読んでいきます．</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://ntddk.github.io/2017/03/04/thin-hypervisor-2017/" data-id="cj13oizhb001apcosgdb54gib" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/virtual-machine-introspection/">virtual machine introspection</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+    <article id="post-yakiniku-optimization" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    
+      <header class="article-header">
+        
+  
+    <a class="article-title" href="/2016/12/04/yakiniku-optimization/">焼肉最適化問題</a>
+  
+
+      </header>
+    
+    <time class="article-date" datetime="2016-12-04T14:59:59.000Z" itemprop="datePublished">12-04-2016</time>
+    
+  </div>
+  <div class="article-inner">
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p>　本稿は<a href="http://www.adventar.org/calendars/1413" target="_blank" rel="external">SFC-RG Advent Calendar 2016</a>の4日目である．</p>
+<h1 id="はじめに"><a href="#はじめに" class="headerlink" title="はじめに"></a>はじめに</h1><p>　あなたは研究の中間発表を終えて，今晩何を食べようか考えている．たしかに準備不足ではあったけれど，研究の前提をいまいち解さないファカルティの高飛車な質問にはうんざりしたし，今日くらいはパーッと気分転換したいものだ．そういうわけで，あなたは⊿館を飛び出して焼肉 ざんまい 湘南台店に行くことにした．</p>
+<h1 id="組合せ最適化"><a href="#組合せ最適化" class="headerlink" title="組合せ最適化"></a>組合せ最適化</h1><p>　さて，着席し，メニューを開いたあなたはしばし考える．限られた予算，限られた時間，限られた胃袋の容量——いったい何を頼めば最も<strong>満足</strong>できるだろうか？<br>　そんなとき，組合せ最適化が役に立つんです．騙されたと思って，メニューを必死に転記してみよう：</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div><div class="line">22</div></pre></td><td class="code"><pre><div class="line"><span class="keyword">import</span> numpy <span class="keyword">as</span> np, pandas <span class="keyword">as</span> pd</div><div class="line"></div><div class="line">menu = [<span class="string">'カルビ'</span>, <span class="string">'和牛カルビ'</span>, <span class="string">'和牛中落ちカルビ'</span>, <span class="string">'ハラミ'</span>, <span class="string">'厚切りロース'</span>, <span class="string">'ネギ牛タン塩'</span>, <span class="string">'牛タン塩'</span>, </div><div class="line">        <span class="string">'イベリコ豚'</span>, <span class="string">'カシラ'</span>, <span class="string">'豚トロ'</span>, <span class="string">'ネギ豚タン塩'</span>, <span class="string">'豚タン塩'</span>, <span class="string">'厚切りベーコン'</span>, <span class="string">'ウインナー'</span>, <span class="string">'チョリソ'</span>, </div><div class="line">        <span class="string">'ホルモン'</span>, <span class="string">'シロコロホルモン'</span>, <span class="string">'レバー'</span>, <span class="string">'白レバー'</span>, <span class="string">'ハツ'</span>, <span class="string">'ミノ'</span>, </div><div class="line">        <span class="string">'お得!! 三種盛り'</span>, <span class="string">'本日の塩三種盛り'</span>, <span class="string">'本日の味噌三種盛り'</span>]</div><div class="line">price = [<span class="number">720</span>, <span class="number">950</span>, <span class="number">850</span>, <span class="number">720</span>, <span class="number">690</span>, <span class="number">950</span>, <span class="number">850</span>, </div><div class="line">        <span class="number">600</span>, <span class="number">550</span>, <span class="number">580</span>, <span class="number">680</span>, <span class="number">580</span>, <span class="number">500</span>, <span class="number">380</span>, <span class="number">400</span>, </div><div class="line">        <span class="number">550</span>, <span class="number">600</span>, <span class="number">550</span>, <span class="number">450</span>, <span class="number">550</span>, <span class="number">650</span>, </div><div class="line">        <span class="number">1280</span>, <span class="number">780</span>, <span class="number">780</span>]</div><div class="line"></div><div class="line">n = len(menu)</div><div class="line">np.random.seed(<span class="number">0</span>)</div><div class="line">df = pd.DataFrame(&#123;</div><div class="line">    <span class="string">'品目'</span>: menu,</div><div class="line">    <span class="string">'値段'</span>: price,</div><div class="line">    <span class="string">'満足度'</span>: np.random.randint(<span class="number">10</span>, <span class="number">20</span>, n),</div><div class="line">    <span class="string">'焼き時間'</span>: np.random.randint(<span class="number">5</span>, <span class="number">10</span>, n),</div><div class="line">    <span class="string">'量'</span>: np.random.randint(<span class="number">10</span>, <span class="number">20</span>, n),</div><div class="line">    &#125;)</div><div class="line"></div><div class="line">print(df)</div></pre></td></tr></table></figure>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>値段</th>
+<th>品目</th>
+<th>満足度</th>
+<th>焼き時間</th>
+<th>量</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0</td>
+<td>720</td>
+<td>カルビ</td>
+<td>15</td>
+<td>9</td>
+<td>10</td>
+</tr>
+<tr>
+<td>1</td>
+<td>950</td>
+<td>和牛カルビ</td>
+<td>10</td>
+<td>8</td>
+<td>10</td>
+</tr>
+<tr>
+<td>2</td>
+<td>850</td>
+<td>和牛中落ちカルビ</td>
+<td>13</td>
+<td>5</td>
+<td>14</td>
+</tr>
+<tr>
+<td>3</td>
+<td>720</td>
+<td>ハラミ</td>
+<td>13</td>
+<td>8</td>
+<td>15</td>
+</tr>
+<tr>
+<td>4</td>
+<td>690</td>
+<td>厚切りロース</td>
+<td>17</td>
+<td>5</td>
+<td>15</td>
+</tr>
+<tr>
+<td>5</td>
+<td>950</td>
+<td>ネギ牛タン塩</td>
+<td>19</td>
+<td>7</td>
+<td>16</td>
+</tr>
+<tr>
+<td>6</td>
+<td>850</td>
+<td>牛タン塩</td>
+<td>13</td>
+<td>8</td>
+<td>18</td>
+</tr>
+<tr>
+<td>7</td>
+<td>600</td>
+<td>イベリコ豚</td>
+<td>15</td>
+<td>5</td>
+<td>14</td>
+</tr>
+<tr>
+<td>8</td>
+<td>550</td>
+<td>カシラ</td>
+<td>12</td>
+<td>6</td>
+<td>11</td>
+</tr>
+<tr>
+<td>9</td>
+<td>580</td>
+<td>豚トロ</td>
+<td>14</td>
+<td>8</td>
+<td>14</td>
+</tr>
+<tr>
+<td>10</td>
+<td>680</td>
+<td>ネギ豚タン塩</td>
+<td>17</td>
+<td>8</td>
+<td>19</td>
+</tr>
+<tr>
+<td>11</td>
+<td>580</td>
+<td>豚タン塩</td>
+<td>16</td>
+<td>8</td>
+<td>18</td>
+</tr>
+<tr>
+<td>12</td>
+<td>500</td>
+<td>厚切りベーコン</td>
+<td>18</td>
+<td>5</td>
+<td>11</td>
+</tr>
+<tr>
+<td>13</td>
+<td>380</td>
+<td>ウインナー</td>
+<td>18</td>
+<td>6</td>
+<td>11</td>
+</tr>
+<tr>
+<td>14</td>
+<td>400</td>
+<td>チョリソ</td>
+<td>11</td>
+<td>6</td>
+<td>17</td>
+</tr>
+<tr>
+<td>15</td>
+<td>550</td>
+<td>ホルモン</td>
+<td>16</td>
+<td>6</td>
+<td>19</td>
+</tr>
+<tr>
+<td>16</td>
+<td>600</td>
+<td>シロコロホルモン</td>
+<td>17</td>
+<td>5</td>
+<td>19</td>
+</tr>
+<tr>
+<td>17</td>
+<td>550</td>
+<td>レバー</td>
+<td>17</td>
+<td>7</td>
+<td>13</td>
+</tr>
+<tr>
+<td>18</td>
+<td>450</td>
+<td>白レバー</td>
+<td>18</td>
+<td>9</td>
+<td>16</td>
+</tr>
+<tr>
+<td>19</td>
+<td>550</td>
+<td>ハツ</td>
+<td>11</td>
+<td>8</td>
+<td>17</td>
+</tr>
+<tr>
+<td>20</td>
+<td>650</td>
+<td>ミノ</td>
+<td>15</td>
+<td>8</td>
+<td>12</td>
+</tr>
+<tr>
+<td>21</td>
+<td>1280</td>
+<td>お得!! 三種盛り</td>
+<td>19</td>
+<td>7</td>
+<td>10</td>
+</tr>
+<tr>
+<td>22</td>
+<td>780</td>
+<td>本日の塩三種盛り</td>
+<td>18</td>
+<td>9</td>
+<td>13</td>
+</tr>
+<tr>
+<td>23</td>
+<td>780</td>
+<td>本日の味噌三種盛り</td>
+<td>19</td>
+<td>7</td>
+<td>15</td>
+</tr>
+</tbody>
+</table>
+<p>　メニューがpandasのデータフレームになった．取り急ぎ（？）満足度・焼き時間・量は乱数で埋めている．<br>　あなたはこのメニューの中から，最も満足度の高い組合せを見つけたい．それも，限られた予算，限られた時間，限られた胃袋の容量という条件を満たすような．ここではそのわがままを割当問題として解くことにする．</p>
+<table>
+<thead>
+<tr>
+<th>変数</th>
+<th><span>$x_i \in \{0, 1\}$</span><!-- Has MathJax --></th>
+<th>i番目の料理を選ぶかどうか</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>目的関数</td>
+<td><span>$\sum_i{満足度_i x_i}$</span><!-- Has MathJax --></td>
+<td><span>$\rightarrow$</span><!-- Has MathJax --> 最大</td>
+</tr>
+<tr>
+<td>制約条件</td>
+<td><span>$\sum_i{予算_i x_i} \le 12000$</span><!-- Has MathJax --></td>
+<td>予算制限</td>
+</tr>
+<tr>
+<td></td>
+<td><span>$\sum_i{焼き時間_i x_i} \le 120$</span><!-- Has MathJax --></td>
+<td>時間制限</td>
+</tr>
+<tr>
+<td></td>
+<td><span>$150 \le \sum_i{量_i x_i} \le 200$</span><!-- Has MathJax --></td>
+<td>分量制限</td>
+</tr>
+</tbody>
+</table>
+<p>　こういった問題はpulpという整数計画法ライブラリを使って解くことができる：</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div><div class="line">22</div><div class="line">23</div><div class="line">24</div><div class="line">25</div><div class="line">26</div><div class="line">27</div><div class="line">28</div><div class="line">29</div><div class="line">30</div><div class="line">31</div><div class="line">32</div><div class="line">33</div><div class="line">34</div><div class="line">35</div><div class="line">36</div><div class="line">37</div></pre></td><td class="code"><pre><div class="line"><span class="keyword">from</span> pulp <span class="keyword">import</span> *</div><div class="line"></div><div class="line">m = LpProblem(sense = LpMaximize)	<span class="comment"># 最大化問題</span></div><div class="line">df[<span class="string">'x'</span>] = [LpVariable(<span class="string">'x%d'</span> % i, cat = LpBinary) <span class="keyword">for</span> i <span class="keyword">in</span> range(n)]	<span class="comment"># i番目の品目を選択するかしないか</span></div><div class="line"></div><div class="line">m += lpDot(df.満足度, df.x)	<span class="comment"># 目的関数：満足度の最大化</span></div><div class="line">m += lpDot(df.値段, df.x) &lt;= <span class="number">12000</span>	<span class="comment"># 制約条件：予算</span></div><div class="line">m += lpDot(df.焼き時間, df.x) &lt;= <span class="number">120</span>	<span class="comment"># 制約条件：焼き時間</span></div><div class="line">m += lpDot(df.量, df.x) &gt;= <span class="number">150</span>	<span class="comment"># 制約条件：量</span></div><div class="line">m += lpDot(df.量, df.x) &lt;= <span class="number">200</span>	<span class="comment"># 制約条件：量</span></div><div class="line"></div><div class="line">m.solve()</div><div class="line"><span class="keyword">if</span> m.status == <span class="number">1</span>:</div><div class="line">    df[<span class="string">'val'</span>] = df.x.apply(<span class="keyword">lambda</span> v: value(v))	<span class="comment"># 結果</span></div><div class="line">    print(df[df.val == <span class="number">1</span>].品目)</div><div class="line">    print(<span class="string">'満足度 &#123;&#125;'</span>.format(sum(df[df.val == <span class="number">1</span>].満足度)))</div><div class="line">    print(<span class="string">'値段 &#123;&#125;'</span>.format(sum(df[df.val == <span class="number">1</span>].値段)))</div><div class="line"></div><div class="line">&gt;&gt;&gt;</div><div class="line"><span class="number">0</span>           カルビ</div><div class="line"><span class="number">4</span>        厚切りロース</div><div class="line"><span class="number">5</span>        ネギ牛タン塩</div><div class="line"><span class="number">7</span>         イベリコ豚</div><div class="line"><span class="number">8</span>           カシラ</div><div class="line"><span class="number">9</span>           豚トロ</div><div class="line"><span class="number">12</span>      厚切りベーコン</div><div class="line"><span class="number">13</span>        ウインナー</div><div class="line"><span class="number">16</span>     シロコロホルモン</div><div class="line"><span class="number">17</span>          レバー</div><div class="line"><span class="number">18</span>         白レバー</div><div class="line"><span class="number">20</span>           ミノ</div><div class="line"><span class="number">21</span>    お得!! 三種盛り</div><div class="line"><span class="number">22</span>     本日の塩三種盛り</div><div class="line"><span class="number">23</span>    本日の味噌三種盛り</div><div class="line">Name: 品目, dtype: object</div><div class="line">満足度 <span class="number">251</span></div><div class="line">値段 <span class="number">10060</span></div></pre></td></tr></table></figure>
+<p>　はい．順番はともかくとして，これらを食べれば満足できそうだ．<br>　ここまで考えたところで，あなたは今月の懐具合がよろしくないことを思い出す．なるべく出費を抑えて，それでいてある程度満足できるような品目の組合せはあるだろうか？<br>　これも同様に割当問題として考えられる．</p>
+<table>
+<thead>
+<tr>
+<th>変数</th>
+<th><span>$x_i \in \{0, 1\}$</span><!-- Has MathJax --></th>
+<th>i番目の料理を選ぶかどうか</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>目的関数</td>
+<td><span>$\sum_i{予算_i x_i}$</span><!-- Has MathJax --></td>
+<td><span>$\rightarrow$</span><!-- Has MathJax --> 最小</td>
+</tr>
+<tr>
+<td>制約条件</td>
+<td><span>$\sum_i{満足度_i x_i} \le 200$</span><!-- Has MathJax --></td>
+<td>満足度制限</td>
+</tr>
+<tr>
+<td></td>
+<td><span>$\sum_i{焼き時間_i x_i} \le 120$</span><!-- Has MathJax --></td>
+<td>時間制限</td>
+</tr>
+<tr>
+<td></td>
+<td><span>$150 \le \sum_i{量_i x_i} \le 200$</span><!-- Has MathJax --></td>
+<td>分量制限</td>
+</tr>
+</tbody>
+</table>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div><div class="line">22</div><div class="line">23</div><div class="line">24</div><div class="line">25</div><div class="line">26</div><div class="line">27</div><div class="line">28</div><div class="line">29</div><div class="line">30</div><div class="line">31</div></pre></td><td class="code"><pre><div class="line">m = LpProblem(sense = LpMinimize)	<span class="comment"># 最小化問題</span></div><div class="line">a[<span class="string">'v'</span>] = [LpVariable(<span class="string">'v%d'</span> % i, cat = LpBinary) <span class="keyword">for</span> i <span class="keyword">in</span> range(n)]	<span class="comment"># i番目の品目を選択するかしないか</span></div><div class="line"></div><div class="line">m += lpDot(df.値段, df.x)	<span class="comment"># 目的関数：予算の最小化</span></div><div class="line">m += lpDot(df.満足度, df.x) &gt;= <span class="number">200</span>	<span class="comment"># 制約条件：満足度</span></div><div class="line">m += lpDot(df.焼き時間, df.x) &lt;= <span class="number">120</span>	<span class="comment"># 制約条件：焼き時間</span></div><div class="line">m += lpDot(df.量, df.x) &gt;= <span class="number">150</span>	<span class="comment"># 制約条件：量</span></div><div class="line">m += lpDot(df.量, df.x) &lt;= <span class="number">200</span>	<span class="comment"># 制約条件：量</span></div><div class="line">m.solve()</div><div class="line"><span class="keyword">if</span> m.status == <span class="number">1</span>:</div><div class="line">    df[<span class="string">'val'</span>] = df.x.apply(<span class="keyword">lambda</span> v: value(v))	<span class="comment"># 結果</span></div><div class="line">    print(df[df.val == <span class="number">1</span>].品目)</div><div class="line">    print(<span class="string">'満足度 &#123;&#125;'</span>.format(sum(df[df.val == <span class="number">1</span>].満足度)))</div><div class="line">    print(<span class="string">'値段 &#123;&#125;'</span>.format(sum(df[df.val == <span class="number">1</span>].値段)))</div><div class="line"></div><div class="line">&gt;&gt;&gt;</div><div class="line"><span class="number">7</span>         イベリコ豚</div><div class="line"><span class="number">10</span>       ネギ豚タン塩</div><div class="line"><span class="number">11</span>         豚タン塩</div><div class="line"><span class="number">12</span>      厚切りベーコン</div><div class="line"><span class="number">13</span>        ウインナー</div><div class="line"><span class="number">14</span>         チョリソ</div><div class="line"><span class="number">15</span>         ホルモン</div><div class="line"><span class="number">16</span>     シロコロホルモン</div><div class="line"><span class="number">17</span>          レバー</div><div class="line"><span class="number">18</span>         白レバー</div><div class="line"><span class="number">22</span>     本日の塩三種盛り</div><div class="line"><span class="number">23</span>    本日の味噌三種盛り</div><div class="line">Name: 品目, dtype: object</div><div class="line">満足度 <span class="number">200</span></div><div class="line">値段 <span class="number">6850</span></div></pre></td></tr></table></figure>
+<p>　200の満足度でいいなら豚ばっか食ってろということらしい．</p>
+<h1 id="多腕バンディット問題"><a href="#多腕バンディット問題" class="headerlink" title="多腕バンディット問題"></a>多腕バンディット問題</h1><p>　いやいやちょっと待った．乱数でお茶を濁しているけど，あらゆる品目の満足度なんて知らないじゃないか．全品目を食べたことがあるならいざ知らず．それに，毎日同じ店で同じ食事をとるわけでもない．焼肉屋にしたって，湘南台には寅屋にえのもとにとあるわけだ．<br>　そういうわけで，あなたはいろいろな店に行き，いろいろな注文をして，なるべくどれを頼んでも満足度の高い食事のとれる店を見つけたいと考えた．しかしここで疑念が生まれる——いまの店でそこそこ満足できるなら，別の店を探さなくてもよいのではないか？ しかしいまの店に行き続ける限り，別の店の食事を食べることはできないぞ．しかしそこがハズレだとしたら．さてどうしよう——業界用語でこれを<strong>探索</strong>と<strong>利用</strong>のトレードオフ (exploration-exploitation tradeoff) という．</p>
+<blockquote>
+<p>これまでの学習結果を利用 (exploitation) しようとすると，探索 (exploration) が減ってしまい，機会損失が増えてしまう．一方，探索を増やせば，学習した最良の行動とは異なる行動をとることが増えるため，得られる報酬が減ってしまう．学習した最良の行動との差が，探索のコストということになる．– 牧野，et al. 『<a href="https://www.amazon.co.jp/dp/4627880316" target="_blank" rel="external">これからの強化学習</a>』</p>
+</blockquote>
+<p>　このトレードオフを解消する試みを多腕バンディット問題という．多腕バンディット問題は，複数のスロットマシンのレバー（腕）を次々と引いていき，最終的に得られる報酬を最大化するというもので，強化学習の一種といえる．各スロットマシンの報酬はそれぞれ一定の確率分布に従っている．言い換えれば，いろいろな店のメニューにある品目を試していき，最終的に得られる満足度を最大化していく，ということになる．もちろん，品目によって得られる満足度に違いはあるが，なるべく何を食べても満足度の高い店を絞り込んでいきたい．<br>　そのためのアルゴリズムのうち，ここでは<span>$\epsilon$</span><!-- Has MathJax -->-GreedyとUCB1を紹介したい．</p>
+<h2 id="Greedy"><a href="#Greedy" class="headerlink" title="-Greedy"></a><span>$\epsilon$</span><!-- Has MathJax -->-Greedy</h2><p>　デフォルトで現在最良な選択肢を選ぶが，一定の確率でいま最良と思っていないような選択肢を選びにいく手法．</p>
+<ul>
+<li><span>$\epsilon - 1$</span><!-- Has MathJax -->の確率で最適だと思われる選択肢を利用する</li>
+<li><span>$\epsilon / 2$</span><!-- Has MathJax -->の確率で最適だと思われる選択肢を探索する</li>
+<li><span>$\epsilon / 2$</span><!-- Has MathJax -->の確率で最悪だと思われる選択肢を探索する</li>
+</ul>
+<p>　<span>$\epsilon$</span><!-- Has MathJax --> Greedyはつまり行きつけの店に入り浸るタイプのアルゴリズムだ．</p>
+<h2 id="UCB1"><a href="#UCB1" class="headerlink" title="UCB1"></a>UCB1</h2><p>　それもいいが，実はいまの行きつけよりもっといい店なのに，一度行って微妙だったからといって行かないままになっている店がないだろうか？ UCB1は，それぞれの店についてどれくらい知っているかを考慮に入れ，なるべく多くの店のことを知ろうとするアルゴリズムだ．具体的には，各店（腕）についてUCB (Upper Confidence Bound) という値を計算する．</p>
+<p>　<span>$\overline {x}_{j}+c\sqrt {\dfrac {2\log n} {x_{j}}}$</span><!-- Has MathJax --></p>
+<p>　ただし<span>$\overline {x}_{j}$</span><!-- Has MathJax -->は<span>$_{j}$</span><!-- Has MathJax -->番目の店の満足度（報酬）の期待値，<span>$n$</span><!-- Has MathJax -->はそれまでに店を回った回数の合計，<span>$n_{j}$</span><!-- Has MathJax -->は<span>$_{j}$</span><!-- Has MathJax -->番目の店に行った回数，<span>$c$</span><!-- Has MathJax -->は定数．UCB1は，この値が最大になる店に飛び込んでいく．あなたが好奇心旺盛なら，こちらのアルゴリズムを使って考えたほうがいいだろう．<br>　この手法のメリットとして，ベストでない店に行く回数を確率<span>$1$</span><!-- Has MathJax -->で<span>$O(\log n)$</span><!-- Has MathJax -->以内に抑えられる．長々とした証明は<a href="http://homes.di.unimi.it/~cesabian/Pubblicazioni/ml-02.pdf" target="_blank" rel="external">論文</a>を参照していただくとして，これは店に行く回数が十分大きい場合の理論限界に到達している．デメリットとしては，探索のためによくない店にあたってしまうことが多いという点が挙げられる．</p>
+<h2 id="実験"><a href="#実験" class="headerlink" title="実験"></a>実験</h2><p>　では，<span>$\epsilon$</span><!-- Has MathJax -->-GreedyとUCB1が<strong>最良の店を選ぶ過程</strong>はどうなっているだろうか？ 『<a href="http://www.oreilly.co.jp/books/9784873116273/" target="_blank" rel="external">バンディットアルゴリズムによる最適化手法</a>』の<a href="https://github.com/johnmyleswhite/BanditsBook" target="_blank" rel="external">サンプルコード</a>をPython3 + numpy向けに改変して実験．</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div><div class="line">22</div><div class="line">23</div><div class="line">24</div><div class="line">25</div><div class="line">26</div><div class="line">27</div><div class="line">28</div><div class="line">29</div><div class="line">30</div><div class="line">31</div><div class="line">32</div><div class="line">33</div><div class="line">34</div><div class="line">35</div><div class="line">36</div><div class="line">37</div><div class="line">38</div><div class="line">39</div><div class="line">40</div><div class="line">41</div><div class="line">42</div><div class="line">43</div><div class="line">44</div><div class="line">45</div><div class="line">46</div><div class="line">47</div><div class="line">48</div><div class="line">49</div><div class="line">50</div><div class="line">51</div><div class="line">52</div><div class="line">53</div><div class="line">54</div><div class="line">55</div><div class="line">56</div><div class="line">57</div><div class="line">58</div><div class="line">59</div><div class="line">60</div><div class="line">61</div><div class="line">62</div><div class="line">63</div><div class="line">64</div><div class="line">65</div><div class="line">66</div><div class="line">67</div><div class="line">68</div><div class="line">69</div><div class="line">70</div><div class="line">71</div><div class="line">72</div><div class="line">73</div><div class="line">74</div><div class="line">75</div><div class="line">76</div><div class="line">77</div><div class="line">78</div><div class="line">79</div><div class="line">80</div><div class="line">81</div><div class="line">82</div><div class="line">83</div><div class="line">84</div><div class="line">85</div><div class="line">86</div><div class="line">87</div><div class="line">88</div><div class="line">89</div><div class="line">90</div><div class="line">91</div><div class="line">92</div><div class="line">93</div><div class="line">94</div><div class="line">95</div><div class="line">96</div><div class="line">97</div><div class="line">98</div><div class="line">99</div><div class="line">100</div><div class="line">101</div><div class="line">102</div><div class="line">103</div><div class="line">104</div><div class="line">105</div><div class="line">106</div><div class="line">107</div><div class="line">108</div><div class="line">109</div><div class="line">110</div><div class="line">111</div><div class="line">112</div><div class="line">113</div><div class="line">114</div><div class="line">115</div><div class="line">116</div><div class="line">117</div><div class="line">118</div><div class="line">119</div><div class="line">120</div><div class="line">121</div><div class="line">122</div><div class="line">123</div><div class="line">124</div><div class="line">125</div><div class="line">126</div><div class="line">127</div><div class="line">128</div><div class="line">129</div><div class="line">130</div><div class="line">131</div><div class="line">132</div><div class="line">133</div><div class="line">134</div><div class="line">135</div><div class="line">136</div></pre></td><td class="code"><pre><div class="line"><span class="keyword">import</span> pandas <span class="keyword">as</span> pd</div><div class="line"><span class="keyword">import</span> numpy <span class="keyword">as</span> np</div><div class="line"><span class="keyword">import</span> matplotlib.pyplot <span class="keyword">as</span> plt</div><div class="line"><span class="keyword">import</span> random</div><div class="line"><span class="keyword">import</span> math</div><div class="line"><span class="keyword">import</span> seaborn <span class="keyword">as</span> sns</div><div class="line"></div><div class="line"><span class="class"><span class="keyword">class</span> <span class="title">BernoulliArm</span><span class="params">()</span>:</span></div><div class="line">    <span class="function"><span class="keyword">def</span> <span class="title">__init__</span><span class="params">(self, p)</span>:</span></div><div class="line">        self.p = p</div><div class="line"></div><div class="line">    <span class="function"><span class="keyword">def</span> <span class="title">draw</span><span class="params">(self)</span>:</span></div><div class="line">        <span class="keyword">if</span> random.random() &gt; self.p:</div><div class="line">            <span class="keyword">return</span> <span class="number">0.0</span></div><div class="line">        <span class="keyword">else</span>:</div><div class="line">            <span class="keyword">return</span> <span class="number">1.0</span></div><div class="line"></div><div class="line"><span class="class"><span class="keyword">class</span> <span class="title">EpsilonGreedy</span><span class="params">()</span>:</span></div><div class="line">    <span class="function"><span class="keyword">def</span> <span class="title">__init__</span><span class="params">(self, epsilon, counts, values)</span>:</span></div><div class="line">        self.epsilon = epsilon</div><div class="line">        self.counts = counts</div><div class="line">        self.values = values</div><div class="line">        <span class="keyword">return</span></div><div class="line"></div><div class="line">    <span class="function"><span class="keyword">def</span> <span class="title">initialize</span><span class="params">(self, n_arms)</span>:</span></div><div class="line">        self.counts = np.zeros(n_arms)</div><div class="line">        self.values = np.zeros(n_arms)</div><div class="line">        <span class="keyword">return</span></div><div class="line"></div><div class="line">    <span class="function"><span class="keyword">def</span> <span class="title">select_arm</span><span class="params">(self)</span>:</span></div><div class="line">        <span class="keyword">if</span> random.random() &gt; self.epsilon:</div><div class="line">            <span class="keyword">return</span> np.argmax(self.values)</div><div class="line">        <span class="keyword">else</span>:</div><div class="line">            <span class="keyword">return</span> np.random.randint(<span class="number">0</span>, len(self.values))</div><div class="line"></div><div class="line">    <span class="function"><span class="keyword">def</span> <span class="title">update</span><span class="params">(self, chosen_arm, reward)</span>:</span></div><div class="line">        self.counts[chosen_arm] += <span class="number">1</span></div><div class="line">        n = self.counts[chosen_arm]</div><div class="line"></div><div class="line">        value = self.values[chosen_arm]</div><div class="line">        new_value = ((n<span class="number">-1</span>) / float(n)) * value + (<span class="number">1</span> / float(n)) * reward</div><div class="line">        self.values[chosen_arm] = new_value</div><div class="line">        <span class="keyword">return</span></div><div class="line"></div><div class="line"><span class="class"><span class="keyword">class</span> <span class="title">UCB1</span><span class="params">()</span>:</span></div><div class="line">  <span class="function"><span class="keyword">def</span> <span class="title">__init__</span><span class="params">(self, counts, values)</span>:</span></div><div class="line">    self.counts = counts</div><div class="line">    self.values = values</div><div class="line">    <span class="keyword">return</span></div><div class="line"></div><div class="line">  <span class="function"><span class="keyword">def</span> <span class="title">initialize</span><span class="params">(self, n_arms)</span>:</span></div><div class="line">    self.counts = np.zeros(n_arms)</div><div class="line">    self.values = np.zeros(n_arms)</div><div class="line">    <span class="keyword">return</span></div><div class="line"></div><div class="line">  <span class="function"><span class="keyword">def</span> <span class="title">select_arm</span><span class="params">(self)</span>:</span></div><div class="line">    n_arms = len(self.counts)</div><div class="line">    <span class="keyword">for</span> arm <span class="keyword">in</span> range(n_arms):</div><div class="line">      <span class="keyword">if</span> self.counts[arm] == <span class="number">0</span>:</div><div class="line">        <span class="keyword">return</span> arm</div><div class="line"></div><div class="line">    ucb_values = [<span class="number">0.0</span> <span class="keyword">for</span> arm <span class="keyword">in</span> range(n_arms)]</div><div class="line">    total_counts = sum(self.counts)</div><div class="line">    <span class="keyword">for</span> arm <span class="keyword">in</span> range(n_arms):</div><div class="line">      bonus = math.sqrt((<span class="number">2</span> * math.log(total_counts)) / float(self.counts[arm]))</div><div class="line">      ucb_values[arm] = self.values[arm] + bonus</div><div class="line">    <span class="keyword">return</span> np.argmax(ucb_values)</div><div class="line"></div><div class="line">  <span class="function"><span class="keyword">def</span> <span class="title">update</span><span class="params">(self, chosen_arm, reward)</span>:</span></div><div class="line">    self.counts[chosen_arm] = self.counts[chosen_arm] + <span class="number">1</span></div><div class="line">    n = self.counts[chosen_arm]</div><div class="line"></div><div class="line">    value = self.values[chosen_arm]</div><div class="line">    new_value = ((n - <span class="number">1</span>) / float(n)) * value + (<span class="number">1</span> / float(n)) * reward</div><div class="line">    self.values[chosen_arm] = new_value</div><div class="line">    <span class="keyword">return</span></div><div class="line"></div><div class="line"><span class="function"><span class="keyword">def</span> <span class="title">test_algorithm</span><span class="params">(algo, arms, num_sims, horizon)</span>:</span></div><div class="line">    chosen_arms = np.zeros(num_sims * horizon)</div><div class="line">    rewards = np.zeros(num_sims * horizon)</div><div class="line">    cumulative_rewards = np.zeros(num_sims * horizon)</div><div class="line">    sim_nums = np.zeros(num_sims * horizon)</div><div class="line">    times = np.zeros(num_sims * horizon)</div><div class="line"></div><div class="line">    <span class="keyword">for</span> sim <span class="keyword">in</span> range(num_sims):</div><div class="line">        sim += <span class="number">1</span></div><div class="line">        algo.initialize(len(arms))</div><div class="line"></div><div class="line">        <span class="keyword">for</span> t <span class="keyword">in</span> range(horizon):</div><div class="line">            t += <span class="number">1</span></div><div class="line">            index = (sim - <span class="number">1</span>) * horizon + t - <span class="number">1</span></div><div class="line">            sim_nums[index] = sim</div><div class="line">            times[index] = t</div><div class="line"></div><div class="line">            chosen_arm = algo.select_arm()</div><div class="line">            chosen_arms[index] = chosen_arm</div><div class="line"></div><div class="line">            reward = arms[chosen_arm].draw()</div><div class="line">            rewards[index] = reward</div><div class="line"></div><div class="line">            <span class="keyword">if</span> t == <span class="number">1</span>:</div><div class="line">                cumulative_rewards[index] = reward</div><div class="line">            <span class="keyword">else</span>:</div><div class="line">                cumulative_rewards[index] = cumulative_rewards[index - <span class="number">1</span>] + reward</div><div class="line"></div><div class="line">            algo.update(chosen_arm, reward)</div><div class="line"></div><div class="line">    <span class="keyword">return</span> [sim_nums, times, chosen_arms, rewards, cumulative_rewards]</div><div class="line"></div><div class="line">means = np.array([<span class="number">0.1</span>, <span class="number">0.1</span>, <span class="number">0.1</span>, <span class="number">0.1</span>, <span class="number">0.9</span>])</div><div class="line">n_arms = len(means) <span class="comment"># 腕は5本</span></div><div class="line">random.shuffle(means)</div><div class="line"></div><div class="line">arms = [BernoulliArm(x) <span class="keyword">for</span> x <span class="keyword">in</span> means]</div><div class="line"></div><div class="line"><span class="keyword">for</span> epsilon <span class="keyword">in</span> [<span class="number">0.1</span>, <span class="number">0.2</span>, <span class="number">0.3</span>, <span class="number">0.4</span>, <span class="number">0.5</span>]: <span class="comment"># epsilonを変えたらどうなるか？</span></div><div class="line">    algo = EpsilonGreedy(epsilon, [], [])</div><div class="line">    algo.initialize(n_arms)</div><div class="line">    results = test_algorithm(algo, arms, <span class="number">5000</span>, <span class="number">500</span>)</div><div class="line"></div><div class="line">    df = pd.DataFrame(&#123;<span class="string">"times"</span>: results[<span class="number">1</span>], <span class="string">"rewards"</span>: results[<span class="number">3</span>]&#125;)</div><div class="line">    grouped = df[<span class="string">"rewards"</span>].groupby(df[<span class="string">"times"</span>])</div><div class="line"></div><div class="line">    plt.plot(grouped.mean(), label=<span class="string">"epsilon="</span>+str(epsilon))</div><div class="line"></div><div class="line">algo = UCB1([], [])</div><div class="line">algo.initialize(n_arms)</div><div class="line">results = test_algorithm(algo, arms, <span class="number">5000</span>, <span class="number">500</span>)</div><div class="line"></div><div class="line">df = pd.DataFrame(&#123;<span class="string">"times"</span>: results[<span class="number">1</span>], <span class="string">"rewards"</span>: results[<span class="number">3</span>]&#125;)</div><div class="line">grouped = df[<span class="string">"rewards"</span>].groupby(df[<span class="string">"times"</span>])</div><div class="line"></div><div class="line">plt.plot(grouped.mean(), label=<span class="string">"UCB1"</span>)</div><div class="line"></div><div class="line">plt.legend(loc=<span class="string">"best"</span>)</div><div class="line">plt.show()</div></pre></td></tr></table></figure>
+<p><img src="/image/bandits/bandits.png"></p>
+<p>　好奇心旺盛な人は序盤それなりに苦労することがわかる．</p>
+<h1 id="おわりに"><a href="#おわりに" class="headerlink" title="おわりに"></a>おわりに</h1><p>　こうしたナイーブな実装で焼肉の頼み方を最適化したり，店の巡り方を最適化できるかどうかというとまあ実際微妙（たとえば焼肉の各品目から得られる満足度は，限界効用逓減の法則に従ってすり減っていく）だが，日々の意思決定をアルゴリズム的に考えてみる遊びはそれなりにおもしろい．ソーシャルゲームにどう課金するか，というのもこの俎上に載せられる．<br>　『<a href="https://www.amazon.co.jp/dp/B015CKNWJI/" target="_blank" rel="external">Algorithms to Live By: The Computer Science of Human Decisions</a>』という本はそういう，情報系の人間がよくやる与太話をまじめに考察したものだ——書類はどのキャッシュアルゴリズムに従って並べるべきかとか．先に挙げた探索と利用のトレードオフについても述べられている．YouTubeで著者らの講演を観てほしい．</p>
+<center><iframe width="560" height="315" src="https://www.youtube.com/embed/OwKj-wgXteo" frameborder="0" allowfullscreen></iframe></center>
+
+<p>　はい．</p>
+<h1 id="参考文献"><a href="#参考文献" class="headerlink" title="参考文献"></a>参考文献</h1><ul>
+<li><a href="http://qiita.com/Tsutomu-KKE@github/items/f8be15f56cbacdbb7bd9" target="_blank" rel="external">献立を組合せ最適化で考える - Qiita</a></li>
+<li><a href="http://qiita.com/makora9143/items/9e90a533c95c24b85a94" target="_blank" rel="external">備忘録＠Python ORセミナー: Pulp - Qiita</a></li>
+<li><a href="http://qiita.com/yuku_t/items/6844aac6008911401b19" target="_blank" rel="external">A/Bテストよりすごい？バンディットアルゴリズムとは一体何者か - Qiita</a></li>
+<li><a href="http://minerva.cs.uec.ac.jp/~ito/entcog/contents/lecture/date/5-yoshizoe.pdf" target="_blank" rel="external">コンピュータ囲碁における モンテカルロ法 ~理論編~[PDF]</a></li>
+</ul>
+<h1 id="追記-2016-12-06"><a href="#追記-2016-12-06" class="headerlink" title="追記 (2016.12.06)"></a>追記 (2016.12.06)</h1><p>　今回のような設定では多腕バンディット問題というより最適腕識別として考えたほうがよさそう．多腕バンディット問題は累積報酬の最大化が目的だけれど，最適腕識別はどの腕が最良か発見するのが目的．将来の報酬が最大の腕を見つける，ということ．『<a href="https://www.amazon.co.jp/dp/406152917X/" target="_blank" rel="external">バンディット問題の理論とアルゴリズム</a>』を読めばいいんだとか．</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://ntddk.github.io/2016/12/04/yakiniku-optimization/" data-id="cj13oizi6001ppcosdyg86yfa" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/machine-learning/">machine learning</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/optimization/">optimization</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+    <article id="post-kdd-cup-99-data" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    
+      <header class="article-header">
+        
+  
+    <a class="article-title" href="/2016/11/23/kdd-cup-99-data/">KDD Cup 99 Dataおぼえがき</a>
+  
+
+      </header>
+    
+    <time class="article-date" datetime="2016-11-22T21:50:00.000Z" itemprop="datePublished">11-23-2016</time>
+    
+  </div>
+  <div class="article-inner">
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h1 id="はじめに"><a href="#はじめに" class="headerlink" title="はじめに"></a>はじめに</h1><p>　サイバーセキュリティに携わる者なら一度くらいはKDD Cup 99 Dataなるデータセットの名を耳にしたことがあるのではないだろうか．KDD Cupは国際会議SIGKDDによるデータマイニングのコンペで，KDD Cup 99 Dataはそのためのネットワーク侵入検知にまつわるデータ．正常通信と攻撃を分類するタスクが与えられた．<br>　見てみよう．</p>
+<h1 id="データセットの構成"><a href="#データセットの構成" class="headerlink" title="データセットの構成"></a>データセットの構成</h1><p>　データは現在，カリフォルニア大学アーバイン校によって<a href="http://archive.ics.uci.edu/ml/databases/kddcup99/kddcup99.html" target="_blank" rel="external">配布</a>されている．<br>　それぞれのファイル内容は下記の通り：</p>
+<table>
+<thead>
+<tr>
+<th>ファイル名</th>
+<th>ファイル内容</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>kddcup.data</td>
+<td>フルデータ</td>
+</tr>
+<tr>
+<td>kddcup.data_10_percent</td>
+<td>フルデータの10%を抽出した学習用データ</td>
+</tr>
+<tr>
+<td>corrected</td>
+<td>正常・攻撃のラベル付けがなされた評価用データ</td>
+</tr>
+<tr>
+<td>kddcup.testdata.unlabeled</td>
+<td>正常・攻撃のラベル付けがなされていないデータ</td>
+</tr>
+<tr>
+<td>kddcup.testdata.unlabeled_10_percent</td>
+<td>正常・攻撃のラベル付けがなされていないデータの10%サブセット</td>
+</tr>
+<tr>
+<td>kddcup.newtestdata_10_percent_unlabeled</td>
+<td>正常・攻撃のラベル付けがなされていないデータの10%サブセット</td>
+</tr>
+</tbody>
+</table>
+<p>　ファイルの中身はこんな調子：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div></pre></td><td class="code"><pre><div class="line">$ wget -r -l 1 http://kdd.ics.uci.edu/databases/kddcup99/</div><div class="line">$ gunzip -r kdd.ics.uci.edu/kddcup99</div><div class="line">$ ln -s kdd.ics.uci.edu/databases/kddcup99 kddcup99</div><div class="line">$ head -5 kddcup99/kddcup.data</div><div class="line">0,tcp,http,SF,215,45076,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,1,1,0.00,0.00,0.00,0.00,1.00,0.00,0.00,0,0,0.00,0.00,0.00,0.00,0.00,0.00,0.00,0.00,normal.</div><div class="line">0,tcp,http,SF,162,4528,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,2,2,0.00,0.00,0.00,0.00,1.00,0.00,0.00,1,1,1.00,0.00,1.00,0.00,0.00,0.00,0.00,0.00,normal.</div><div class="line">0,tcp,http,SF,236,1228,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,1,1,0.00,0.00,0.00,0.00,1.00,0.00,0.00,2,2,1.00,0.00,0.50,0.00,0.00,0.00,0.00,0.00,normal.</div><div class="line">0,tcp,http,SF,233,2032,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,2,2,0.00,0.00,0.00,0.00,1.00,0.00,0.00,3,3,1.00,0.00,0.33,0.00,0.00,0.00,0.00,0.00,normal.</div><div class="line">0,tcp,http,SF,239,486,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,3,3,0.00,0.00,0.00,0.00,1.00,0.00,0.00,4,4,1.00,0.00,0.25,0.00,0.00,0.00,0.00,0.00,normal.</div></pre></td></tr></table></figure>
+<p>　これは，ファイルの特徴をカンマ区切りで列挙したもの．列に特徴名を振れば，pandas（や，scikit-learn）での扱いも楽．</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div></pre></td><td class="code"><pre><div class="line"><span class="meta">&gt;&gt;&gt; </span><span class="keyword">import</span> pandas</div><div class="line"><span class="meta">&gt;&gt;&gt; </span></div><div class="line"><span class="meta">&gt;&gt;&gt; </span>col_names = [<span class="string">"duration"</span>,<span class="string">"protocol_type"</span>,<span class="string">"service"</span>,<span class="string">"flag"</span>,<span class="string">"src_bytes"</span>,</div><div class="line"><span class="meta">... </span>   <span class="string">"dst_bytes"</span>,<span class="string">"land"</span>,<span class="string">"wrong_fragment"</span>,<span class="string">"urgent"</span>,<span class="string">"hot"</span>,<span class="string">"num_failed_logins"</span>,</div><div class="line"><span class="meta">... </span>   <span class="string">"logged_in"</span>,<span class="string">"num_compromised"</span>,<span class="string">"root_shell"</span>,<span class="string">"su_attempted"</span>,<span class="string">"num_root"</span>,</div><div class="line"><span class="meta">... </span>   <span class="string">"num_file_creations"</span>,<span class="string">"num_shells"</span>,<span class="string">"num_access_files"</span>,<span class="string">"num_outbound_cmds"</span>,</div><div class="line"><span class="meta">... </span>   <span class="string">"is_host_login"</span>,<span class="string">"is_guest_login"</span>,<span class="string">"count"</span>,<span class="string">"srv_count"</span>,<span class="string">"serror_rate"</span>,</div><div class="line"><span class="meta">... </span>   <span class="string">"srv_serror_rate"</span>,<span class="string">"rerror_rate"</span>,<span class="string">"srv_rerror_rate"</span>,<span class="string">"same_srv_rate"</span>,</div><div class="line"><span class="meta">... </span>   <span class="string">"diff_srv_rate"</span>,<span class="string">"srv_diff_host_rate"</span>,<span class="string">"dst_host_count"</span>,<span class="string">"dst_host_srv_count"</span>,</div><div class="line"><span class="meta">... </span>   <span class="string">"dst_host_same_srv_rate"</span>,<span class="string">"dst_host_diff_srv_rate"</span>,<span class="string">"dst_host_same_src_port_rate"</span>,</div><div class="line"><span class="meta">... </span>   <span class="string">"dst_host_srv_diff_host_rate"</span>,<span class="string">"dst_host_serror_rate"</span>,<span class="string">"dst_host_srv_serror_rate"</span>,</div><div class="line"><span class="meta">... </span>   <span class="string">"dst_host_rerror_rate"</span>,<span class="string">"dst_host_srv_rerror_rate"</span>,<span class="string">"label"</span>]</div><div class="line"><span class="meta">&gt;&gt;&gt; </span></div><div class="line"><span class="meta">&gt;&gt;&gt; </span>kdd_data_10percent = pandas.read_csv(<span class="string">"kddcup99/kddcup.data_10_percent"</span>, header=<span class="keyword">None</span>, names = col_names)</div></pre></td></tr></table></figure>
+<p>　学習用データは通常データ，22種類の攻撃データの計23種類のデータからなる．評価用データは，学習用データに加えて17種類の攻撃データを含んでいる．これらの攻撃は4つのクラスに大別される：</p>
+<table>
+<thead>
+<tr>
+<th>クラス</th>
+<th>説明</th>
+<th>サブクラス</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Normal</td>
+<td>通常のコネクション</td>
+<td>normal</td>
+</tr>
+<tr>
+<td>Probe</td>
+<td>攻撃対象の探索・調査</td>
+<td>ipsweep, nmap, postsweep, satan, mscan, saint</td>
+</tr>
+<tr>
+<td>DoS</td>
+<td>DoS攻撃</td>
+<td>back, land, neptune, pod, smurf, teardrop, mailbomb, apache2, processtable, udpstorm</td>
+</tr>
+<tr>
+<td>U2R</td>
+<td>ローカルマシンからrootへの許可されていないアクセス</td>
+<td>buffer.overflow, localmodule, perl, rootkit, httptunnel, xterm, ps, worm</td>
+</tr>
+<tr>
+<td>R2L</td>
+<td>リモートマシンからの許可されていないアクセス</td>
+<td>ftp_write, guess_passwd, imap, multihop, phf, spy, warezclient, warezmaster, snmpgetattack, snmpguess, xsnoop, named, sendmail, sqlattack, xlock</td>
+</tr>
+</tbody>
+</table>
+<p>　サブクラス名から古臭さがにじんでいるが，データセットは近年の研究でも広く用いられているものだ．まあ単純に同規模の新しいデータセットがないからだろう．<br>　だいたいの論文は<code>kddcup.data_10_percent</code>を用いて学習し，<code>corrected</code>を用いて評価するという流れになっている．<br>　ところで，このデータセットに付随したタスクは正常通信と攻撃の二値（まあ多値分類になりはするが）分類だが，これは異常検知とどう違うのだろうか．<a href="https://www.amazon.co.jp/dp/B018K6C99U/" target="_blank" rel="external">ものの本</a>によると，二値分類はベイズ決定則（条件付き分布<span>$p(x|y=1)p(y=1)$</span><!-- Has MathJax -->と<span>$p(x|y=0)p(y=0)$</span><!-- Has MathJax -->の比が1を超えたら異常と判定），異常検知はネイマン・ピアソン決定則（<span>$p(x|y=1)$</span><!-- Has MathJax -->と<span>$p(x|y=0)$</span><!-- Has MathJax -->の比がある閾値を超えたら異常と判定）にもとづいている．ここで，異常検知問題ではほとんどつねに<span>$p(y=1)&lt;&lt;p(y=0)$</span><!-- Has MathJax -->であるため，ベイズ決定則は異常判定を強く抑制する．そういうわけで，標本の割合を吟味して二値分類器の閾値をスライドさせていくことが重要となってくるらしい．</p>
+<h1 id="データセット形式への変換"><a href="#データセット形式への変換" class="headerlink" title="データセット形式への変換"></a>データセット形式への変換</h1><p>　<a href="https://github.com/inigoperona/tcpdump2gureKDDCup99" target="_blank" rel="external">tcpdump2gureKDDCup99</a>は，<a href="https://github.com/bro/bro" target="_blank" rel="external">Bro IDS</a>のプラグインとして，おなじみのpcapファイルをKDD Cup 99 Dataのフォーマットに変換してくれる．Bro IDSはSnortには及ばずともそこそこ由緒あるIDSで，GitHubリポジトリは<a href="https://code.gov/#/explore-code/agencies/DOE" target="_blank" rel="external">米国政府公式のリポジトリリスト</a>にも掲載されている．<br>　まずBro IDSをインストールする．</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div></pre></td><td class="code"><pre><div class="line">$ sudo apt-get install cmake make gcc g++ flex bison libpcap-dev libssl-dev python-dev swig zlib1g-dev</div><div class="line">$ git clone --recursive git://git.bro.org/bro</div><div class="line">$ cd bro</div><div class="line">$ ./configure</div><div class="line">$ make -j4</div><div class="line">$ sudo make install</div></pre></td></tr></table></figure>
+<p>　私はpyenvからインストールしたPython 2.7.11を常用しているのだが，Bro IDSをmakeするには<code>CFLAGS=&quot;-fPIC&quot; pyenv install 2.7.11</code>のように共有ライブラリ用のオプションをつけてPythonを再インストールする必要があった．<br>　さてWireshark公式が公開している<a href="https://wiki.wireshark.org/SampleCaptures" target="_blank" rel="external">サンプルデータ</a>をKDD Cup 99 Dataの形式に変換してみる．</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div></pre></td><td class="code"><pre><div class="line">$ cd</div><div class="line">$ git clone git@github.com:inigoperona/tcpdump2gureKDDCup99</div><div class="line">$ gcc tcpdump2gureKDDCup99/trafAld.c -o tcpdump2gureKDDCup99/trafAld.out</div><div class="line">$ wget &quot;https://wiki.wireshark.org/SampleCaptures?action=AttachFile&amp;do=get&amp;target=zlip-1.pcap&quot; -O zlip-1.pcap</div><div class="line">$ bro -r zlip-1.pcap tcpdump2gureKDDCup99/darpa2gurekddcup.bro &gt; conn.list</div><div class="line">$ cat conn.list</div><div class="line">1 955453631.643199 1024 53 10.0.0.1 146.84.28.88 0.000000 udp 53 S0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0</div><div class="line">$ sort -n conn.list &gt; conn_sort.list</div><div class="line">$ tcpdump2gureKDDCup99/trafAld.out conn_sort.list</div><div class="line">$ cat trafAld.list</div><div class="line">1 955453631.643199 1024 53 10.0.0.1 146.84.28.88 0.000000 udp 53 S0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0 0 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000</div></pre></td></tr></table></figure>
+<p>　pcapファイルをPythonで分析したければそのまま（scapyや）pandasに突っ込むだろうけど，KDD Cup 99 Dataと比較したい場合には使えるかも．</p>
+<h1 id="おわりに"><a href="#おわりに" class="headerlink" title="おわりに"></a>おわりに</h1><p>　名前は聞くけど触ったことないなということで．やらなければならない作業が進まないとこういう現実逃避が捗る捗る．</p>
+<h1 id="参考文献"><a href="#参考文献" class="headerlink" title="参考文献"></a>参考文献</h1><ul>
+<li>H. G. Kayacık, et al. <a href="https://web.cs.dal.ca/~zincir/bildiri/pst05-gnm.pdf" target="_blank" rel="external">Selecting Features for Intrusion Detection: A Feature Relevance Analysis on KDD 99 Intrusion Detection Datasets[PDF]</a>. PST. 2005.<ul>
+<li>この特徴に注意しようねという論文</li>
+</ul>
+</li>
+<li>高橋，et al. <a href="https://ipsj.ixsq.nii.ac.jp/ej/index.php?active_action=repository_view_main_item_detail&amp;page_id=13&amp;block_id=8&amp;item_id=146854&amp;item_no=1" target="_blank" rel="external">KDD CUP 99 Data Set を用いた異なる学習データによる機械学習アルゴリズムの評価</a>．CSS. pp. 457-464. 2015.<ul>
+<li>WekaでランダムフォレストとSVMを試した論文．日本語で読めて便利</li>
+</ul>
+</li>
+<li><a href="https://github.com/jadianes/kdd-cup-99-spark" target="_blank" rel="external">jadianes/kdd-cup-99-spark: PySpark solution to the KDDCup9</a><ul>
+<li>iPython Notebookからscikit-learnとPySparkを用いてKDD Cup 99 Dataを分析するデモが試せて便利</li>
+</ul>
+</li>
+</ul>
+<p>　はい．</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://ntddk.github.io/2016/11/23/kdd-cup-99-data/" data-id="cj13oizh5000jpcost7umyhwf" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/machine-learning/">machine learning</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/network/">network</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+    <article id="post-suppress-switching-ime-on-xming" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    
+      <header class="article-header">
+        
+  
+    <a class="article-title" href="/2016/11/06/suppress-switching-ime-on-xming/">Xmingによる入力言語の切り替えを防ぐ</a>
+  
+
+      </header>
+    
+    <time class="article-date" datetime="2016-11-06T09:40:00.000Z" itemprop="datePublished">11-06-2016</time>
+    
+  </div>
+  <div class="article-inner">
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h1 id="Xming"><a href="#Xming" class="headerlink" title="Xming"></a>Xming</h1><p>　<a href="http://www.straightrunning.com/XmingNotes/" target="_blank" rel="external">Xming</a>はWindows向けX Window System実装で，WindowsでX11 Forwardingをする場合のデファクトスタンダード．さて，日本語版のWindowsでXmingを利用していると，時折勝手に入力言語が英語に変わってしまうことがある．でまあOSSなのでソースコードを書き換えればいいんだけど，バイナリを読んだほうが早そう，ということでそのようにした．</p>
+<h1 id="原因"><a href="#原因" class="headerlink" title="原因"></a>原因</h1><p>　IDA Proでキーボード関連のAPIの呼び出し元を眺めると，LoadKeyboardLayoutのロケールID引数を英語 (0x0409) に設定していることがわかる．これを日本語 (0x0411) にすればよい．</p>
+<p><img src="/image/xming/1.png" width="100%" height="100%"></p>
+<p>　素直に.rdataセクションに載っているので，そのまま書き換えられる．</p>
+<p><img src="/image/xming/2.png" width="100%" height="100%"></p>
+<p>　紀元前のバイナリパッチ方式で書くと下記の通り：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div></pre></td><td class="code"><pre><div class="line">19AFAA: 30 31</div><div class="line">19AFAB: 39 31</div><div class="line">19AFB5: 55 4A</div><div class="line">19AFB6: 53 50</div></pre></td></tr></table></figure>
+<p>　はい．</p>
+<h1 id="追記-2016-11-07"><a href="#追記-2016-11-07" class="headerlink" title="追記 (2016.11.07)"></a>追記 (2016.11.07)</h1><p>　XmingのバージョンはPublic Domain Releases 6.9.0.31で，より新しい有償版で修正されているのかどうかは知らない．で，6.9.0.31の当該ソースコード (<code>xc/programs/Xserver/hw/xwin/winconfig.c</code>) にはなにやら不吉なコメントが記されているが，見なかったことにする．うちの環境では，レジストリ設定でCaps LockをCtrlに入れ替えてるし．</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div></pre></td><td class="code"><pre><div class="line"><span class="keyword">if</span> (keyboardType == <span class="number">7</span>)</div><div class="line">  &#123;</div><div class="line">    <span class="comment">/* Japanese layouts have problems with key event messages</span></div><div class="line">       such as the lack of WM_KEYUP for Caps Lock key.</div><div class="line">       Loading US layout fixes this problem. */</div><div class="line">    <span class="keyword">if</span> (LoadKeyboardLayout(<span class="string">"00000409"</span>, KLF_ACTIVATE) != <span class="literal">NULL</span>)</div><div class="line">      winMsg (X_INFO, <span class="string">"Loading US keyboard layout.\n"</span>);</div><div class="line">    <span class="keyword">else</span></div><div class="line">      winMsg (X_ERROR, <span class="string">"LoadKeyboardLaout failed.\n"</span>);</div><div class="line">  &#125;</div></pre></td></tr></table></figure>
+<p>　ご自身の責任でやっていってください．</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://ntddk.github.io/2016/11/06/suppress-switching-ime-on-xming/" data-id="cj13oizhb0010pcosf63ele8t" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/reversing/">reversing</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+    <article id="post-angr-afl-driller" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    
+      <header class="article-header">
+        
+  
+    <a class="article-title" href="/2016/08/27/angr-afl-driller/">angr, AFL, Driller</a>
+  
+
+      </header>
+    
+    <time class="article-date" datetime="2016-08-26T18:00:00.000Z" itemprop="datePublished">08-27-2016</time>
+    
+  </div>
+  <div class="article-inner">
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h1 id="はじめに"><a href="#はじめに" class="headerlink" title="はじめに"></a>はじめに</h1><p>　今年のセキュリティ・キャンプでは，うっかり「なぜマルウェア解析は自動化できないのか」という題の講義を行ってしまったが，それだけセキュリティの世界には自動化の波が来ている．本稿では，脆弱性分析の自動化をめざして開発されているangr, AFL, Drillerをざっくり紹介する．</p>
+<h1 id="angr"><a href="#angr" class="headerlink" title="angr"></a>angr</h1><p>　<a href="http://angr.io/" target="_blank" rel="external">angr</a>はUCSBの研究チームにしてCTFチーム<a href="https://twitter.com/shellphish" target="_blank" rel="external">Shellphish</a>を中心に開発されているバイナリ解析フレームワーク．<a href="https://www.cs.ucsb.edu/~vigna/publications/2016_SP_angrSoK.pdf" target="_blank" rel="external">論文[PDF]</a>はIEEE S&amp;P 2016に採択されている．手法の新規性というよりは実装力でゴリ押しするタイプ．評価には，アメリカ国防高等研究計画局が5,500万ドル（約56億円）の資金を投じてまで開催した脆弱性分析・修正の自動化コンペ，<a href="https://www.cybergrandchallenge.com/" target="_blank" rel="external">DARPA Cyber Grand Challenge</a> (CGC) のデータセットが用いられている．CGCの決勝戦に進出したチームには75万ドル（約7,600万円），優勝したチームは200万ドル（約2億円）が与えられる．angr開発の目的のひとつが，CGCでの勝利にあることは疑いようもない——最終的な戦績は，CMUのツールMAYHEMに優勝を譲って3位だったが．<br>　さて，angrはシンボリック実行やプログラムスライシングを通して，<strong>プログラムの特定位置に到達するための入力値を抽出することができる</strong>．次のコードで雰囲気をつかめるだろうか：</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div><div class="line">22</div><div class="line">23</div><div class="line">24</div><div class="line">25</div><div class="line">26</div><div class="line">27</div><div class="line">28</div><div class="line">29</div><div class="line">30</div></pre></td><td class="code"><pre><div class="line"><span class="comment">#!/usr/bin/env python</span></div><div class="line"><span class="comment">#-*- coding:utf-8 -*-</span></div><div class="line"><span class="keyword">import</span> sys</div><div class="line"><span class="keyword">import</span> angr</div><div class="line"><span class="keyword">import</span> simuvex</div><div class="line"></div><div class="line"><span class="comment"># 解析対象を指定</span></div><div class="line">p = angr.Project(sys.argv[<span class="number">1</span>]) </div><div class="line"></div><div class="line"><span class="comment"># 制御フローグラフの生成</span></div><div class="line">cfg = p.analyses.CFG()</div><div class="line"><span class="keyword">print</span> [x <span class="keyword">for</span> x <span class="keyword">in</span> cfg.functions.iteritems()]</div><div class="line"></div><div class="line"><span class="comment"># シンボルを取得</span></div><div class="line">target_addr = p.loader.main_bin.get_symbol(<span class="string">"main"</span>).addr</div><div class="line"></div><div class="line"><span class="comment"># パス分析クラスのインスタンス</span></div><div class="line">pg = p.factory.path_group()</div><div class="line"></div><div class="line"><span class="comment"># シンボルへのパスを分析</span></div><div class="line">pg.explore(find = target_addr)</div><div class="line"></div><div class="line"><span class="comment"># avoidを避け，findに到達する入力値を探索してくれる</span></div><div class="line">a = p.surveyors.Explorer(find = FIND_ADDR, avoid = AVOID_ADDR).run()</div><div class="line"></div><div class="line"><span class="comment"># フック</span></div><div class="line">p.hook_symbol(<span class="string">'strlen'</span>, simuvex.SimProcedures[<span class="string">'stubs'</span>][<span class="string">'ReturnUnconstrained'</span>])</div><div class="line"></div><div class="line"><span class="comment"># 実行結果のダンプ</span></div><div class="line">a.found[<span class="number">0</span>].state.posix.dumps(<span class="number">1</span>)</div></pre></td></tr></table></figure>
+<p>　解析対象の規模が大きい場合，エントリポイントを起点とした解析に時間を要するあるいは失敗することがあるが，プログラムの途中から解析を始めることも可能だ．</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div></pre></td><td class="code"><pre><div class="line">p = angr.Project(sys.argv[<span class="number">1</span>])</div><div class="line"></div><div class="line"><span class="comment"># 解析の起点となるアドレス</span></div><div class="line">state = p.factory.blank_state(addr = START_ADDR)</div><div class="line"><span class="comment"># その地点までプログラムを実行したときのスタックの状態</span></div><div class="line">state.regs.ebp = BASE_ADDR</div><div class="line">state.regs.esp = STACK_ADDR</div><div class="line"></div><div class="line"><span class="comment"># 入力値の設定</span></div><div class="line"><span class="keyword">for</span> i <span class="keyword">in</span> range(INPUT_LENGTH):</div><div class="line">    s = state.se.BVS(<span class="string">'Var[&#123;&#125;]'</span>.format(i), <span class="number">32</span>, explicit_name = <span class="keyword">True</span>)</div><div class="line">    state.memory.store(INPUT_ADDR + i * <span class="number">4</span>, s)</div><div class="line"></div><div class="line">path = p.factory.path(state)</div><div class="line">a = p.surveyors.Explorer(start = path, find= FIND_ADDR, avoid= AVOID_ADDR)</div><div class="line">a.found[<span class="number">0</span>].state.posix.dumps(<span class="number">1</span>)</div></pre></td></tr></table></figure>
+<p>　シンボリック実行はSSA形式の中間表現を前提とするが，angrはValgrindのVEX IRを用いている．バックエンドのSMTソルバはZ3だが，claripyという自前のラッパが噛ませてある．<br>　これ以上の説明は<a href="http://docs.angr.io/" target="_blank" rel="external">公式ドキュメント</a>に譲ろう．</p>
+<h1 id="AFL"><a href="#AFL" class="headerlink" title="AFL"></a>AFL</h1><p>　<a href="http://lcamtuf.coredump.cx/afl/" target="_blank" rel="external">AFL</a> (American Fuzzy Lop) はGoogleのエンジニア<a href="https://twitter.com/lcamtuf" target="_blank" rel="external">lcamtuf</a>を中心に開発されているファジングツール．遺伝的アルゴリズムによって正常な入力を次々と変異させていき，<strong>自動的にプログラムのバグを検出する</strong>．AFLにはbashやtcpdump, OpenSSHといったさまざまなソフトウェアのバグを検出した実績があり，いまや脆弱性分析の研究になくてはならない存在だ．一般的なファジングはプログラムの浅い箇所にしか到達できない．AFLは，大量の正常な入力をトリミングしてシードとするコーパス蒸留 (corpus distillation) と，遺伝的アルゴリズムを用いてシードを変異させる<a href="http://ieeexplore.ieee.org/document/4682289/" target="_blank" rel="external">GAFuzzing</a>のいいとこ取りを図ったものだ．その実行フローは次のようになる：</p>
+<ol>
+<li>ユーザーから与えられた初期テストケースをキューに入れる</li>
+<li>キューから次の入力テストケースをひとつ取り出し，</li>
+<li>プログラムの振る舞いに影響を与えない最小サイズにトリミングする</li>
+<li>バランスのよい探索となるよう，さまざまな変異戦略を用いて入力を繰り返し変異させる</li>
+<li>新たな状態遷移が計測されたら，出力をキューに入れる</li>
+<li>2に戻る</li>
+</ol>
+<p>　ここでAFLはカバレッジ計測のため，解析対象のプログラムに計測用のコードを埋め込む．これには，解析対象のソースコードが手元にある場合gccやclangの独自フロントエンドが，解析対象のソースコードが手元にない場合QEMUが用いられる．<br>　ファジング機能の中核は，<code>afl-fuzz.c</code>の<code>main()</code>から呼び出される<code>fuzz_one()</code>にある．実装されている変異戦略は次の通り：</p>
+<ul>
+<li>SIMPLE BITFLIP</li>
+<li>ARITHMETIC INC/DEC</li>
+<li>INTERESTING VALUES</li>
+<li>DICTIONARY STUFF</li>
+<li>RANDOM HAVOC</li>
+<li>SPLICING</li>
+</ul>
+<p>　CGCで優勝したCMUのMAYHEMは，<a href="https://twitter.com/thedavidbrumley/status/762107471771021313" target="_blank" rel="external">このAFLにシンボリック実行機能を追加していたようだ</a>．MAYHEMといえば同名のシンボリック実行エンジンの<a href="https://users.ece.cmu.edu/~arebert/papers/mayhem-oakland-12.pdf" target="_blank" rel="external">論文[PDF]</a>がIEEE S&amp;P 2012で発表されているが，当時からの変更点がどれほどなのかはわからない．<br>　また，AFLの拡張に，解析対象のパスを枝刈りすることで高速化を図った<a href="https://github.com/mboehme/aflfast" target="_blank" rel="external">AFLFast</a>がある．これもCGC決勝進出チームによるもので，<a href="https://comp.nus.edu.sg/~mboehme/paper/CCS16.pdf" target="_blank" rel="external">論文[PDF]</a>はACM CCS 2016に採択されている．600行程度のパッチでトップカンファレンス．ちょっと妬ましい．</p>
+<h1 id="Driller"><a href="#Driller" class="headerlink" title="Driller"></a>Driller</h1><p>　<a href="https://github.com/shellphish/driller" target="_blank" rel="external">Driller</a>はangrの開発陣によるAFLの拡張．<a href="https://www.internetsociety.org/sites/default/files/blogs-media/driller-augmenting-fuzzing-through-selective-symbolic-execution.pdf" target="_blank" rel="external">論文[PDF]</a>はNDSS 2016に採択されている．AFLのREADMEには次のようにある：</p>
+<blockquote>
+<p>Other, more sophisticated research has focused on techniques such as program flow analysis (“concolic execution”), symbolic execution, or static analysis. All these methods are extremely promising in experimental settings, but tend to suffer from reliability and performance problems in practical uses - and currently do not offer a viable alternative to “dumb” fuzzing techniques.</p>
+</blockquote>
+<p>　シンボリック（コンコリック）実行は実用的ではないと切って捨てている．DrillerはangrとAFLを組み合わせることで，この批判を克服し，ファジングとシンボリック実行のいいとこ取りを図ったものだ：</p>
+<p><img src="/image/driller/driller.png" width="100%" height="100%"></p>
+<p>　たとえば，次のコードの解析には，ファジングよりシンボリック実行が適している：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div></pre></td><td class="code"><pre><div class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">(<span class="keyword">void</span>)</span></span></div><div class="line">&#123;</div><div class="line">    <span class="keyword">int</span> x;</div><div class="line">    read(<span class="number">0</span>, &amp;x, <span class="keyword">sizeof</span>(x));</div><div class="line">    <span class="keyword">if</span>(x == <span class="number">0x123ABCD</span>)</div><div class="line">        vulnerable();</div><div class="line">&#125;</div></pre></td></tr></table></figure>
+<p>　なぜなら，ファジングによって<code>0x123ABCD</code>という値を生成するには大量の試行を必要とするからだ．一方で，次のコードの解析には，シンボリック実行よりファジングが適している：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div></pre></td><td class="code"><pre><div class="line"><span class="function"><span class="keyword">int</span> <span class="title">check</span><span class="params">(<span class="keyword">char</span> *x, <span class="keyword">int</span> depth)</span></span></div><div class="line">&#123;</div><div class="line">    <span class="keyword">if</span>(depth &gt;= <span class="number">100</span>)&#123;</div><div class="line">        <span class="keyword">return</span> <span class="number">0</span>;</div><div class="line">    &#125;<span class="keyword">else</span>&#123;</div><div class="line">        <span class="keyword">int</span> count = (*x == <span class="string">'B'</span>) ? <span class="number">1</span> : <span class="number">0</span>;</div><div class="line">        count += check(x+<span class="number">1</span>, depth+<span class="number">1</span>);</div><div class="line">        <span class="keyword">return</span> count;</div><div class="line">    &#125;</div><div class="line">&#125;</div><div class="line"></div><div class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">(<span class="keyword">void</span>)</span></span></div><div class="line">&#123;</div><div class="line">    <span class="keyword">char</span> x[<span class="number">100</span>];</div><div class="line">    read(<span class="number">0</span>, x, <span class="number">100</span>);</div><div class="line"></div><div class="line">    <span class="keyword">if</span>(check(x, <span class="number">0</span>) == <span class="number">25</span>)</div><div class="line">        vulnerable();</div><div class="line">&#125;</div></pre></td></tr></table></figure>
+<p>　なぜなら，単純なシンボリック実行ではパス爆発を解決できないからだ．<br>　Drillerは両手法の長所と短所を踏まえた上で，それらを堅実に組み合わせている．やはりハッシュ関数の充足はDrillerをもってしても難しいようだが，現行MAYHEMもAFLとシンボリック実行を併用しているようだし，このアプローチが現在の着地点なのだろう．</p>
+<h1 id="おわりに"><a href="#おわりに" class="headerlink" title="おわりに"></a>おわりに</h1><p>　CGCとそれにともなう研究によって，脆弱性分析の自動化手法は大きな進歩を遂げつつあることが伝わっただろうか．学会のOSS重視傾向も相まって，さまざまなツールを手元で試せるようになってきている．大変ありがたいことだ．</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://ntddk.github.io/2016/08/27/angr-afl-driller/" data-id="cj13oizg00003pcosg1iso6dt" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/exploiting/">exploiting</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/symbolic-execution/">symbolic execution</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+    <article id="post-unicorn-internals-python" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    
+      <header class="article-header">
+        
+  
+    <a class="article-title" href="/2016/07/09/unicorn-internals-python/">Unicornのソースコードを読む (Python編)</a>
+  
+
+      </header>
+    
+    <time class="article-date" datetime="2016-07-09T06:20:00.000Z" itemprop="datePublished">07-09-2016</time>
+    
+  </div>
+  <div class="article-inner">
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p>　※Rackサーバの方のUnicornではない．</p>
+<h1 id="はじめに"><a href="#はじめに" class="headerlink" title="はじめに"></a>はじめに</h1><p>　<a href="http://www.unicorn-engine.org/" target="_blank" rel="external">Unicorn</a>は<a href="http://www.qemu.org/" target="_blank" rel="external">QEMU</a>ベースの軽量，マルチプラットフォーム・マルチアーキテクチャ・JIT対応のCPUエミュレータ．周辺機器をエミュレーションしないため用途は限られるが，GoやPythonなど<a href="https://github.com/unicorn-engine/unicorn/tree/master/bindings" target="_blank" rel="external">複数言語のバインディング</a>を備えている．現在システムセキュリティ分野で最も注目されているOSSのひとつと言っても過言ではなく，<a href="https://github.com/vrtadmin/ROPMEMU" target="_blank" rel="external">AsiaCCS 2016で発表されたROPチェーン解析ツールROPMEMU</a>や，<a href="https://github.com/oblivia-simplex/roper" target="_blank" rel="external">遺伝的アルゴリズムによってROPチェーンを自動生成するツールroper</a>のバックエンドとして用いられたり，Unicornと同じように注目を集めているバイナリ解析ツール<a href="https://github.com/angr/simuvex/issues/29" target="_blank" rel="external">angrとの連携</a>が進められたりと，一大コミュニティを形成しつつある．<br>　コンセプトの説明は<a href="http://www.unicorn-engine.org/BHUSA2015-unicorn.pdf" target="_blank" rel="external">Black Hat USA 2015の発表スライド</a>に譲るとして，ここではその利用方法と内部実装にふれる．</p>
+<h1 id="Pythonバインディング"><a href="#Pythonバインディング" class="headerlink" title="Pythonバインディング"></a>Pythonバインディング</h1><blockquote>
+<p>　情報セキュリティに興味があり，セキュリティ関係の仕事に携わりたいという人には，Pythonはうってつけの言語だ．その理由は，リバースエンジニアリングと攻撃コード作成のためのライブラリが充実しているためだ．<br>　　　　　　　– Justin Seitz『<a href="https://www.oreilly.co.jp/books/9784873117317/" target="_blank" rel="external">サイバーセキュリティプログラミング———Pythonで学ぶハッカーの思考</a>』序文</p>
+</blockquote>
+<p>　リバースエンジニアリングというタスクにUnicornを用いることを考える．他言語を選ぶ積極的な理由やPythonへのアレルギーがなければ，他のライブラリとの連携も考慮して，Pythonバインディングを活用すべきだろう．</p>
+<h1 id="エミュレーション"><a href="#エミュレーション" class="headerlink" title="エミュレーション"></a>エミュレーション</h1><p>　最もシンプルな用例：</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div><div class="line">22</div><div class="line">23</div><div class="line">24</div><div class="line">25</div><div class="line">26</div><div class="line">27</div><div class="line">28</div><div class="line">29</div><div class="line">30</div><div class="line">31</div><div class="line">32</div><div class="line">33</div><div class="line">34</div><div class="line">35</div><div class="line">36</div><div class="line">37</div><div class="line">38</div><div class="line">39</div><div class="line">40</div><div class="line">41</div><div class="line">42</div><div class="line">43</div><div class="line">44</div><div class="line">45</div><div class="line">46</div><div class="line">47</div><div class="line">48</div><div class="line">49</div><div class="line">50</div><div class="line">51</div><div class="line">52</div><div class="line">53</div><div class="line">54</div><div class="line">55</div><div class="line">56</div><div class="line">57</div><div class="line">58</div><div class="line">59</div><div class="line">60</div><div class="line">61</div><div class="line">62</div><div class="line">63</div><div class="line">64</div><div class="line">65</div></pre></td><td class="code"><pre><div class="line"><span class="comment">#!/usr/bin/env python</span></div><div class="line"><span class="comment">#-*- coding:utf-8 -*-</span></div><div class="line"><span class="comment"># unicorn/bindings/python/sample_x86.pyを抜粋・改変</span></div><div class="line"></div><div class="line"><span class="keyword">from</span> __future__ <span class="keyword">import</span> print_function <span class="comment"># Python 2.7を利用</span></div><div class="line"><span class="keyword">from</span> unicorn <span class="keyword">import</span> *</div><div class="line"><span class="keyword">from</span> unicorn.x86_const <span class="keyword">import</span> *</div><div class="line"></div><div class="line"><span class="comment"># エミュレーション対象の機械語</span></div><div class="line">X86_CODE32 = <span class="string">b"\x41\x4a"</span> <span class="comment"># INC ecx; DEC edx</span></div><div class="line"></div><div class="line"><span class="comment"># 各基本ブロックに対するコールバック</span></div><div class="line"><span class="function"><span class="keyword">def</span> <span class="title">hook_block</span><span class="params">(uc, address, size, user_data)</span>:</span></div><div class="line">    print(<span class="string">"&gt;&gt;&gt; Tracing basic block at 0x%x, block size = 0x%x"</span> %(address, size))</div><div class="line"></div><div class="line"><span class="comment"># 各命令に対するコールバック</span></div><div class="line"><span class="function"><span class="keyword">def</span> <span class="title">hook_code</span><span class="params">(uc, address, size, user_data)</span>:</span></div><div class="line">    print(<span class="string">"&gt;&gt;&gt; Tracing instruction at 0x%x, instruction size = %u"</span> %(address, size))</div><div class="line"></div><div class="line"><span class="comment"># x86 32bitのコードをエミュレーション</span></div><div class="line"><span class="function"><span class="keyword">def</span> <span class="title">test_i386</span><span class="params">()</span>:</span></div><div class="line">    print(<span class="string">"Emulate i386 code"</span>)</div><div class="line">    <span class="keyword">try</span>:</div><div class="line">        <span class="comment"># x86-32bitモードでエミュレータを初期化</span></div><div class="line">        mu = Uc(UC_ARCH_X86, UC_MODE_32)</div><div class="line"></div><div class="line">        <span class="comment"># エミュレーション用に2MBのメモリを割り当て</span></div><div class="line">        mu.mem_map(ADDRESS, <span class="number">2</span> * <span class="number">1024</span> * <span class="number">1024</span>)</div><div class="line"></div><div class="line">        <span class="comment"># 割り当てられたメモリに機械語を書き込み</span></div><div class="line">        mu.mem_write(ADDRESS, X86_CODE32)</div><div class="line"></div><div class="line">        <span class="comment"># レジスタ初期化</span></div><div class="line">        mu.reg_write(UC_X86_REG_ECX, <span class="number">0x1234</span>) <span class="comment"># エミュレーション中に加算される</span></div><div class="line">        mu.reg_write(UC_X86_REG_EDX, <span class="number">0x7890</span>) <span class="comment"># エミュレーション中に減算される</span></div><div class="line"></div><div class="line">        <span class="comment"># 各基本ブロックに対するコールバックを設定</span></div><div class="line">        mu.hook_add(UC_HOOK_BLOCK, hook_block)</div><div class="line"></div><div class="line">        <span class="comment"># 各命令に対するコールバックを設定</span></div><div class="line">        mu.hook_add(UC_HOOK_CODE, hook_code)</div><div class="line"></div><div class="line">        <span class="comment"># エミュレーション開始</span></div><div class="line">        mu.emu_start(ADDRESS, ADDRESS + len(X86_CODE32))</div><div class="line"></div><div class="line">        <span class="comment"># レジスタの表示</span></div><div class="line">        print(<span class="string">"&gt;&gt;&gt; Emulation done. Below is the CPU context"</span>)</div><div class="line"></div><div class="line">        r_ecx = mu.reg_read(UC_X86_REG_ECX)</div><div class="line">        r_edx = mu.reg_read(UC_X86_REG_EDX)</div><div class="line">        print(<span class="string">"&gt;&gt;&gt; ECX = 0x%x"</span> %r_ecx)</div><div class="line">        print(<span class="string">"&gt;&gt;&gt; EDX = 0x%x"</span> %r_edx)</div><div class="line"></div><div class="line">        <span class="comment"># メモリから命令列を読む</span></div><div class="line">        tmp = mu.mem_read(ADDRESS, <span class="number">2</span>)</div><div class="line">        print(<span class="string">"&gt;&gt;&gt; Read 2 bytes from [0x%x] ="</span> %(ADDRESS), end=<span class="string">""</span>)</div><div class="line">        <span class="keyword">for</span> i <span class="keyword">in</span> tmp:</div><div class="line">            print(<span class="string">" 0x%x"</span> %i, end=<span class="string">""</span>)</div><div class="line">        print(<span class="string">""</span>)</div><div class="line"></div><div class="line">    <span class="keyword">except</span> UcError <span class="keyword">as</span> e:</div><div class="line">        print(<span class="string">"ERROR: %s"</span> % e)</div><div class="line"></div><div class="line"><span class="keyword">if</span> __name__ == <span class="string">'__main__'</span>:</div><div class="line">    test_i386()</div></pre></td></tr></table></figure>
+<p>　これを実行すると次のような出力が得られる．</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div></pre></td><td class="code"><pre><div class="line">Emulate i386 code</div><div class="line">&gt;&gt;&gt; Tracing basic block at 0x1000000, block size = 0x2</div><div class="line">&gt;&gt;&gt; Tracing instruction at 0x1000000, instruction size = 1</div><div class="line">&gt;&gt;&gt; Tracing instruction at 0x1000001, instruction size = 1</div><div class="line">&gt;&gt;&gt; Emulation done. Below is the CPU context</div><div class="line">&gt;&gt;&gt; ECX = 0x1235</div><div class="line">&gt;&gt;&gt; EDX = 0x788f</div><div class="line">&gt;&gt;&gt; Read 2 bytes from [0x1000000] = 0x41 0x4a</div></pre></td></tr></table></figure>
+<p>　はい．<br>　なおエミュレーション時に各命令のトレースを得たければ，同じ開発陣による逆アセンブラ<a href="http://www.capstone-engine.org/" target="_blank" rel="external">Capstone</a>のPythonバインディングを併用して (詳細は割愛) 次のようなフックを用意すればよい：</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div></pre></td><td class="code"><pre><div class="line">...</div><div class="line"><span class="keyword">from</span> capstone <span class="keyword">import</span> *</div><div class="line">...</div><div class="line"><span class="class"><span class="keyword">class</span> <span class="title">SimpleEngine</span>:</span></div><div class="line">    <span class="function"><span class="keyword">def</span> <span class="title">__init__</span><span class="params">(self)</span>:</span></div><div class="line">        self.capmd = Cs(CS_ARCH_X86, CS_MODE_32) <span class="comment"># アーキテクチャ指定</span></div><div class="line">    <span class="function"><span class="keyword">def</span> <span class="title">disas_single</span><span class="params">(self, data)</span>:</span></div><div class="line">        <span class="keyword">for</span> i <span class="keyword">in</span> self.capmd.disasm(data, <span class="number">16</span>): <span class="comment"># 逆アセンブル</span></div><div class="line">            print(<span class="string">"\t%s\t%s"</span> % (i.mnemonic, i.op_str))</div><div class="line">            <span class="keyword">break</span></div><div class="line"></div><div class="line">disasm = SimpleEngine()</div><div class="line">...</div><div class="line"><span class="function"><span class="keyword">def</span> <span class="title">hook_code</span><span class="params">(uc, address, size, user_data)</span>:</span></div><div class="line">    print(<span class="string">"&gt;&gt;&gt; Tracing instruction at 0x%x, instruction size = %u, "</span> %(address, size), end=<span class="string">""</span>)</div><div class="line">    <span class="comment"># メモリから実行される命令を読む</span></div><div class="line">    ins = uc.mem_read(address, size)</div><div class="line">    disasm.disas_single(str(ins))</div></pre></td></tr></table></figure>
+<p>　実行すると命令のトレースが得られる．</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div></pre></td><td class="code"><pre><div class="line">...</div><div class="line">&gt;&gt;&gt; Tracing instruction at 0x1000000, instruction size = 1,     inc     ecx</div><div class="line">&gt;&gt;&gt; Tracing instruction at 0x1000001, instruction size = 1,     dec     edx</div><div class="line">...</div></pre></td></tr></table></figure>
+<p>　このように，Unicornではプラグイン側のエントリポイントからQEMUの機能を呼び出していくことになる．</p>
+<h1 id="Pythonバインディングの内部"><a href="#Pythonバインディングの内部" class="headerlink" title="Pythonバインディングの内部"></a>Pythonバインディングの内部</h1><p>　この内部では，ctypesによる共有ライブラリのロードが行われている．<code>unicorn/bindings/python/unicorn/unicorn.py</code>を見よう：</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div></pre></td><td class="code"><pre><div class="line"><span class="keyword">for</span> _lib <span class="keyword">in</span> _all_libs:</div><div class="line">    <span class="keyword">try</span>:</div><div class="line">        <span class="keyword">if</span> _lib == <span class="string">"unicorn.dll"</span>:</div><div class="line">            <span class="keyword">for</span> dll <span class="keyword">in</span> _all_windows_dlls:    <span class="comment"># load all the rest DLLs first</span></div><div class="line">                _lib_file = os.path.join(_lib_path, dll)</div><div class="line">                <span class="keyword">if</span> os.path.exists(_lib_file):</div><div class="line">                    ctypes.cdll.LoadLibrary(_lib_file)</div><div class="line">        _lib_file = os.path.join(_lib_path, _lib)</div><div class="line">        _uc = ctypes.cdll.LoadLibrary(_lib_file)</div><div class="line">        _found = <span class="keyword">True</span></div><div class="line">        <span class="keyword">break</span></div><div class="line">    <span class="keyword">except</span> OSError:</div><div class="line">        <span class="keyword">pass</span></div></pre></td></tr></table></figure>
+<p>　ここで<code>_uc</code>に<code>unicorn.dll</code> (環境によって異なるがいずれにせよ共有ライブラリ) がロードされている．<br>　さて，これまで利用してきた関数のプロトタイプ宣言は<code>unicorn/bindings/python/unicorn/unicorn.py</code>にある：</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div><div class="line">22</div><div class="line">23</div><div class="line">24</div><div class="line">25</div><div class="line">26</div><div class="line">27</div><div class="line">28</div><div class="line">29</div><div class="line">30</div><div class="line">31</div><div class="line">32</div><div class="line">33</div><div class="line">34</div><div class="line">35</div><div class="line">36</div><div class="line">37</div><div class="line">38</div><div class="line">39</div><div class="line">40</div><div class="line">41</div><div class="line">42</div><div class="line">43</div><div class="line">44</div><div class="line">45</div><div class="line">46</div><div class="line">47</div><div class="line">48</div><div class="line">49</div><div class="line">50</div><div class="line">51</div><div class="line">52</div></pre></td><td class="code"><pre><div class="line"><span class="comment"># setup all the function prototype</span></div><div class="line"><span class="function"><span class="keyword">def</span> <span class="title">_setup_prototype</span><span class="params">(lib, fname, restype, *argtypes)</span>:</span></div><div class="line">    getattr(lib, fname).restype = restype</div><div class="line">    getattr(lib, fname).argtypes = argtypes</div><div class="line"></div><div class="line">ucerr = ctypes.c_int</div><div class="line">uc_engine = ctypes.c_void_p</div><div class="line">uc_hook_h = ctypes.c_size_t</div><div class="line"></div><div class="line">_setup_prototype(_uc, <span class="string">"uc_version"</span>, ctypes.c_uint, ctypes.POINTER(ctypes.c_int), ctypes.POINTER(ctypes.c_int))</div><div class="line">_setup_prototype(_uc, <span class="string">"uc_arch_supported"</span>, ctypes.c_bool, ctypes.c_int)</div><div class="line">_setup_prototype(_uc, <span class="string">"uc_open"</span>, ucerr, ctypes.c_uint, ctypes.c_uint, ctypes.POINTER(uc_engine))</div><div class="line">_setup_prototype(_uc, <span class="string">"uc_close"</span>, ucerr, uc_engine)</div><div class="line">_setup_prototype(_uc, <span class="string">"uc_strerror"</span>, ctypes.c_char_p, ucerr)</div><div class="line">_setup_prototype(_uc, <span class="string">"uc_errno"</span>, ucerr, uc_engine)</div><div class="line">_setup_prototype(_uc, <span class="string">"uc_reg_read"</span>, ucerr, uc_engine, ctypes.c_int, ctypes.c_void_p)</div><div class="line">_setup_prototype(_uc, <span class="string">"uc_reg_write"</span>, ucerr, uc_engine, ctypes.c_int, ctypes.c_void_p)</div><div class="line">_setup_prototype(_uc, <span class="string">"uc_mem_read"</span>, ucerr, uc_engine, ctypes.c_uint64, ctypes.POINTER(ctypes.c_char), ctypes.c_size_t)</div><div class="line">_setup_prototype(_uc, <span class="string">"uc_mem_write"</span>, ucerr, uc_engine, ctypes.c_uint64, ctypes.POINTER(ctypes.c_char), ctypes.c_size_t)</div><div class="line">_setup_prototype(_uc, <span class="string">"uc_emu_start"</span>, ucerr, uc_engine, ctypes.c_uint64, ctypes.c_uint64, ctypes.c_uint64, ctypes.c_size_t)</div><div class="line">_setup_prototype(_uc, <span class="string">"uc_emu_stop"</span>, ucerr, uc_engine)</div><div class="line">_setup_prototype(_uc, <span class="string">"uc_hook_del"</span>, ucerr, uc_engine, uc_hook_h)</div><div class="line">_setup_prototype(_uc, <span class="string">"uc_mem_map"</span>, ucerr, uc_engine, ctypes.c_uint64, ctypes.c_size_t, ctypes.c_uint32)</div><div class="line">_setup_prototype(_uc, <span class="string">"uc_mem_map_ptr"</span>, ucerr, uc_engine, ctypes.c_uint64, ctypes.c_size_t, ctypes.c_uint32, ctypes.c_void_p)</div><div class="line">_setup_prototype(_uc, <span class="string">"uc_mem_unmap"</span>, ucerr, uc_engine, ctypes.c_uint64, ctypes.c_size_t)</div><div class="line">_setup_prototype(_uc, <span class="string">"uc_mem_protect"</span>, ucerr, uc_engine, ctypes.c_uint64, ctypes.c_size_t, ctypes.c_uint32)</div><div class="line">_setup_prototype(_uc, <span class="string">"uc_query"</span>, ucerr, uc_engine, ctypes.c_uint32, ctypes.POINTER(ctypes.c_size_t))</div><div class="line"></div><div class="line"><span class="comment"># uc_hook_add is special due to variable number of arguments</span></div><div class="line">_uc.uc_hook_add = _uc.uc_hook_add</div><div class="line">_uc.uc_hook_add.restype = ucerr</div><div class="line"></div><div class="line">UC_HOOK_CODE_CB = ctypes.CFUNCTYPE(<span class="keyword">None</span>, uc_engine, ctypes.c_uint64, ctypes.c_size_t, ctypes.c_void_p)</div><div class="line">UC_HOOK_MEM_INVALID_CB = ctypes.CFUNCTYPE(</div><div class="line">    ctypes.c_bool, uc_engine, ctypes.c_int,</div><div class="line">    ctypes.c_uint64, ctypes.c_int, ctypes.c_int64, ctypes.c_void_p</div><div class="line">)</div><div class="line">UC_HOOK_MEM_ACCESS_CB = ctypes.CFUNCTYPE(</div><div class="line">    <span class="keyword">None</span>, uc_engine, ctypes.c_int,</div><div class="line">    ctypes.c_uint64, ctypes.c_int, ctypes.c_int64, ctypes.c_void_p</div><div class="line">)</div><div class="line">UC_HOOK_INTR_CB = ctypes.CFUNCTYPE(</div><div class="line">    <span class="keyword">None</span>, uc_engine, ctypes.c_uint32, ctypes.c_void_p</div><div class="line">)</div><div class="line">UC_HOOK_INSN_IN_CB = ctypes.CFUNCTYPE(</div><div class="line">    ctypes.c_uint32, uc_engine, ctypes.c_uint32, ctypes.c_int, ctypes.c_void_p</div><div class="line">)</div><div class="line">UC_HOOK_INSN_OUT_CB = ctypes.CFUNCTYPE(</div><div class="line">    <span class="keyword">None</span>, uc_engine, ctypes.c_uint32,</div><div class="line">    ctypes.c_int, ctypes.c_uint32, ctypes.c_void_p</div><div class="line">)</div><div class="line">UC_HOOK_INSN_SYSCALL_CB = ctypes.CFUNCTYPE(<span class="keyword">None</span>, uc_engine, ctypes.c_void_p)</div></pre></td></tr></table></figure>
+<p>　メモリ・レジスタを読み書きできることがわかる．<br>　さきほどは基本ブロック・命令単位のコールバック関数——フック——を設置した．その他のフックも次のように書ける：</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div></pre></td><td class="code"><pre><div class="line">mu.hook_add(UC_HOOK_BLOCK, hook_block) <span class="comment"># 基本ブロック単位</span></div><div class="line">mu.hook_add(UC_HOOK_CODE, hook_code)   <span class="comment"># 命令単位</span></div><div class="line">mu.hook_add(UC_HOOK_CODE, hook_code, <span class="keyword">None</span>, ADDRESS, ADDRESS+<span class="number">20</span>) <span class="comment"># 指定範囲[ADDRESS, ADDRESS+20]の全命令</span></div><div class="line">mu.hook_add(UC_HOOK_INSN, hook_in, <span class="keyword">None</span>, <span class="number">1</span>, <span class="number">0</span>, UC_X86_INS_IN)   <span class="comment"># IN命令</span></div><div class="line">mu.hook_add(UC_HOOK_INSN, hook_out, <span class="keyword">None</span>, <span class="number">1</span>, <span class="number">0</span>, UC_X86_INS_OUT) <span class="comment"># OUT命令</span></div><div class="line">mu.hook_add(UC_HOOK_MEM_WRITE, hook_mem_access) <span class="comment"># メモリ書き込み</span></div><div class="line">mu.hook_add(UC_HOOK_MEM_READ, hook_mem_access)  <span class="comment"># メモリ読み込み</span></div><div class="line">mu.hook_add(UC_HOOK_MEM_READ | UC_HOOK_MEM_WRITE, hook_mem_access) <span class="comment"># その両方</span></div><div class="line">mu.hook_add(UC_HOOK_MEM_READ_UNMAPPED | UC_HOOK_MEM_WRITE_UNMAPPED, hook_mem_invalid) <span class="comment"># 無効なメモリアクセス</span></div><div class="line">mu.hook_add(UC_HOOK_INSN, hook_syscall, <span class="keyword">None</span>, <span class="number">1</span>, <span class="number">0</span>, UC_X86_INS_SYSCALL) <span class="comment"># システムコール</span></div><div class="line">mu.hook_add(UC_HOOK_INTR, hook_intr) <span class="comment"># 割り込み</span></div><div class="line">...</div></pre></td></tr></table></figure>
+<p>　こうしたフックや，これまで用いてきたレジスタやメモリの読み書き・エミュレーションといった機能は<code>Uc</code>クラスのメソッドとして用意されている：</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div><div class="line">22</div><div class="line">23</div><div class="line">24</div><div class="line">25</div><div class="line">26</div><div class="line">27</div><div class="line">28</div><div class="line">29</div><div class="line">30</div><div class="line">31</div><div class="line">32</div><div class="line">33</div><div class="line">34</div><div class="line">35</div><div class="line">36</div><div class="line">37</div><div class="line">38</div><div class="line">39</div><div class="line">40</div><div class="line">41</div><div class="line">42</div><div class="line">43</div><div class="line">44</div><div class="line">45</div><div class="line">46</div><div class="line">47</div><div class="line">48</div><div class="line">49</div><div class="line">50</div><div class="line">51</div><div class="line">52</div><div class="line">53</div><div class="line">54</div><div class="line">55</div><div class="line">56</div><div class="line">57</div><div class="line">58</div><div class="line">59</div><div class="line">60</div><div class="line">61</div><div class="line">62</div><div class="line">63</div><div class="line">64</div><div class="line">65</div><div class="line">66</div><div class="line">67</div><div class="line">68</div><div class="line">69</div><div class="line">70</div><div class="line">71</div><div class="line">72</div><div class="line">73</div><div class="line">74</div><div class="line">75</div><div class="line">76</div><div class="line">77</div><div class="line">78</div><div class="line">79</div><div class="line">80</div><div class="line">81</div><div class="line">82</div><div class="line">83</div><div class="line">84</div><div class="line">85</div><div class="line">86</div><div class="line">87</div><div class="line">88</div><div class="line">89</div><div class="line">90</div><div class="line">91</div><div class="line">92</div><div class="line">93</div><div class="line">94</div><div class="line">95</div><div class="line">96</div><div class="line">97</div><div class="line">98</div><div class="line">99</div><div class="line">100</div><div class="line">101</div><div class="line">102</div><div class="line">103</div><div class="line">104</div><div class="line">105</div><div class="line">106</div><div class="line">107</div><div class="line">108</div><div class="line">109</div><div class="line">110</div><div class="line">111</div><div class="line">112</div><div class="line">113</div><div class="line">114</div><div class="line">115</div><div class="line">116</div><div class="line">117</div><div class="line">118</div><div class="line">119</div><div class="line">120</div><div class="line">121</div><div class="line">122</div><div class="line">123</div><div class="line">124</div><div class="line">125</div><div class="line">126</div><div class="line">127</div><div class="line">128</div><div class="line">129</div><div class="line">130</div><div class="line">131</div></pre></td><td class="code"><pre><div class="line"><span class="class"><span class="keyword">class</span> <span class="title">Uc</span><span class="params">(object)</span>:</span></div><div class="line">    <span class="function"><span class="keyword">def</span> <span class="title">__init__</span><span class="params">(self, arch, mode)</span>:</span></div><div class="line">        <span class="comment"># verify version compatibility with the core before doing anything</span></div><div class="line">        (major, minor, _combined) = uc_version()</div><div class="line">        <span class="keyword">if</span> major != uc.UC_API_MAJOR <span class="keyword">or</span> minor != uc.UC_API_MINOR:</div><div class="line">            self._uch = <span class="keyword">None</span></div><div class="line">            <span class="comment"># our binding version is different from the core's API version</span></div><div class="line">            <span class="keyword">raise</span> UcError(uc.UC_ERR_VERSION)</div><div class="line"></div><div class="line">        self._arch, self._mode = arch, mode</div><div class="line">        self._uch = ctypes.c_void_p()</div><div class="line">        status = _uc.uc_open(arch, mode, ctypes.byref(self._uch))</div><div class="line">        <span class="keyword">if</span> status != uc.UC_ERR_OK:</div><div class="line">            self._uch = <span class="keyword">None</span></div><div class="line">            <span class="keyword">raise</span> UcError(status)</div><div class="line">        <span class="comment"># internal mapping table to save callback &amp; userdata</span></div><div class="line">        self._callbacks = &#123;&#125;</div><div class="line">        self._ctype_cbs = &#123;&#125;</div><div class="line">        self._callback_count = <span class="number">0</span></div><div class="line"></div><div class="line">...</div><div class="line"></div><div class="line">    <span class="comment"># emulate from @begin, and stop when reaching address @until</span></div><div class="line">    <span class="function"><span class="keyword">def</span> <span class="title">emu_start</span><span class="params">(self, begin, until, timeout=<span class="number">0</span>, count=<span class="number">0</span>)</span>:</span></div><div class="line">        status = _uc.uc_emu_start(self._uch, begin, until, timeout, count)</div><div class="line">        <span class="keyword">if</span> status != uc.UC_ERR_OK:</div><div class="line">            <span class="keyword">raise</span> UcError(status)</div><div class="line"></div><div class="line">...</div><div class="line"></div><div class="line">    <span class="comment"># return the value of a register</span></div><div class="line">    <span class="function"><span class="keyword">def</span> <span class="title">reg_read</span><span class="params">(self, reg_id)</span>:</span></div><div class="line">        <span class="keyword">if</span> self._arch == uc.UC_ARCH_X86:</div><div class="line">            <span class="keyword">if</span> reg_id <span class="keyword">in</span> [x86_const.UC_X86_REG_IDTR, x86_const.UC_X86_REG_GDTR, x86_const.UC_X86_REG_LDTR, x86_const.UC_X86_REG_TR]:</div><div class="line">                reg = uc_x86_mmr()</div><div class="line">                status = _uc.uc_reg_read(self._uch, reg_id, ctypes.byref(reg))</div><div class="line">                <span class="keyword">if</span> status != uc.UC_ERR_OK:</div><div class="line">                    <span class="keyword">raise</span> UcError(status)</div><div class="line">                <span class="keyword">return</span> reg.selector, reg.base, reg.limit, reg.flags</div><div class="line">            <span class="keyword">if</span> reg_id <span class="keyword">in</span> range(x86_const.UC_X86_REG_FP0, x86_const.UC_X86_REG_FP0+<span class="number">8</span>):</div><div class="line">                reg = uc_x86_float80()</div><div class="line">                status = _uc.uc_reg_read(self._uch, reg_id, ctypes.byref(reg))</div><div class="line">                <span class="keyword">if</span> status != uc.UC_ERR_OK:</div><div class="line">                    <span class="keyword">raise</span> UcError(status)</div><div class="line">                <span class="keyword">return</span> reg.mantissa, reg.exponent</div><div class="line"></div><div class="line">        <span class="comment"># read to 64bit number to be safe</span></div><div class="line">        reg = ctypes.c_int64(<span class="number">0</span>)</div><div class="line">        status = _uc.uc_reg_read(self._uch, reg_id, ctypes.byref(reg))</div><div class="line">        <span class="keyword">if</span> status != uc.UC_ERR_OK:</div><div class="line">            <span class="keyword">raise</span> UcError(status)</div><div class="line">        <span class="keyword">return</span> reg.value</div><div class="line"></div><div class="line">...</div><div class="line"></div><div class="line">    <span class="comment"># read data from memory</span></div><div class="line">    <span class="function"><span class="keyword">def</span> <span class="title">mem_read</span><span class="params">(self, address, size)</span>:</span></div><div class="line">        data = ctypes.create_string_buffer(size)</div><div class="line">        status = _uc.uc_mem_read(self._uch, address, data, size)</div><div class="line">        <span class="keyword">if</span> status != uc.UC_ERR_OK:</div><div class="line">            <span class="keyword">raise</span> UcError(status)</div><div class="line">        <span class="keyword">return</span> bytearray(data)</div><div class="line"></div><div class="line">...</div><div class="line"></div><div class="line">    <span class="comment"># add a hook</span></div><div class="line">    <span class="function"><span class="keyword">def</span> <span class="title">hook_add</span><span class="params">(self, htype, callback, user_data=None, begin=<span class="number">1</span>, end=<span class="number">0</span>, arg1=<span class="number">0</span>)</span>:</span></div><div class="line">        _h2 = uc_hook_h()</div><div class="line"></div><div class="line">        <span class="comment"># save callback &amp; user_data</span></div><div class="line">        self._callback_count += <span class="number">1</span></div><div class="line">        self._callbacks[self._callback_count] = (callback, user_data)</div><div class="line">        cb = <span class="keyword">None</span></div><div class="line"></div><div class="line">        <span class="keyword">if</span> htype == uc.UC_HOOK_INSN: <span class="comment"># 特定の命令に応じた内部処理</span></div><div class="line">            insn = ctypes.c_int(arg1)</div><div class="line">            <span class="keyword">if</span> arg1 == x86_const.UC_X86_INS_IN:  <span class="comment"># IN命令</span></div><div class="line">                cb = ctypes.cast(UC_HOOK_INSN_IN_CB(self._hook_insn_in_cb), UC_HOOK_INSN_IN_CB)</div><div class="line">            <span class="keyword">if</span> arg1 == x86_const.UC_X86_INS_OUT:  <span class="comment"># OUT命令</span></div><div class="line">                cb = ctypes.cast(UC_HOOK_INSN_OUT_CB(self._hook_insn_out_cb), UC_HOOK_INSN_OUT_CB)</div><div class="line">            <span class="keyword">if</span> arg1 <span class="keyword">in</span> (x86_const.UC_X86_INS_SYSCALL, x86_const.UC_X86_INS_SYSENTER):  <span class="comment"># SYSCALL/SYSENTER命令</span></div><div class="line">                cb = ctypes.cast(UC_HOOK_INSN_SYSCALL_CB(self._hook_insn_syscall_cb), UC_HOOK_INSN_SYSCALL_CB)</div><div class="line">            status = _uc.uc_hook_add(</div><div class="line">                self._uch, ctypes.byref(_h2), htype, cb,</div><div class="line">                ctypes.cast(self._callback_count, ctypes.c_void_p),</div><div class="line">                ctypes.c_uint64(begin), ctypes.c_uint64(end), insn</div><div class="line">            )</div><div class="line">        <span class="keyword">elif</span> htype == uc.UC_HOOK_INTR: <span class="comment"># 割り込み</span></div><div class="line">            cb = ctypes.cast(UC_HOOK_INTR_CB(self._hook_intr_cb), UC_HOOK_INTR_CB)</div><div class="line">            status = _uc.uc_hook_add(</div><div class="line">                self._uch, ctypes.byref(_h2), htype, cb,</div><div class="line">                ctypes.cast(self._callback_count, ctypes.c_void_p),</div><div class="line">                ctypes.c_uint64(begin), ctypes.c_uint64(end)</div><div class="line">            )</div><div class="line">        <span class="keyword">else</span>:</div><div class="line">            <span class="keyword">if</span> htype <span class="keyword">in</span> (uc.UC_HOOK_BLOCK, uc.UC_HOOK_CODE): <span class="comment"># 基本ブロック・命令単位</span></div><div class="line">                <span class="comment"># set callback with wrapper, so it can be called</span></div><div class="line">                <span class="comment"># with this object as param</span></div><div class="line">                cb = ctypes.cast(UC_HOOK_CODE_CB(self._hookcode_cb), UC_HOOK_CODE_CB)</div><div class="line">                status = _uc.uc_hook_add(</div><div class="line">                    self._uch, ctypes.byref(_h2), htype, cb,</div><div class="line">                    ctypes.cast(self._callback_count, ctypes.c_void_p),</div><div class="line">                    ctypes.c_uint64(begin), ctypes.c_uint64(end)</div><div class="line">                )</div><div class="line">            <span class="keyword">elif</span> htype &amp; (uc.UC_HOOK_MEM_READ_UNMAPPED |  <span class="comment"># 無効なメモリアクセス</span></div><div class="line">                          uc.UC_HOOK_MEM_WRITE_UNMAPPED |</div><div class="line">                          uc.UC_HOOK_MEM_FETCH_UNMAPPED |</div><div class="line">                          uc.UC_HOOK_MEM_READ_PROT |      <span class="comment"># 保護された領域へのメモリアクセス</span></div><div class="line">                          uc.UC_HOOK_MEM_WRITE_PROT |</div><div class="line">                          uc.UC_HOOK_MEM_FETCH_PROT):</div><div class="line">                cb = ctypes.cast(UC_HOOK_MEM_INVALID_CB(self._hook_mem_invalid_cb), UC_HOOK_MEM_INVALID_CB)</div><div class="line">                status = _uc.uc_hook_add(</div><div class="line">                    self._uch, ctypes.byref(_h2), htype, cb,</div><div class="line">                    ctypes.cast(self._callback_count, ctypes.c_void_p),</div><div class="line">                    ctypes.c_uint64(begin), ctypes.c_uint64(end)</div><div class="line">                )</div><div class="line">            <span class="keyword">else</span>: <span class="comment"># メモリ読み書き</span></div><div class="line">                cb = ctypes.cast(UC_HOOK_MEM_ACCESS_CB(self._hook_mem_access_cb), UC_HOOK_MEM_ACCESS_CB)</div><div class="line">                status = _uc.uc_hook_add(</div><div class="line">                    self._uch, ctypes.byref(_h2), htype, cb,</div><div class="line">                    ctypes.cast(self._callback_count, ctypes.c_void_p),</div><div class="line">                    ctypes.c_uint64(begin), ctypes.c_uint64(end)</div><div class="line">                )</div><div class="line"></div><div class="line">        <span class="comment"># save the ctype function so gc will leave it alone.</span></div><div class="line">        self._ctype_cbs[self._callback_count] = cb</div><div class="line"></div><div class="line">        <span class="keyword">if</span> status != uc.UC_ERR_OK:</div><div class="line">            <span class="keyword">raise</span> UcError(status)</div><div class="line"></div><div class="line">        <span class="keyword">return</span> _h2.value</div></pre></td></tr></table></figure>
+<h1 id="おわりに"><a href="#おわりに" class="headerlink" title="おわりに"></a>おわりに</h1><p>　PythonからUnicornを利用する方法を紹介した．<br>　結局のところctypesでラップされており，こうした機能がどのようにして実行されるのかは本体のコードを読まなければ理解できない．そういうわけで，そのうちUnicorn本体の実装を読んでいくことにする．</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://ntddk.github.io/2016/07/09/unicorn-internals-python/" data-id="cj13oizhb001cpcosykf1twgy" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/dynamic-binary-translation/">dynamic binary translation</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+    <article id="post-cyber-security-in-israel" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    
+      <header class="article-header">
+        
+  
+    <a class="article-title" href="/2016/06/29/cyber-security-in-israel/">イスラエルのサイバーセキュリティ事情</a>
+  
+
+      </header>
+    
+    <time class="article-date" datetime="2016-06-29T13:30:00.000Z" itemprop="datePublished">06-29-2016</time>
+    
+  </div>
+  <div class="article-inner">
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p>　これはマルウェアに感染した端末の基板で構成されたトロイの木馬．国際会議<a href="http://cyberweek.tau.ac.il" target="_blank" rel="external">Cyber Week</a>の展示の一環．</p>
+<p><img src="/image/israel/cyberhorse.jpg" width="100%" height="100%"></p>
+<h1 id="はじめに"><a href="#はじめに" class="headerlink" title="はじめに"></a>はじめに</h1><p>　先週，イスラエル外務省からの招待でイスラエルのサイバーセキュリティ産業の視察に参加した．<br>　視察の参加者は日本政府・重要インフラ・セキュリティ業界関係に大別される．視察の目的は彼らにイスラエルの起業文化とサイバーセキュリティ技術を伝え，相互理解を図ることにあった．そんな視察になぜ一介のモラトリアム大学生でしかない私が潜り込めたのかというと，イスラエル外務省をハックしたから——というのは嘘．昨年発表した<a href="http://codeblue.jp/" target="_blank" rel="external">CODEBLUE</a>というセキュリティカンファレンスのオーガナイザーにイスラエル大使館から打診があり，若者枠に組み込まれたという経緯である．なんと旅費はイスラエル外務省の負担．<br>　そういうわけで，記憶が錆びつかないうちに，イスラエルのサイバーセキュリティ事情を紹介したい．</p>
+<h1 id="総括"><a href="#総括" class="headerlink" title="総括"></a>総括</h1><p>　最初にまとめてしまうと，イスラエルのサイバーセキュリティ産業は小国ゆえのフットワークの軽さがあってこそ成り立っている．とりわけ，以下の要素に負うところが大きい：</p>
+<ul>
+<li>徴兵制による人的つながり</li>
+<li>R&amp;Dを重視したスタートアップのエコシステム</li>
+<li>危機感</li>
+</ul>
+<p>したがって，そのまま日本にあてはめて考えることはできないが，柔軟な組織間連携の体制は間違いなく参考になるはずだ．</p>
+<h2 id="徴兵制による人的つながり"><a href="#徴兵制による人的つながり" class="headerlink" title="徴兵制による人的つながり"></a>徴兵制による人的つながり</h2><p>　イスラエルでは，18歳から男性は36ヶ月，女性は21ヶ月にわたる兵役が義務づけられている．高校を卒業して大学に進学するのではなく，まず国防軍 (IDF) に組み込まれるというわけだ．ツアーガイドの方が「6ヶ月間の基礎訓練が終わってはじめて教官が名前を教えてくれる．それからは下の名前で呼び合う，生涯にわたる仲になる」というエモい話を聞かせてくれたが，この兵役での人的つながりが，イスラエルのサイバーセキュリティ産業に多大な影響を及ぼしている．<strong>分野を越えたコネクションが形成され，小国ゆえに誰がどのように優秀か国が一元的に把握できる</strong>ためである．<br>　とりわけ優秀な人材は<a href="https://en.wikipedia.org/wiki/Talpiot_program" target="_blank" rel="external">タルピオット</a>という3年で数学と物理学の学位および中尉の階級を取得する人材育成プログラムに組み込まれるか，<a href="https://en.wikipedia.org/wiki/Unit_8200" target="_blank" rel="external">8200部隊</a>という諜報部隊——かのStuxnetをNSAと共同で開発したといういわくつきの——に配属され，それらの出身者であることがキャリアパス上の絶大なアピールポイントとなっている．<br>　このように兵役による能力のフィルタリングがあるため，学生は日本のように就職活動をするのではなく，優秀だった順に政府機関や企業から声がかかるという．多くの企業は軍との直接的なつながりを持たないが，重要インフラ事業者や政府のサイバーセキュリティ関連機関，軍需企業は軍と密接に結びついていて，盛んに情報を共有しているという．<br>　軍との関係は兵役が終わったらそれきりというわけではない．たとえば視察時に開催されていたCyber Week併設の全年齢対象CTFでは，空軍が（おそらくリクルートを兼ねて）作成した問題が用いられていた．開始早々に見学した問題の内容としてはMetasploitを用いるペンテストのようなものや，Androidアプリケーションのリバースエンジニアリングなど．</p>
+<h2 id="R-amp-Dを重視したスタートアップのエコシステム"><a href="#R-amp-Dを重視したスタートアップのエコシステム" class="headerlink" title="R&amp;Dを重視したスタートアップのエコシステム"></a>R&amp;Dを重視したスタートアップのエコシステム</h2><p>　さて，イスラエル政府が擁するサイバーセキュリティ関連機関は軍を除くと次のような構造になっている：</p>
+<ul>
+<li>イスラエル首相府<ul>
+<li><a href="http://www.pmo.gov.il/English/PrimeMinistersOffice/DivisionsAndAuthorities/cyber/Pages/default.aspx" target="_blank" rel="external">国家サイバー局 (NCB: National Cyber Bureau)</a><ul>
+<li><a href="http://www.cyberspark.org.il/" target="_blank" rel="external">CyberSpark</a></li>
+<li><a href="https://icrc.tau.ac.il/" target="_blank" rel="external">ICRC (Blavatnik Interdisciplinary Cyber Research Center)</a></li>
+<li>IC3 (Israel Cyber Companies Consortium)</li>
+</ul>
+</li>
+<li>国家サイバーセキュリティ委員会 (NCSA: National Cyber Security Authority)<ul>
+<li><a href="https://il-cert.org.il/" target="_blank" rel="external">IL-CERT</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<p>　国家サイバー局は日本でいうところの<a href="http://www.nisc.go.jp/" target="_blank" rel="external">内閣サイバーセキュリティセンター (NISC) </a>的な立ち位置で，サイバーセキュリティ関連の産業育成と防衛について政府に進言する立場を担っている．国家サイバーセキュリティ委員会は各種標準化団体のほかCSIRTとしてIL-CERTを抱える機関である．<strong>IL-CERTではSTIX/TAXIIを用いた情報共有体制が確立されており，検体の挙動をタグベースで共有することで，機微情報を漏らすことなく複数機関にまたがったインシデントに対応できるようになっている</strong>らしい．視察では，ウェブベースの情報共有ツールも紹介された．<br>　国家サイバー局の下部にあるCyberSparkはイスラエル南部の中心都市ベエルシェバにある研究開発特区・機関で，ベンチャーキャピタル，国内のスタートアップ企業のほか，IBMやLockheed Martinといった多国籍企業，隣接するベン・グリオン大学から構成される．ネゲブ砂漠の開発を進めつつ，<strong>競合他社を大学との共同研究という形でまとめ，その研究をスタートアップとして興す</strong>ことを目的としているようだ．ICRCもまたテルアビブ大学を中心とした同様の学際的研究機関で，Cyber Weekのオーガナイザーでもあった．これらは東大京大と産総研やNII, NICTが直接つながっているようなものだと思えばよいが，研究内容を即座にスタートアップ化する点は興味深い．<br>　IC3は国営の軍需企業<a href="http://www.iai.co.il/" target="_blank" rel="external">IAI (Israel Aerospace Industries) </a>を中心としたジョイントベンチャーで，2020年の東京オリンピックに向けた日本市場開拓を虎視眈々とねらっている．<br>　この構造には，政府機関のほか次のようなベンチャーキャピタルとスタートアップ推進企業が噛んでいる：</p>
+<ul>
+<li><a href="https://www.bvp.com/" target="_blank" rel="external">BVP (Bessemer Venture Partners)</a></li>
+<li><a href="www.jvpvc.com/">JVP (Jerusalem Venture Partners)</a></li>
+<li><a href="http://www.team8.vc/" target="_blank" rel="external">Team8</a></li>
+</ul>
+<p>　BVPはアメリカ最古のベンチャーキャピタルだが，イスラエルのサイバーセキュリティ産業に熱視線を投げかけており，後述のTeam8や<a href="http://www.illusivenetworks.com/" target="_blank" rel="external">illusive networks</a>などに投資している．<br>　JVPはイスラエルのベンチャーキャピタルで，CyberSparkを構成する企業のひとつである．Cyber Labsという研究部門も設けており，軍と連携を図りつつ，国内のスタートアップをいくつも育成してきた．興味深かったのは<a href="http://www.cyactive.com/" target="_blank" rel="external">CyActive</a>なる企業の取り組み．遺伝的アルゴリズムを用いて既存のマルウェアを変異させることで，亜種そして未来のマルウェアに対して頑強なヒューリスティックエンジンを開発するといった研究を行っているそうだ．折しも今年のはじめに国際会議NDSSにおいて（PDFファイルに限定してはいるものの）<a href="http://www.internetsociety.org/sites/default/files/11_2-ndss2016-slides.pdf" target="_blank" rel="external">類似の研究</a>が発表されており，今後の動向に注目したい．<br>　Team8はサイバーセキュリティのR&amp;Dをスタートアップ化することを目的としたインキュベーション企業で，illusive networksの母体である．Team8の創設者はかの8200部隊出身者であり，軍で培った問題意識やマネジメント能力が糧となっていると語る．<br>　これらの企業の支援のもと興ったスタートアップは，狭いイスラエル国内でシェアを握るのではなく，海外市場の開拓とCyberSparkに参画しているような多国籍企業へのイグジットを目的としている．<br>　しかしこうした産学軍連携のスタートアップ促進体制は，<strong>イスラエルが小国であり，かつ物騒な隣人に恵まれていて，軍が産業の中核に食い込んでいるという特性</strong>（それは同時に「<strong>だからこそ</strong>イスラエルはサイバーセキュリティ先進国である」というイメージを抱かせることにも寄与している）あってこそだろう．</p>
+<h2 id="危機感"><a href="#危機感" class="headerlink" title="危機感"></a>危機感</h2><p>　彼らの口ぶりからすると，やはり周辺諸国との関係がサイバーセキュリティ産業の発展を後押ししているようだ．<br>　たとえば，<a href="https://www.iec.co.il/" target="_blank" rel="external">イスラエル電力公社</a>は国内の電力を一手に担っており，発電所がサイバー攻撃によって停止してしまえばイスラエルの国防は壊滅的な打撃を被る（もちろん周辺諸国からの給電は望めない）．したがって彼らのサイバーセキュリティに対する意識はきわめて高い．彼らのSOCは各施設に派遣されたオペレーターとそこからのアラートを分析する本社施設に分散して設置されており，情報の集約（縮約）と即時共有に力を入れている様子がうかがえた．<br>　また，電力公社の子会社として，電力制御システムに対するサイバー攻撃とその防御の訓練施設<a href="http://www.cybergym.co.il/" target="_blank" rel="external">CyberGym</a>がある．CyberGymは電力公社における訓練のみならず，他社からの依頼に応じてその運用環境を可能な限り再現，かつ攻撃ベクタを強調した環境を用いた5日ほどの演習サービスを提供している．演習場には小型のプラント装置が設置されており，攻撃によってはそこから水が噴き出してくるという．そうした物理的な（！）非常事態への対応力を養うことも，演習の目的であるようだ．<br>　電力公社のほか，IAIは企業のネットワークに対するサイバー攻撃演習サービスを提供している．IAIの演習では，仮想マシン・仮想ネットワーク上の演習環境を用いて，シナリオベースで攻撃への対応を学べるようになっている．<br>　電力公社・IAIとも，ベンダを問わずハードウェア・サーバソフトウェアを柔軟に組み替えられる環境を提供しており，有事——<strong>つねに有事ともいえる</strong>——に備えた訓練に余念がない．</p>
+<h1 id="おわりに"><a href="#おわりに" class="headerlink" title="おわりに"></a>おわりに</h1><p>　ざっくりとではあるが，イスラエルのサイバーセキュリティ事情を紹介してきた．<br>　国防上の要請があるため，どうしても緊張感は漂っているし，そこばかり強調したような文章になってしまったが，いい国だと思う．海は綺麗だし，食事も野菜が多く健康的で美味（帰国したらすぐに口内炎ができてしまった）．なにより，技術者が必要とされ，尊敬される風土である．サイバーセキュリティ関連の事業を興したいのであれば，移住を十分検討していい．とりあえずビザ申請しておくか……．<br>　はじめに断ったとおり，私はインテリジェンス活動や最新の脅威分析に携わっているわけではない，しがない学生なので，提示できる情報の解像度はこの程度である．同行した<a href="https://www.facebook.com/dnobori/posts/997712146972091?pnref=story" target="_blank" rel="external">ソフトイーサ登さんのレポート</a>も参照されたし．<br>　そのほかメモと感想：</p>
+<ul>
+<li>テルアビブ大学の学生のポスターセッション，みんな（セキュリティ分野なのに）機械学習やってて海外でも流行ってるんだなと思った</li>
+<li>何の変哲もない（外には看板など一切なし）アパートの一区画を徴発して国家サイバー局が運営されていて流石にクソ興奮した，まあ見学者向けのダミーかもしれないが</li>
+<li>イスラエル電力公社のSOCではおよそオペレーターの役には立たないだろう攻撃元の国をGoogle Mapにマッピングするシステムが表示されていたが，「可視化はきわめて重要だ．なぜなら，視察にきた海外政府関係者におたくの国からこれほど攻撃されている．ゆえに～とアピールできるからだ」と語っていたのがよかった．nicterやWADJETもそんな感じに使えるのかな</li>
+<li>在イスラエル日本国大使館大使公邸にお邪魔したら入口の扉が3つあってモンティ・ホール問題かよと思った</li>
+<li>飲み屋でチェイサーに水 (water) を頼んだら毎回ウォッカ (vodka) が出てくるので英語力の低さを呪っていたらロシア系移民のふざけた風習だった</li>
+<li>エルサレムもテルアビブも治安としては渋谷とかその辺程度</li>
+<li>人工知能による意思決定の文脈でadversarial examplesの問題を引き合いに出していた人がいて，やはりセキュリティ分野ではルールベースというか決定木に起こせないとトリアージが効かないから難しいなと思った</li>
+<li>死海の名前の由来は「塩分濃度が高すぎて魚が住めないから」だそうだが，湖水の比重が高く多少の風では波立たないため時間が停まっているように見える様子が死を連想させる</li>
+<li>IED兵士はみんなタボールを抱えているのかと思ったらベエルシェバの検問を除いて警察と同様みなCAR-15系にジェリコだった</li>
+<li>イスラエルはLGBTに寛容で多様性を尊重する国であるというイメージ戦略なのだろうか，カーナビの地図上でLGBT区域が緑色に表示されるらしい</li>
+<li>ベン・グリオン国際空港の端末はWindows + IE9でアエロフロート機内の端末はLinuxベース</li>
+<li>トランジットで立ち寄ったシェレメチェボ空港での入出国審査はロシアだし「<a href="http://store.steampowered.com/app/239030/" target="_blank" rel="external">Papers, Please</a>」のような感じだと思っていたらそんなことはなかった</li>
+<li>イスラエル出国審査時にパスポートの顔写真と顔が一致するかスキャンする（？）装置があったが，しっかりaccuracyが出るわけないのでおそらくはハリボテで，裏で人間がチェックしているのだろう</li>
+<li>アラブ諸国に入国できなくなるという噂のパスポートへのスタンプは廃止されていた</li>
+</ul>
+<p>　はい．</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://ntddk.github.io/2016/06/29/cyber-security-in-israel/" data-id="cj13oizgg000epcosdbcro0xi" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/intelligence/">intelligence</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+    <article id="post-neural-image-caption-generator-twitter-bot" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    
+      <header class="article-header">
+        
+  
+    <a class="article-title" href="/2016/03/26/neural-image-caption-generator-twitter-bot/">写真から説明文を自動生成するbotを作った</a>
+  
+
+      </header>
+    
+    <time class="article-date" datetime="2016-03-25T15:30:00.000Z" itemprop="datePublished">03-26-2016</time>
+    
+  </div>
+  <div class="article-inner">
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p><center><br><a class="twitter-timeline" href="https://twitter.com/img2cap" data-widget-id="713361832895860739" target="_blank" rel="external">@img2capさんのツイート</a></center></p>
+<script>!function(d,s,id){var js,fjs=d.getElementsByTagName(s)[0],p=/^http:/.test(d.location)?'http':'https';if(!d.getElementById(id)){js=d.createElement(s);js.id=id;js.src=p+"://platform.twitter.com/widgets.js";fjs.parentNode.insertBefore(js,fjs);}}(document,"script","twitter-wjs");</script>
+
+<h1 id="これはなに"><a href="#これはなに" class="headerlink" title="これはなに"></a>これはなに</h1><p>　<code>@img2cap file</code>という形式で画像を投げつけると説明文をつけ加えて返信するだけのTwitter bot.</p>
+<h1 id="しくみ"><a href="#しくみ" class="headerlink" title="しくみ"></a>しくみ</h1><p>　CNN + LSTM.<br>　以下の論文や実装を参考にした．裏ではChainerが動いている．</p>
+<ul>
+<li>論文<ul>
+<li><a href="http://arxiv.org/abs/1411.4555" target="_blank" rel="external">[1411.4555] Show and Tell: A Neural Image Caption Generator</a></li>
+</ul>
+</li>
+<li>実装<ul>
+<li><a href="https://github.com/apple2373/chainer_caption_generation" target="_blank" rel="external">apple2373/chainer_caption_generation: Caption generation from images using deep neural net</a></li>
+<li><a href="https://github.com/dsanno/chainer-image-caption" target="_blank" rel="external">dsanno/chainer-image-caption</a></li>
+</ul>
+</li>
+<li>データセット<ul>
+<li><a href="http://mscoco.org" target="_blank" rel="external">Microsoft COCO</a>を<a href="https://gist.github.com/ksimonyan/3785162f95cd2d5fee77#file-readme-md" target="_blank" rel="external">VGG_ILSVRC_19_layers</a>で<a href="http://cs.stanford.edu/people/karpathy/deepimagesent/coco.zip" target="_blank" rel="external">学習したもの</a></li>
+</ul>
+</li>
+</ul>
+<p>　はじめは論文通りの活性化関数と勾配法を試してみたが，dsanno氏のいうようにSGDよりAdamの方が高速．MomentumSGDと比べてもみたが即Adam最高！　という気分にさせられた．AdamがそもそもAdaGradとRMSPropのいいとこどりらしいので，その両者は試していない．なおネットワーク構成は論文のまま．<br>　データセットに含まれているのは<strong>写真</strong>8万枚とその説明文だけ．よってTwitterの各位がいくらイラストを投げつけようと無駄な話で，その手のニーズに対応するには<a href="https://nico-opendata.jp/ja/index.html" target="_blank" rel="external">ニコニコ静画のデータセット</a>あたりを使う必要がありそう．これには画像とそのタグ，コメントを学習したモデルが含まれているそうだが，説明文の生成というタスクに向けてどう転移学習させるか目処は立っていない．<br>　当然ながら学習データと実際に各位が投げつけてくるデータの分布は全く異なるし，困ったものだ．</p>
+<h1 id="謝辞"><a href="#謝辞" class="headerlink" title="謝辞"></a>謝辞</h1><p>　お遊びにGPU環境を貸してくれた<a href="https://twitter.com/georgioush" target="_blank" rel="external">@georgioush</a>, <a href="https://twitter.com/dasoran" target="_blank" rel="external">@dasoran</a>両氏に感謝．</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://ntddk.github.io/2016/03/26/neural-image-caption-generator-twitter-bot/" data-id="cj13oizha000opcoss6a2cbbt" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/machine-learning/">machine learning</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/neural-network/">neural network</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+    <article id="post-book-guide-for-computational-neuroscience" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    
+      <header class="article-header">
+        
+  
+    <a class="article-title" href="/2016/03/21/book-guide-for-computational-neuroscience/">ニューラルネットと脳の違いが知りたくて</a>
+  
+
+      </header>
+    
+    <time class="article-date" datetime="2016-03-20T15:30:00.000Z" itemprop="datePublished">03-21-2016</time>
+    
+  </div>
+  <div class="article-inner">
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p>　読書メモ．</p>
+<h1 id="はじめに"><a href="#はじめに" class="headerlink" title="はじめに"></a>はじめに</h1><p>　人間の脳を模したニューラルネットの手法，<ruby>深層学習<rt>ディープラーニング</rt></ruby>がめざましい成果を挙げている–といった謳い文句をよく目にする．だが機械学習の専門書を紐解いても出てくるのはロジスティック回帰のお化けばかり．<br>　われらがPRMLのニューラルネットを扱う章にはこうある．</p>
+<blockquote>
+<p>しかしながら，パターン認識という実際的な応用の観点からは，生物学的な現実性などは全く不要な制約である．<br>　　　　　　　　　　　　　　　　　　　　　　　　– C.M.ビショップ『<a href="http://www.amazon.co.jp/dp/4621061224" target="_blank" rel="external">パターン認識と機械学習 上</a>』 (p.226)</p>
+</blockquote>
+<p>　では，機械学習の文脈で言うところのニューラルネットと脳はどれほど異なっているのだろうか？</p>
+<h1 id="ニューラルネットと脳の違い"><a href="#ニューラルネットと脳の違い" class="headerlink" title="ニューラルネットと脳の違い"></a>ニューラルネットと脳の違い</h1><p>　結論から言えば全然違うわけだが，ざっくり以下の三点から整理できる（と思う）：</p>
+<ul>
+<li>ニューロンのモデル</li>
+<li>ネットワーク構造</li>
+<li>微分計算の手法</li>
+</ul>
+<h2 id="ニューロンのモデル"><a href="#ニューロンのモデル" class="headerlink" title="ニューロンのモデル"></a>ニューロンのモデル</h2><p>　現在広く普及している多層パーセプトロンは，単純な差分方程式であるMcCulloch-Pittsモデルをベースに，層を重ねたとき微分できるような活性化関数を組み合わせている．だがそれ以外にも膜電位が変動するメカニズムを考慮した：</p>
+<ul>
+<li>Hodgkin-Huxleyモデル</li>
+<li>FitzHugh-Nagumoモデル</li>
+<li>Izhikevichモデル</li>
+</ul>
+<p>などが提案されている–というようなことは機械学習の道具としてニューラルネットを扱っている本にはあまり書かれていない．ひとまず手元にあった：</p>
+<ul>
+<li>はじパタこと『<a href="http://www.amazon.co.jp/dp/4627849710/" target="_blank" rel="external">はじめてのパターン認識</a>』</li>
+<li>わかパタこと『<a href="http://www.amazon.co.jp/dp/4274131491/" target="_blank" rel="external">わかりやすいパターン認識</a>』</li>
+<li>『<a href="http://www.amazon.co.jp/dp/B016Q22IX2/" target="_blank" rel="external">ITエンジニアのための機械学習理論入門</a>』</li>
+<li>PRMLこと『<a href="http://www.amazon.co.jp/dp/4621061224/" target="_blank" rel="external">パターン認識と機械学習</a>』</li>
+<li>青色の『<a href="http://www.amazon.co.jp/dp/B018K6C99A/" target="_blank" rel="external">深層学習</a>』</li>
+<li>紫色の『<a href="http://www.amazon.co.jp/dp/B01B768QJW/" target="_blank" rel="external">深層学習</a>』</li>
+</ul>
+<p>はモデル名に言及しておらず，McCulloch-Pittsモデルを紹介していたのは：</p>
+<ul>
+<li>『<a href="http://www.amazon.co.jp/dp/4274218023/" target="_blank" rel="external">進化計算と深層学習</a>』</li>
+<li>『<a href="http://www.amazon.co.jp/dp/406153825X" target="_blank" rel="external">イラストで学ぶディープラーニング</a>』</li>
+</ul>
+<p>だけだった．<br>　ちなみにこの中だと機械学習マジで何もわからんって人はまずサンプルコードを動かしながら『<a href="http://www.amazon.co.jp/dp/B016Q22IX2/" target="_blank" rel="external">ITエンジニアのための機械学習理論入門</a>』を読むとよい．深層学習については<a href="http://www.amazon.co.jp/dp/B01B768QJW/" target="_blank" rel="external">紫色の本</a>が好み．<a href="http://www.amazon.co.jp/dp/B018K6C99A/" target="_blank" rel="external">青色の本</a>は数式が追いにくい（どっちもどっちだが）上，深層学習以前と以後でどのような変遷があったのか不明瞭で，『<a href="http://www.amazon.co.jp/dp/4274218023/" target="_blank" rel="external">進化計算と深層学習</a>』は概論のみ．『<a href="http://www.amazon.co.jp/dp/406153825X" target="_blank" rel="external">イラストで学ぶディープラーニング</a>』は読みやすく，汎化性能を向上させる方法も載っていて実践的ではあるが，RNNに触れられていないのが惜しい．<br>　さて，それではニューロンのモデルが複雑であれば脳に近いのかというと，どうやらそういうわけでもないらしい．たとえば複雑かつイオンコンダクタンスの挙動が緻密なHodgkin-Huxleyモデルは，ヤリイカの軸索のニューロンをモデル化したものだが，これはヒトの大脳皮質とはタイプが異なるようだ．<br>　しかし，McCulloch-Pittsモデルには，STDP (Spike Timing Dependent Plasticity, スパイク時刻依存シナプス可塑性) を表現できていないという問題点がある．STDPはニューロンの発火タイミングに応じて重みを更新する規則で，脳はこれにより時系列を学習しているとされる．<br>　こういったことを把握するためにいくつか神経科学の本を読んでみた．だいたいの書籍がまず最初にニューロンのモデルを紹介し，それからニューロンの同期に章を割き，つづいて脳の任意の部位の詳説という体裁をとっている．</p>
+<ul>
+<li>『<a href="http://www.amazon.co.jp/dp/4130643010/" target="_blank" rel="external">脳の計算論</a>』</li>
+<li>『<a href="http://www.amazon.co.jp/dp/4130623044/" target="_blank" rel="external">理工学系からの脳科学入門</a>』</li>
+<li>『<a href="http://www.amazon.co.jp/dp/B006YKU67M/" target="_blank" rel="external">臨時別冊数理科学 SGCライブラリ 60 「計算神経科学への招待」脳の学習機構の理解を目指して 2007年 12月号</a>』</li>
+<li>『<a href="http://www.amazon.co.jp/dp/478281514X/" target="_blank" rel="external">脳の計算理論</a>』</li>
+</ul>
+<p>など．全部読んだ感想としては『<a href="http://www.amazon.co.jp/dp/4130643010/" target="_blank" rel="external">脳の計算論</a>』が最も明快かつ簡潔で，STDPにも詳しく，この記事で触れている範囲のことはほぼカバーしている．<br>　Izhikevichモデルの考案者も『<a href="http://www.izhikevich.org/publications/dsn/index.htm" target="_blank" rel="external">Dynamical Systems in Neuroscience: The Geometry of Excitability and Bursting</a>』という本を書いているのだが，これは難しそう．<br>　本腰を入れて学ぶには「<a href="http://gaya.jp/research/LTP-papers.htm" target="_blank" rel="external">シナプス可塑性の初心者へ　推薦論文リスト</a>」を消化すべきなのだろう．</p>
+<h2 id="ネットワーク構造"><a href="#ネットワーク構造" class="headerlink" title="ネットワーク構造"></a>ネットワーク構造</h2><p>　パーセプトロンは小脳に，BESOMは大脳皮質に，畳み込みニューラルネットは受容野に，TD学習は大脳基底核に似ていると言われている．ではどこが．<br>　小脳についてはさきほど挙げた『<a href="http://www.amazon.co.jp/dp/478281514X/" target="_blank" rel="external">脳の計算理論</a>』がよい．この<a href="http://www.cns.atr.jp/~kawato/Japanese.html" target="_blank" rel="external">著者</a>は小脳による運動の内部モデル獲得というテーマの大家だそうで，公開されている無料のPDFでその足跡が追える．Hodgkin-Huxleyモデルの解説も丁寧．あわせて“<a href="http://ci.nii.ac.jp/naid/10028190905" target="_blank" rel="external">現代の小脳パーセプトロン仮説</a>”も読みたい．<br>　大脳皮質については<a href="https://staff.aist.go.jp/y-ichisugi/j-index.html" target="_blank" rel="external">BESOMの人</a>の「<a href="https://staff.aist.go.jp/y-ichisugi/rapid-memo/brain-deep-learning.html" target="_blank" rel="external">大脳皮質と deep learning の類似点と相違点</a>」がとにかくわかりやすい．やはり正則化が重要なようだが，それについては「<a href="http://blog.livedoor.jp/brain_network/archives/50968197.html" target="_blank" rel="external">脳とネットワーク/The Swingy Brain:まとめてスパースコーディング - livedoor Blog（ブログ）</a>」に挙げられている論文を読むとよさそう．<br>　さらなる部位との関連については，「<a href="https://staff.aist.go.jp/y-ichisugi/brain-archi/j-index.html" target="_blank" rel="external">全脳アーキテクチャ解明に向けて</a>」から辿れる資料が親切だった．特に「<a href="http://www.slideshare.net/sato0427/wba3rd-satonao" target="_blank" rel="external">海馬神経回路の機能ダイナミクス</a>」で触れられている内容は元論文の古さとは裏腹にあまり書籍では見ない．</p>
+<h2 id="微分計算の手法"><a href="#微分計算の手法" class="headerlink" title="微分計算の手法"></a>微分計算の手法</h2><p>　みんな大好き誤差逆伝播法は脳では使われていない．じゃあどうすればいいかというと：</p>
+<ul>
+<li>『<a href="http://www.amazon.co.jp/dp/0262650541" target="_blank" rel="external">Computational Explorations in Cognitive Neuroscience: Understanding the Mind by Simulating the Brain</a>』<ul>
+<li>5章</li>
+</ul>
+</li>
+<li>“<a href="http://arxiv.org/abs/1412.7525" target="_blank" rel="external">Difference Target Propagation</a>”<ul>
+<li><a href="http://deeplearning.jp/wp-content/uploads/2014/04/20150826_suzuki.pdf" target="_blank" rel="external">日本語の解説</a></li>
+</ul>
+</li>
+<li>“<a href="http://arxiv.org/abs/1502.04156" target="_blank" rel="external">Towards Biologically Plausible Deep Learning</a>”</li>
+</ul>
+<p>がある．後者2つは深層学習の大家であるBengioらの研究で，ここでSTDPが重要となってくるらしい．生物学的な妥当な深層学習まであと何年だろうか．</p>
+<h1 id="おわりに"><a href="#おわりに" class="headerlink" title="おわりに"></a>おわりに</h1><p>　機械学習のことは多少わかるけど（計算論的）神経科学については何から勉強すればいいのかもわからないというところから，騙し騙しとはいえ論文を読める程度になるにはこのあたりを読むとよいのではないかと思います．<br>　なお，このブログに貼られているAmazonリンクはいずれも素のリンクです．ご安心ください．アフィリエイトリンクを貼りまくって小銭を稼ごうと画策しましたが審査に落ちました．</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://ntddk.github.io/2016/03/21/book-guide-for-computational-neuroscience/" data-id="cj13oizgg000apcosvudbqjgc" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/machine-learning/">machine learning</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/neural-network/">neural network</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+    <article id="post-sushi-and-memorized-recursion" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    
+      <header class="article-header">
+        
+  
+    <a class="article-title" href="/2016/03/02/sushi-and-memorized-recursion/">寿司とメモ化再帰</a>
+  
+
+      </header>
+    
+    <time class="article-date" datetime="2016-03-02T06:30:00.000Z" itemprop="datePublished">03-02-2016</time>
+    
+  </div>
+  <div class="article-inner">
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p>　わざわざブログに書くほどでもないことから書いていかないとなまるので書く．</p>
+<h1 id="はじめに"><a href="#はじめに" class="headerlink" title="はじめに"></a>はじめに</h1><p>　寿司 虚空編[1]第2話で登場したアッカーマン関数というかS変換を実装する．</p>
+<h1 id="定義"><a href="#定義" class="headerlink" title="定義"></a>定義</h1><p>　<span>$x, y$</span><!-- Has MathJax -->を非負整数として，</p>
+<span>$$Ack(x,y)=
+  \begin{cases}
+   y+1 &amp; \text{if}\ x=0, \\
+   Ack(x-1,1) &amp; \text{if}\ x&gt;0, y=0, \\
+   Ack(x-1,Ack(x,y-1)) &amp; \text{otherwise}.
+  \end{cases}$$</span><!-- Has MathJax -->
+<p>　恥ずかしながら「Union-Find木のならし計算量はアッカーマン関数の逆関数となる」といった説明でしか見たことがない．</p>
+<h1 id="実験"><a href="#実験" class="headerlink" title="実験"></a>実験</h1><p>　何も考えずに<span>$Ack(3, 3)$</span><!-- Has MathJax -->を実装．なお記号は寿司 虚空編に準拠．</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div></pre></td><td class="code"><pre><div class="line"><span class="function"><span class="keyword">def</span> <span class="title">f</span><span class="params">(x)</span>:</span></div><div class="line">  <span class="keyword">return</span> x + <span class="number">1</span></div><div class="line"></div><div class="line"><span class="function"><span class="keyword">def</span> <span class="title">b</span><span class="params">(m, n)</span>:</span></div><div class="line">  <span class="keyword">if</span> m == <span class="number">0</span> <span class="keyword">and</span> n &gt; <span class="number">0</span>:</div><div class="line">    <span class="keyword">return</span> f(n)</div><div class="line">  <span class="keyword">elif</span> m &gt; <span class="number">0</span> <span class="keyword">and</span> n == <span class="number">0</span>:</div><div class="line">    <span class="keyword">return</span> b(m - <span class="number">1</span>, <span class="number">1</span>) </div><div class="line">  <span class="keyword">else</span>:</div><div class="line">    <span class="keyword">return</span> b(m - <span class="number">1</span>, b(m, n - <span class="number">1</span>))</div><div class="line"></div><div class="line"><span class="function"><span class="keyword">def</span> <span class="title">g</span><span class="params">(x)</span>:</span></div><div class="line">  <span class="keyword">return</span> b(x, x)</div><div class="line"></div><div class="line"><span class="function"><span class="keyword">def</span> <span class="title">main</span><span class="params">()</span>:</span></div><div class="line">  <span class="keyword">print</span> g(<span class="number">3</span>) <span class="comment"># Ack(3, 3)</span></div><div class="line"></div><div class="line"><span class="keyword">if</span> __name__ == <span class="string">"__main__"</span>:</div><div class="line">  main()</div></pre></td></tr></table></figure>
+<p>　実行してみる．ついでにプロファイリング．</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div></pre></td><td class="code"><pre><div class="line"># python -m cProfile -s time ./sushi.py</div><div class="line">61</div><div class="line">         3624 function calls (1193 primitive calls) in 0.006 seconds</div><div class="line"></div><div class="line">   Ordered by: internal time</div><div class="line"></div><div class="line">   ncalls  tottime  percall  cumtime  percall filename:lineno(function)</div><div class="line">   2432/1    0.005    0.000    0.006    0.006 sushi.py:4(b)</div><div class="line">     1188    0.001    0.000    0.001    0.000 sushi.py:1(f)</div><div class="line">        1    0.000    0.000    0.006    0.006 sushi.py:15(main)</div><div class="line">        1    0.000    0.000    0.006    0.006 sushi.py:1(&lt;module&gt;)</div><div class="line">        1    0.000    0.000    0.006    0.006 sushi.py:12(g)</div><div class="line">        1    0.000    0.000    0.000    0.000 &#123;method &apos;disable&apos; of &apos;_lsprof.Profiler&apos; objects&#125;</div></pre></td></tr></table></figure>
+<p>　このプログラムで<span>$Ack(x, y)$</span><!-- Has MathJax -->を計算しようとすると<code>RuntimeError: maximum recursion depth exceeded</code>となって死ぬ．<br>　そこで次の手法を導入する：</p>
+<ul>
+<li>スタック制限の緩和</li>
+<li>再帰深度制限の緩和</li>
+<li>メモ化再帰</li>
+</ul>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div><div class="line">22</div><div class="line">23</div><div class="line">24</div><div class="line">25</div><div class="line">26</div></pre></td><td class="code"><pre><div class="line"><span class="keyword">import</span> sys, threading, thread</div><div class="line"></div><div class="line">memo = &#123;&#125;</div><div class="line"></div><div class="line"><span class="function"><span class="keyword">def</span> <span class="title">f</span><span class="params">(x)</span>:</span></div><div class="line">  <span class="keyword">return</span> x + <span class="number">1</span></div><div class="line"></div><div class="line"><span class="function"><span class="keyword">def</span> <span class="title">b</span><span class="params">(m, n)</span>:</span></div><div class="line">  <span class="keyword">if</span> (m, n) <span class="keyword">not</span> <span class="keyword">in</span> memo:</div><div class="line">    memo[(m, n)] = (</div><div class="line">      f(n)        <span class="keyword">if</span> m == <span class="number">0</span> <span class="keyword">and</span> n &gt; <span class="number">0</span> <span class="keyword">else</span></div><div class="line">      b(m - <span class="number">1</span>, <span class="number">1</span>) <span class="keyword">if</span> m &gt; <span class="number">0</span> <span class="keyword">and</span> n == <span class="number">0</span> <span class="keyword">else</span></div><div class="line">      b(m - <span class="number">1</span>, b(m, n - <span class="number">1</span>))</div><div class="line">    )</div><div class="line">  <span class="keyword">return</span> memo[(m,n)]</div><div class="line"></div><div class="line"><span class="function"><span class="keyword">def</span> <span class="title">g</span><span class="params">(x)</span>:</span></div><div class="line">  <span class="keyword">return</span> b(x, x)</div><div class="line"></div><div class="line"><span class="function"><span class="keyword">def</span> <span class="title">main</span><span class="params">()</span>:</span></div><div class="line">  <span class="keyword">print</span> g(<span class="number">3</span>)   <span class="comment"># 61</span></div><div class="line"></div><div class="line"><span class="keyword">if</span> __name__ == <span class="string">"__main__"</span>:</div><div class="line">  sys.setrecursionlimit(<span class="number">1024</span>*<span class="number">1024</span>)</div><div class="line">  thread.stack_size(<span class="number">128</span>*<span class="number">1024</span>*<span class="number">1024</span>)</div><div class="line">  threading.Thread(target=main).start()</div></pre></td></tr></table></figure>
+<p>　やる．</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div><div class="line">22</div><div class="line">23</div><div class="line">24</div><div class="line">25</div><div class="line">26</div><div class="line">27</div><div class="line">28</div><div class="line">29</div><div class="line">30</div><div class="line">31</div><div class="line">32</div><div class="line">33</div><div class="line">34</div><div class="line">35</div><div class="line">36</div><div class="line">37</div><div class="line">38</div><div class="line">39</div><div class="line">40</div><div class="line">41</div><div class="line">42</div><div class="line">43</div><div class="line">44</div><div class="line">45</div><div class="line">46</div><div class="line">47</div><div class="line">48</div><div class="line">49</div><div class="line">50</div><div class="line">51</div><div class="line">52</div><div class="line">53</div><div class="line">54</div><div class="line">55</div><div class="line">56</div><div class="line">57</div><div class="line">58</div><div class="line">59</div><div class="line">60</div><div class="line">61</div><div class="line">62</div><div class="line">63</div><div class="line">64</div><div class="line">65</div><div class="line">66</div><div class="line">67</div><div class="line">68</div><div class="line">69</div><div class="line">70</div><div class="line">71</div><div class="line">72</div><div class="line">73</div><div class="line">74</div><div class="line">75</div><div class="line">76</div><div class="line">77</div><div class="line">78</div><div class="line">79</div><div class="line">80</div><div class="line">81</div><div class="line">82</div><div class="line">83</div><div class="line">84</div><div class="line">85</div><div class="line">86</div><div class="line">87</div><div class="line">88</div></pre></td><td class="code"><pre><div class="line"># python -m cProfile -s time ./sushi.py</div><div class="line">61</div><div class="line">         415 function calls in 0.002 seconds</div><div class="line"></div><div class="line">   Ordered by: internal time</div><div class="line"></div><div class="line">   ncalls  tottime  percall  cumtime  percall filename:lineno(function)</div><div class="line">        1    0.000    0.000    0.002    0.002 threading.py:1(&lt;module&gt;)</div><div class="line">        1    0.000    0.000    0.000    0.000 collections.py:1(&lt;module&gt;)</div><div class="line">        1    0.000    0.000    0.002    0.002 sushi.py:1(&lt;module&gt;)</div><div class="line">        7    0.000    0.000    0.000    0.000 &#123;method &apos;acquire&apos; of &apos;thread.lock&apos; objects&#125;</div><div class="line">        1    0.000    0.000    0.000    0.000 heapq.py:31(&lt;module&gt;)</div><div class="line">       91    0.000    0.000    0.000    0.000 &#123;method &apos;append&apos; of &apos;list&apos; objects&#125;</div><div class="line">        2    0.000    0.000    0.000    0.000 sre_parse.py:379(_parse)</div><div class="line">       28    0.000    0.000    0.000    0.000 sre_parse.py:182(__next)</div><div class="line">        2    0.000    0.000    0.000    0.000 sre_compile.py:359(_compile_info)</div><div class="line">       73    0.000    0.000    0.000    0.000 &#123;len&#125;</div><div class="line">        2    0.000    0.000    0.000    0.000 sre_compile.py:32(_compile)</div><div class="line">       26    0.000    0.000    0.000    0.000 sre_parse.py:201(get)</div><div class="line">       22    0.000    0.000    0.000    0.000 sre_parse.py:138(append)</div><div class="line">        1    0.000    0.000    0.000    0.000 &#123;thread.start_new_thread&#125;</div><div class="line">        4    0.000    0.000    0.000    0.000 threading.py:259(__init__)</div><div class="line">        2    0.000    0.000    0.000    0.000 threading.py:656(__init__)</div><div class="line">        2    0.000    0.000    0.001    0.000 re.py:226(_compile)</div><div class="line">       21    0.000    0.000    0.000    0.000 &#123;ord&#125;</div><div class="line">        2    0.000    0.000    0.001    0.000 sre_compile.py:493(compile)</div><div class="line">        1    0.000    0.000    0.001    0.001 warnings.py:45(filterwarnings)</div><div class="line">        1    0.000    0.000    0.000    0.000 threading.py:308(wait)</div><div class="line">        8    0.000    0.000    0.000    0.000 threading.py:58(__init__)</div><div class="line">        2    0.000    0.000    0.000    0.000 sre_parse.py:675(parse)</div><div class="line">        2    0.000    0.000    0.000    0.000 threading.py:560(__init__)</div><div class="line">        1    0.000    0.000    0.000    0.000 threading.py:640(Thread)</div><div class="line">        4    0.000    0.000    0.000    0.000 threading.py:241(Condition)</div><div class="line">        2    0.000    0.000    0.000    0.000 sre_parse.py:140(getwidth)</div><div class="line">        2    0.000    0.000    0.000    0.000 sre_parse.py:301(_parse_sub)</div><div class="line">       12    0.000    0.000    0.000    0.000 &#123;_sre.getlower&#125;</div><div class="line">       10    0.000    0.000    0.000    0.000 &#123;isinstance&#125;</div><div class="line">        1    0.000    0.000    0.000    0.000 threading.py:726(start)</div><div class="line">        2    0.000    0.000    0.000    0.000 sre_compile.py:478(_code)</div><div class="line">        4    0.000    0.000    0.000    0.000 sre_compile.py:472(isstring)</div><div class="line">        1    0.000    0.000    0.000    0.000 threading.py:1090(__init__)</div><div class="line">        2    0.000    0.000    0.000    0.000 &#123;method &apos;setter&apos; of &apos;property&apos; objects&#125;</div><div class="line">        1    0.000    0.000    0.000    0.000 collections.py:26(OrderedDict)</div><div class="line">        6    0.000    0.000    0.000    0.000 &#123;thread.allocate_lock&#125;</div><div class="line">        1    0.000    0.000    0.000    0.000 threading.py:602(wait)</div><div class="line">        1    0.000    0.000    0.000    0.000 threading.py:124(_RLock)</div><div class="line">        2    0.000    0.000    0.000    0.000 sre_parse.py:178(__init__)</div><div class="line">        1    0.000    0.000    0.000    0.000 threading.py:627(_newname)</div><div class="line">        1    0.000    0.000    0.000    0.000 threading.py:575(set)</div><div class="line">        4    0.000    0.000    0.000    0.000 &#123;min&#125;</div><div class="line">        2    0.000    0.000    0.001    0.000 re.py:188(compile)</div><div class="line">        3    0.000    0.000    0.000    0.000 &#123;thread.get_ident&#125;</div><div class="line">        1    0.000    0.000    0.000    0.000 keyword.py:11(&lt;module&gt;)</div><div class="line">        1    0.000    0.000    0.000    0.000 threading.py:372(notify)</div><div class="line">        1    0.000    0.000    0.000    0.000 &#123;thread.stack_size&#125;</div><div class="line">        1    0.000    0.000    0.000    0.000 threading.py:709(_set_daemon)</div><div class="line">        2    0.000    0.000    0.000    0.000 threading.py:541(Event)</div><div class="line">        2    0.000    0.000    0.000    0.000 threading.py:299(_is_owned)</div><div class="line">        2    0.000    0.000    0.000    0.000 &#123;_sre.compile&#125;</div><div class="line">        3    0.000    0.000    0.000    0.000 &#123;method &apos;release&apos; of &apos;thread.lock&apos; objects&#125;</div><div class="line">        1    0.000    0.000    0.000    0.000 threading.py:296(_acquire_restore)</div><div class="line">        1    0.000    0.000    0.000    0.000 &#123;sys.setrecursionlimit&#125;</div><div class="line">        2    0.000    0.000    0.000    0.000 &#123;method &apos;extend&apos; of &apos;list&apos; objects&#125;</div><div class="line">        2    0.000    0.000    0.000    0.000 sre_parse.py:67(__init__)</div><div class="line">        1    0.000    0.000    0.000    0.000 threading.py:399(notifyAll)</div><div class="line">        1    0.000    0.000    0.000    0.000 collections.py:387(Counter)</div><div class="line">        2    0.000    0.000    0.000    0.000 &#123;method &apos;get&apos; of &apos;dict&apos; objects&#125;</div><div class="line">        2    0.000    0.000    0.000    0.000 sre_parse.py:90(__init__)</div><div class="line">        1    0.000    0.000    0.000    0.000 threading.py:293(_release_save)</div><div class="line">        1    0.000    0.000    0.000    0.000 threading.py:551(_Event)</div><div class="line">        2    0.000    0.000    0.000    0.000 sre_parse.py:195(match)</div><div class="line">        3    0.000    0.000    0.000    0.000 threading.py:63(_note)</div><div class="line">        1    0.000    0.000    0.000    0.000 threading.py:1152(currentThread)</div><div class="line">        1    0.000    0.000    0.000    0.000 threading.py:254(_Condition)</div><div class="line">        2    0.000    0.000    0.000    0.000 &#123;method &apos;items&apos; of &apos;dict&apos; objects&#125;</div><div class="line">        1    0.000    0.000    0.000    0.000 threading.py:789(_set_ident)</div><div class="line">        1    0.000    0.000    0.000    0.000 threading.py:1058(_Timer)</div><div class="line">        1    0.000    0.000    0.000    0.000 threading.py:1088(_MainThread)</div><div class="line">        1    0.000    0.000    0.000    0.000 &#123;method &apos;insert&apos; of &apos;list&apos; objects&#125;</div><div class="line">        1    0.000    0.000    0.000    0.000 threading.py:422(_Semaphore)</div><div class="line">        1    0.000    0.000    0.000    0.000 threading.py:1097(_set_daemon)</div><div class="line">        1    0.000    0.000    0.000    0.000 threading.py:569(isSet)</div><div class="line">        1    0.000    0.000    0.000    0.000 threading.py:56(_Verbose)</div><div class="line">        1    0.000    0.000    0.000    0.000 threading.py:1128(_DummyThread)</div><div class="line">        1    0.000    0.000    0.000    0.000 threading.py:1008(daemon)</div><div class="line">        1    0.000    0.000    0.000    0.000 &#123;issubclass&#125;</div><div class="line">        1    0.000    0.000    0.000    0.000 &#123;method &apos;disable&apos; of &apos;_lsprof.Profiler&apos; objects&#125;</div><div class="line">        1    0.000    0.000    0.000    0.000 threading.py:514(_BoundedSemaphore)</div></pre></td></tr></table></figure>
+<p>　関数呼び出し回数が3624回から415回まで減り，4msec高速化．</p>
+<h1 id="おわりに"><a href="#おわりに" class="headerlink" title="おわりに"></a>おわりに</h1><p>　それでも<span>$Ack(4, 2)$</span><!-- Has MathJax -->でSEGVするのでこのお話はなかったことに．<span>$2^{65536}-3$</span><!-- Has MathJax -->は遠い．</p>
+<h1 id="参考文献"><a href="#参考文献" class="headerlink" title="参考文献"></a>参考文献</h1><ul>
+<li>[1] 寿司 虚空編 -Sushi Kokuu Hen- - pixivコミックで漫画を無料試し読み．<a href="https://comic.pixiv.net/works/1505" target="_blank" rel="external">https://comic.pixiv.net/works/1505</a></li>
+<li>[2] S変換 - 巨大数研究 Wiki - Wikia．<a href="http://ja.googology.wikia.com/wiki/S%E5%A4%89%E6%8F%9B" target="_blank" rel="external">http://ja.googology.wikia.com/wiki/S%E5%A4%89%E6%8F%9B</a></li>
+</ul>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://ntddk.github.io/2016/03/02/sushi-and-memorized-recursion/" data-id="cj13oizhb0012pcosu61kjkq9" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/algorithm/">algorithm</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+  
+    <nav id="page-nav">
+      <span class="page-number current">1</span><a class="page-number" href="/archives/page/2/">2</a><a class="page-number" href="/archives/page/3/">3</a><a class="extend next" rel="next" href="/archives/page/2/">Next &raquo;</a>
+    </nav>
+  
+</section>
+        
+      </div>
+      <footer id="footer">
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      &copy; 2017 ntddk<br>
+      <a href="https://github.com/ntddk/hexo-theme-jathena" target="_blank">JAthena</a> by <a href="http://ntddk.github.io" target="_blank">ntddk</a> | Powered by <a href="http://hexo.io/" target="_blank">Hexo</a>
+    </div>
+  </div>
+</footer>
+    </div>
+    
+
+<script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+
+
+  <link rel="stylesheet" href="/fancybox/jquery.fancybox.css">
+  <script src="/fancybox/jquery.fancybox.pack.js"></script>
+
+
+<script src="/js/script.js"></script>
+  </div>
+
+<!-- Begin: Injected MathJax -->
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Config({"tex2jax":{"inlineMath":[["$","$"],["\\(","\\)"]],"skipTags":["script","noscript","style","textarea","pre","code"],"processEscapes":true},"TeX":{"equationNumbers":{"autoNumber":"AMS"}}});
+</script>
+
+<script type="text/x-mathjax-config">
+    MathJax.Hub.Queue(function() {
+        var all = MathJax.Hub.getAllJax(), i;
+        for(i=0; i < all.length; i += 1) {
+            all[i].SourceElement().parentNode.className += ' has-jax';
+        }
+    });
+</script>
+
+<script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.0/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
+</script>
+<!-- End: Injected MathJax -->
+</body>
+</html>

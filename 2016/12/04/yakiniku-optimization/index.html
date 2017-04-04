@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+  <title>焼肉最適化問題 | 一生あとで読んでろ</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="description" content="本稿はSFC-RG Advent Calendar 2016の4日目である． はじめに　あなたは研究の中間発表を終えて，今晩何を食べようか考えている．たしかに準備不足ではあったけれど，研究の前提をいまいち解さないファカルティの高飛車な質問にはうんざりしたし，今日くらいはパーッと気分転換したいものだ．そういうわけで，あなたは⊿館を飛び出して焼肉 ざんまい 湘南台店に行くことにした． 組合せ最適化">
+<meta name="keywords" content="machine learning,optimization">
+<meta property="og:type" content="article">
+<meta property="og:title" content="焼肉最適化問題">
+<meta property="og:url" content="http://ntddk.github.io/2016/12/04/yakiniku-optimization/index.html">
+<meta property="og:site_name" content="一生あとで読んでろ">
+<meta property="og:description" content="本稿はSFC-RG Advent Calendar 2016の4日目である． はじめに　あなたは研究の中間発表を終えて，今晩何を食べようか考えている．たしかに準備不足ではあったけれど，研究の前提をいまいち解さないファカルティの高飛車な質問にはうんざりしたし，今日くらいはパーッと気分転換したいものだ．そういうわけで，あなたは⊿館を飛び出して焼肉 ざんまい 湘南台店に行くことにした． 組合せ最適化">
+<meta property="og:image" content="http://ntddk.github.io/image/bandits/bandits.png">
+<meta property="og:updated_time" content="2017-03-13T08:51:03.000Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="焼肉最適化問題">
+<meta name="twitter:description" content="本稿はSFC-RG Advent Calendar 2016の4日目である． はじめに　あなたは研究の中間発表を終えて，今晩何を食べようか考えている．たしかに準備不足ではあったけれど，研究の前提をいまいち解さないファカルティの高飛車な質問にはうんざりしたし，今日くらいはパーッと気分転換したいものだ．そういうわけで，あなたは⊿館を飛び出して焼肉 ざんまい 湘南台店に行くことにした． 組合せ最適化">
+<meta name="twitter:image" content="http://ntddk.github.io/image/bandits/bandits.png">
+  
+  
+  <link href="//fonts.googleapis.com/css?family=Ubuntu" rel="stylesheet" type="text/css">
+  <link rel="stylesheet" href="/css/style.css">
+  
+</head>
+<body>
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/" id="logo">一生あとで読んでろ</a>
+      </h1>
+      
+        <h2 id="subtitle-wrap">
+          <a href="/" id="subtitle">技術ブログ</a>
+        </h2>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="sub-nav">
+        
+          <a id="nav-home-icon" class="nav-icon" href="/"></a>
+        
+          <a id="nav-about-icon" class="nav-icon" href="/about"></a>
+        
+        
+      </nav>
+    </div>
+  </div>
+</header>
+      <div class="outer">
+        <section id="main"><article id="post-yakiniku-optimization" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    
+      <header class="article-header">
+        
+  
+    <h1 class="article-title" itemprop="name">
+      焼肉最適化問題
+    </h1>
+  
+
+      </header>
+    
+    <time class="article-date" datetime="2016-12-04T14:59:59.000Z" itemprop="datePublished">12-04-2016</time>
+    
+  </div>
+  <div class="article-inner">
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p>　本稿は<a href="http://www.adventar.org/calendars/1413" target="_blank" rel="external">SFC-RG Advent Calendar 2016</a>の4日目である．</p>
+<h1 id="はじめに"><a href="#はじめに" class="headerlink" title="はじめに"></a>はじめに</h1><p>　あなたは研究の中間発表を終えて，今晩何を食べようか考えている．たしかに準備不足ではあったけれど，研究の前提をいまいち解さないファカルティの高飛車な質問にはうんざりしたし，今日くらいはパーッと気分転換したいものだ．そういうわけで，あなたは⊿館を飛び出して焼肉 ざんまい 湘南台店に行くことにした．</p>
+<h1 id="組合せ最適化"><a href="#組合せ最適化" class="headerlink" title="組合せ最適化"></a>組合せ最適化</h1><p>　さて，着席し，メニューを開いたあなたはしばし考える．限られた予算，限られた時間，限られた胃袋の容量——いったい何を頼めば最も<strong>満足</strong>できるだろうか？<br>　そんなとき，組合せ最適化が役に立つんです．騙されたと思って，メニューを必死に転記してみよう：</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div><div class="line">22</div></pre></td><td class="code"><pre><div class="line"><span class="keyword">import</span> numpy <span class="keyword">as</span> np, pandas <span class="keyword">as</span> pd</div><div class="line"></div><div class="line">menu = [<span class="string">'カルビ'</span>, <span class="string">'和牛カルビ'</span>, <span class="string">'和牛中落ちカルビ'</span>, <span class="string">'ハラミ'</span>, <span class="string">'厚切りロース'</span>, <span class="string">'ネギ牛タン塩'</span>, <span class="string">'牛タン塩'</span>, </div><div class="line">        <span class="string">'イベリコ豚'</span>, <span class="string">'カシラ'</span>, <span class="string">'豚トロ'</span>, <span class="string">'ネギ豚タン塩'</span>, <span class="string">'豚タン塩'</span>, <span class="string">'厚切りベーコン'</span>, <span class="string">'ウインナー'</span>, <span class="string">'チョリソ'</span>, </div><div class="line">        <span class="string">'ホルモン'</span>, <span class="string">'シロコロホルモン'</span>, <span class="string">'レバー'</span>, <span class="string">'白レバー'</span>, <span class="string">'ハツ'</span>, <span class="string">'ミノ'</span>, </div><div class="line">        <span class="string">'お得!! 三種盛り'</span>, <span class="string">'本日の塩三種盛り'</span>, <span class="string">'本日の味噌三種盛り'</span>]</div><div class="line">price = [<span class="number">720</span>, <span class="number">950</span>, <span class="number">850</span>, <span class="number">720</span>, <span class="number">690</span>, <span class="number">950</span>, <span class="number">850</span>, </div><div class="line">        <span class="number">600</span>, <span class="number">550</span>, <span class="number">580</span>, <span class="number">680</span>, <span class="number">580</span>, <span class="number">500</span>, <span class="number">380</span>, <span class="number">400</span>, </div><div class="line">        <span class="number">550</span>, <span class="number">600</span>, <span class="number">550</span>, <span class="number">450</span>, <span class="number">550</span>, <span class="number">650</span>, </div><div class="line">        <span class="number">1280</span>, <span class="number">780</span>, <span class="number">780</span>]</div><div class="line"></div><div class="line">n = len(menu)</div><div class="line">np.random.seed(<span class="number">0</span>)</div><div class="line">df = pd.DataFrame(&#123;</div><div class="line">    <span class="string">'品目'</span>: menu,</div><div class="line">    <span class="string">'値段'</span>: price,</div><div class="line">    <span class="string">'満足度'</span>: np.random.randint(<span class="number">10</span>, <span class="number">20</span>, n),</div><div class="line">    <span class="string">'焼き時間'</span>: np.random.randint(<span class="number">5</span>, <span class="number">10</span>, n),</div><div class="line">    <span class="string">'量'</span>: np.random.randint(<span class="number">10</span>, <span class="number">20</span>, n),</div><div class="line">    &#125;)</div><div class="line"></div><div class="line">print(df)</div></pre></td></tr></table></figure>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>値段</th>
+<th>品目</th>
+<th>満足度</th>
+<th>焼き時間</th>
+<th>量</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0</td>
+<td>720</td>
+<td>カルビ</td>
+<td>15</td>
+<td>9</td>
+<td>10</td>
+</tr>
+<tr>
+<td>1</td>
+<td>950</td>
+<td>和牛カルビ</td>
+<td>10</td>
+<td>8</td>
+<td>10</td>
+</tr>
+<tr>
+<td>2</td>
+<td>850</td>
+<td>和牛中落ちカルビ</td>
+<td>13</td>
+<td>5</td>
+<td>14</td>
+</tr>
+<tr>
+<td>3</td>
+<td>720</td>
+<td>ハラミ</td>
+<td>13</td>
+<td>8</td>
+<td>15</td>
+</tr>
+<tr>
+<td>4</td>
+<td>690</td>
+<td>厚切りロース</td>
+<td>17</td>
+<td>5</td>
+<td>15</td>
+</tr>
+<tr>
+<td>5</td>
+<td>950</td>
+<td>ネギ牛タン塩</td>
+<td>19</td>
+<td>7</td>
+<td>16</td>
+</tr>
+<tr>
+<td>6</td>
+<td>850</td>
+<td>牛タン塩</td>
+<td>13</td>
+<td>8</td>
+<td>18</td>
+</tr>
+<tr>
+<td>7</td>
+<td>600</td>
+<td>イベリコ豚</td>
+<td>15</td>
+<td>5</td>
+<td>14</td>
+</tr>
+<tr>
+<td>8</td>
+<td>550</td>
+<td>カシラ</td>
+<td>12</td>
+<td>6</td>
+<td>11</td>
+</tr>
+<tr>
+<td>9</td>
+<td>580</td>
+<td>豚トロ</td>
+<td>14</td>
+<td>8</td>
+<td>14</td>
+</tr>
+<tr>
+<td>10</td>
+<td>680</td>
+<td>ネギ豚タン塩</td>
+<td>17</td>
+<td>8</td>
+<td>19</td>
+</tr>
+<tr>
+<td>11</td>
+<td>580</td>
+<td>豚タン塩</td>
+<td>16</td>
+<td>8</td>
+<td>18</td>
+</tr>
+<tr>
+<td>12</td>
+<td>500</td>
+<td>厚切りベーコン</td>
+<td>18</td>
+<td>5</td>
+<td>11</td>
+</tr>
+<tr>
+<td>13</td>
+<td>380</td>
+<td>ウインナー</td>
+<td>18</td>
+<td>6</td>
+<td>11</td>
+</tr>
+<tr>
+<td>14</td>
+<td>400</td>
+<td>チョリソ</td>
+<td>11</td>
+<td>6</td>
+<td>17</td>
+</tr>
+<tr>
+<td>15</td>
+<td>550</td>
+<td>ホルモン</td>
+<td>16</td>
+<td>6</td>
+<td>19</td>
+</tr>
+<tr>
+<td>16</td>
+<td>600</td>
+<td>シロコロホルモン</td>
+<td>17</td>
+<td>5</td>
+<td>19</td>
+</tr>
+<tr>
+<td>17</td>
+<td>550</td>
+<td>レバー</td>
+<td>17</td>
+<td>7</td>
+<td>13</td>
+</tr>
+<tr>
+<td>18</td>
+<td>450</td>
+<td>白レバー</td>
+<td>18</td>
+<td>9</td>
+<td>16</td>
+</tr>
+<tr>
+<td>19</td>
+<td>550</td>
+<td>ハツ</td>
+<td>11</td>
+<td>8</td>
+<td>17</td>
+</tr>
+<tr>
+<td>20</td>
+<td>650</td>
+<td>ミノ</td>
+<td>15</td>
+<td>8</td>
+<td>12</td>
+</tr>
+<tr>
+<td>21</td>
+<td>1280</td>
+<td>お得!! 三種盛り</td>
+<td>19</td>
+<td>7</td>
+<td>10</td>
+</tr>
+<tr>
+<td>22</td>
+<td>780</td>
+<td>本日の塩三種盛り</td>
+<td>18</td>
+<td>9</td>
+<td>13</td>
+</tr>
+<tr>
+<td>23</td>
+<td>780</td>
+<td>本日の味噌三種盛り</td>
+<td>19</td>
+<td>7</td>
+<td>15</td>
+</tr>
+</tbody>
+</table>
+<p>　メニューがpandasのデータフレームになった．取り急ぎ（？）満足度・焼き時間・量は乱数で埋めている．<br>　あなたはこのメニューの中から，最も満足度の高い組合せを見つけたい．それも，限られた予算，限られた時間，限られた胃袋の容量という条件を満たすような．ここではそのわがままを割当問題として解くことにする．</p>
+<table>
+<thead>
+<tr>
+<th>変数</th>
+<th><span>$x_i \in \{0, 1\}$</span><!-- Has MathJax --></th>
+<th>i番目の料理を選ぶかどうか</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>目的関数</td>
+<td><span>$\sum_i{満足度_i x_i}$</span><!-- Has MathJax --></td>
+<td><span>$\rightarrow$</span><!-- Has MathJax --> 最大</td>
+</tr>
+<tr>
+<td>制約条件</td>
+<td><span>$\sum_i{予算_i x_i} \le 12000$</span><!-- Has MathJax --></td>
+<td>予算制限</td>
+</tr>
+<tr>
+<td></td>
+<td><span>$\sum_i{焼き時間_i x_i} \le 120$</span><!-- Has MathJax --></td>
+<td>時間制限</td>
+</tr>
+<tr>
+<td></td>
+<td><span>$150 \le \sum_i{量_i x_i} \le 200$</span><!-- Has MathJax --></td>
+<td>分量制限</td>
+</tr>
+</tbody>
+</table>
+<p>　こういった問題はpulpという整数計画法ライブラリを使って解くことができる：</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div><div class="line">22</div><div class="line">23</div><div class="line">24</div><div class="line">25</div><div class="line">26</div><div class="line">27</div><div class="line">28</div><div class="line">29</div><div class="line">30</div><div class="line">31</div><div class="line">32</div><div class="line">33</div><div class="line">34</div><div class="line">35</div><div class="line">36</div><div class="line">37</div></pre></td><td class="code"><pre><div class="line"><span class="keyword">from</span> pulp <span class="keyword">import</span> *</div><div class="line"></div><div class="line">m = LpProblem(sense = LpMaximize)	<span class="comment"># 最大化問題</span></div><div class="line">df[<span class="string">'x'</span>] = [LpVariable(<span class="string">'x%d'</span> % i, cat = LpBinary) <span class="keyword">for</span> i <span class="keyword">in</span> range(n)]	<span class="comment"># i番目の品目を選択するかしないか</span></div><div class="line"></div><div class="line">m += lpDot(df.満足度, df.x)	<span class="comment"># 目的関数：満足度の最大化</span></div><div class="line">m += lpDot(df.値段, df.x) &lt;= <span class="number">12000</span>	<span class="comment"># 制約条件：予算</span></div><div class="line">m += lpDot(df.焼き時間, df.x) &lt;= <span class="number">120</span>	<span class="comment"># 制約条件：焼き時間</span></div><div class="line">m += lpDot(df.量, df.x) &gt;= <span class="number">150</span>	<span class="comment"># 制約条件：量</span></div><div class="line">m += lpDot(df.量, df.x) &lt;= <span class="number">200</span>	<span class="comment"># 制約条件：量</span></div><div class="line"></div><div class="line">m.solve()</div><div class="line"><span class="keyword">if</span> m.status == <span class="number">1</span>:</div><div class="line">    df[<span class="string">'val'</span>] = df.x.apply(<span class="keyword">lambda</span> v: value(v))	<span class="comment"># 結果</span></div><div class="line">    print(df[df.val == <span class="number">1</span>].品目)</div><div class="line">    print(<span class="string">'満足度 &#123;&#125;'</span>.format(sum(df[df.val == <span class="number">1</span>].満足度)))</div><div class="line">    print(<span class="string">'値段 &#123;&#125;'</span>.format(sum(df[df.val == <span class="number">1</span>].値段)))</div><div class="line"></div><div class="line">&gt;&gt;&gt;</div><div class="line"><span class="number">0</span>           カルビ</div><div class="line"><span class="number">4</span>        厚切りロース</div><div class="line"><span class="number">5</span>        ネギ牛タン塩</div><div class="line"><span class="number">7</span>         イベリコ豚</div><div class="line"><span class="number">8</span>           カシラ</div><div class="line"><span class="number">9</span>           豚トロ</div><div class="line"><span class="number">12</span>      厚切りベーコン</div><div class="line"><span class="number">13</span>        ウインナー</div><div class="line"><span class="number">16</span>     シロコロホルモン</div><div class="line"><span class="number">17</span>          レバー</div><div class="line"><span class="number">18</span>         白レバー</div><div class="line"><span class="number">20</span>           ミノ</div><div class="line"><span class="number">21</span>    お得!! 三種盛り</div><div class="line"><span class="number">22</span>     本日の塩三種盛り</div><div class="line"><span class="number">23</span>    本日の味噌三種盛り</div><div class="line">Name: 品目, dtype: object</div><div class="line">満足度 <span class="number">251</span></div><div class="line">値段 <span class="number">10060</span></div></pre></td></tr></table></figure>
+<p>　はい．順番はともかくとして，これらを食べれば満足できそうだ．<br>　ここまで考えたところで，あなたは今月の懐具合がよろしくないことを思い出す．なるべく出費を抑えて，それでいてある程度満足できるような品目の組合せはあるだろうか？<br>　これも同様に割当問題として考えられる．</p>
+<table>
+<thead>
+<tr>
+<th>変数</th>
+<th><span>$x_i \in \{0, 1\}$</span><!-- Has MathJax --></th>
+<th>i番目の料理を選ぶかどうか</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>目的関数</td>
+<td><span>$\sum_i{予算_i x_i}$</span><!-- Has MathJax --></td>
+<td><span>$\rightarrow$</span><!-- Has MathJax --> 最小</td>
+</tr>
+<tr>
+<td>制約条件</td>
+<td><span>$\sum_i{満足度_i x_i} \le 200$</span><!-- Has MathJax --></td>
+<td>満足度制限</td>
+</tr>
+<tr>
+<td></td>
+<td><span>$\sum_i{焼き時間_i x_i} \le 120$</span><!-- Has MathJax --></td>
+<td>時間制限</td>
+</tr>
+<tr>
+<td></td>
+<td><span>$150 \le \sum_i{量_i x_i} \le 200$</span><!-- Has MathJax --></td>
+<td>分量制限</td>
+</tr>
+</tbody>
+</table>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div><div class="line">22</div><div class="line">23</div><div class="line">24</div><div class="line">25</div><div class="line">26</div><div class="line">27</div><div class="line">28</div><div class="line">29</div><div class="line">30</div><div class="line">31</div></pre></td><td class="code"><pre><div class="line">m = LpProblem(sense = LpMinimize)	<span class="comment"># 最小化問題</span></div><div class="line">a[<span class="string">'v'</span>] = [LpVariable(<span class="string">'v%d'</span> % i, cat = LpBinary) <span class="keyword">for</span> i <span class="keyword">in</span> range(n)]	<span class="comment"># i番目の品目を選択するかしないか</span></div><div class="line"></div><div class="line">m += lpDot(df.値段, df.x)	<span class="comment"># 目的関数：予算の最小化</span></div><div class="line">m += lpDot(df.満足度, df.x) &gt;= <span class="number">200</span>	<span class="comment"># 制約条件：満足度</span></div><div class="line">m += lpDot(df.焼き時間, df.x) &lt;= <span class="number">120</span>	<span class="comment"># 制約条件：焼き時間</span></div><div class="line">m += lpDot(df.量, df.x) &gt;= <span class="number">150</span>	<span class="comment"># 制約条件：量</span></div><div class="line">m += lpDot(df.量, df.x) &lt;= <span class="number">200</span>	<span class="comment"># 制約条件：量</span></div><div class="line">m.solve()</div><div class="line"><span class="keyword">if</span> m.status == <span class="number">1</span>:</div><div class="line">    df[<span class="string">'val'</span>] = df.x.apply(<span class="keyword">lambda</span> v: value(v))	<span class="comment"># 結果</span></div><div class="line">    print(df[df.val == <span class="number">1</span>].品目)</div><div class="line">    print(<span class="string">'満足度 &#123;&#125;'</span>.format(sum(df[df.val == <span class="number">1</span>].満足度)))</div><div class="line">    print(<span class="string">'値段 &#123;&#125;'</span>.format(sum(df[df.val == <span class="number">1</span>].値段)))</div><div class="line"></div><div class="line">&gt;&gt;&gt;</div><div class="line"><span class="number">7</span>         イベリコ豚</div><div class="line"><span class="number">10</span>       ネギ豚タン塩</div><div class="line"><span class="number">11</span>         豚タン塩</div><div class="line"><span class="number">12</span>      厚切りベーコン</div><div class="line"><span class="number">13</span>        ウインナー</div><div class="line"><span class="number">14</span>         チョリソ</div><div class="line"><span class="number">15</span>         ホルモン</div><div class="line"><span class="number">16</span>     シロコロホルモン</div><div class="line"><span class="number">17</span>          レバー</div><div class="line"><span class="number">18</span>         白レバー</div><div class="line"><span class="number">22</span>     本日の塩三種盛り</div><div class="line"><span class="number">23</span>    本日の味噌三種盛り</div><div class="line">Name: 品目, dtype: object</div><div class="line">満足度 <span class="number">200</span></div><div class="line">値段 <span class="number">6850</span></div></pre></td></tr></table></figure>
+<p>　200の満足度でいいなら豚ばっか食ってろということらしい．</p>
+<h1 id="多腕バンディット問題"><a href="#多腕バンディット問題" class="headerlink" title="多腕バンディット問題"></a>多腕バンディット問題</h1><p>　いやいやちょっと待った．乱数でお茶を濁しているけど，あらゆる品目の満足度なんて知らないじゃないか．全品目を食べたことがあるならいざ知らず．それに，毎日同じ店で同じ食事をとるわけでもない．焼肉屋にしたって，湘南台には寅屋にえのもとにとあるわけだ．<br>　そういうわけで，あなたはいろいろな店に行き，いろいろな注文をして，なるべくどれを頼んでも満足度の高い食事のとれる店を見つけたいと考えた．しかしここで疑念が生まれる——いまの店でそこそこ満足できるなら，別の店を探さなくてもよいのではないか？ しかしいまの店に行き続ける限り，別の店の食事を食べることはできないぞ．しかしそこがハズレだとしたら．さてどうしよう——業界用語でこれを<strong>探索</strong>と<strong>利用</strong>のトレードオフ (exploration-exploitation tradeoff) という．</p>
+<blockquote>
+<p>これまでの学習結果を利用 (exploitation) しようとすると，探索 (exploration) が減ってしまい，機会損失が増えてしまう．一方，探索を増やせば，学習した最良の行動とは異なる行動をとることが増えるため，得られる報酬が減ってしまう．学習した最良の行動との差が，探索のコストということになる．– 牧野，et al. 『<a href="https://www.amazon.co.jp/dp/4627880316" target="_blank" rel="external">これからの強化学習</a>』</p>
+</blockquote>
+<p>　このトレードオフを解消する試みを多腕バンディット問題という．多腕バンディット問題は，複数のスロットマシンのレバー（腕）を次々と引いていき，最終的に得られる報酬を最大化するというもので，強化学習の一種といえる．各スロットマシンの報酬はそれぞれ一定の確率分布に従っている．言い換えれば，いろいろな店のメニューにある品目を試していき，最終的に得られる満足度を最大化していく，ということになる．もちろん，品目によって得られる満足度に違いはあるが，なるべく何を食べても満足度の高い店を絞り込んでいきたい．<br>　そのためのアルゴリズムのうち，ここでは<span>$\epsilon$</span><!-- Has MathJax -->-GreedyとUCB1を紹介したい．</p>
+<h2 id="Greedy"><a href="#Greedy" class="headerlink" title="-Greedy"></a><span>$\epsilon$</span><!-- Has MathJax -->-Greedy</h2><p>　デフォルトで現在最良な選択肢を選ぶが，一定の確率でいま最良と思っていないような選択肢を選びにいく手法．</p>
+<ul>
+<li><span>$\epsilon - 1$</span><!-- Has MathJax -->の確率で最適だと思われる選択肢を利用する</li>
+<li><span>$\epsilon / 2$</span><!-- Has MathJax -->の確率で最適だと思われる選択肢を探索する</li>
+<li><span>$\epsilon / 2$</span><!-- Has MathJax -->の確率で最悪だと思われる選択肢を探索する</li>
+</ul>
+<p>　<span>$\epsilon$</span><!-- Has MathJax --> Greedyはつまり行きつけの店に入り浸るタイプのアルゴリズムだ．</p>
+<h2 id="UCB1"><a href="#UCB1" class="headerlink" title="UCB1"></a>UCB1</h2><p>　それもいいが，実はいまの行きつけよりもっといい店なのに，一度行って微妙だったからといって行かないままになっている店がないだろうか？ UCB1は，それぞれの店についてどれくらい知っているかを考慮に入れ，なるべく多くの店のことを知ろうとするアルゴリズムだ．具体的には，各店（腕）についてUCB (Upper Confidence Bound) という値を計算する．</p>
+<p>　<span>$\overline {x}_{j}+c\sqrt {\dfrac {2\log n} {x_{j}}}$</span><!-- Has MathJax --></p>
+<p>　ただし<span>$\overline {x}_{j}$</span><!-- Has MathJax -->は<span>$_{j}$</span><!-- Has MathJax -->番目の店の満足度（報酬）の期待値，<span>$n$</span><!-- Has MathJax -->はそれまでに店を回った回数の合計，<span>$n_{j}$</span><!-- Has MathJax -->は<span>$_{j}$</span><!-- Has MathJax -->番目の店に行った回数，<span>$c$</span><!-- Has MathJax -->は定数．UCB1は，この値が最大になる店に飛び込んでいく．あなたが好奇心旺盛なら，こちらのアルゴリズムを使って考えたほうがいいだろう．<br>　この手法のメリットとして，ベストでない店に行く回数を確率<span>$1$</span><!-- Has MathJax -->で<span>$O(\log n)$</span><!-- Has MathJax -->以内に抑えられる．長々とした証明は<a href="http://homes.di.unimi.it/~cesabian/Pubblicazioni/ml-02.pdf" target="_blank" rel="external">論文</a>を参照していただくとして，これは店に行く回数が十分大きい場合の理論限界に到達している．デメリットとしては，探索のためによくない店にあたってしまうことが多いという点が挙げられる．</p>
+<h2 id="実験"><a href="#実験" class="headerlink" title="実験"></a>実験</h2><p>　では，<span>$\epsilon$</span><!-- Has MathJax -->-GreedyとUCB1が<strong>最良の店を選ぶ過程</strong>はどうなっているだろうか？ 『<a href="http://www.oreilly.co.jp/books/9784873116273/" target="_blank" rel="external">バンディットアルゴリズムによる最適化手法</a>』の<a href="https://github.com/johnmyleswhite/BanditsBook" target="_blank" rel="external">サンプルコード</a>をPython3 + numpy向けに改変して実験．</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div><div class="line">22</div><div class="line">23</div><div class="line">24</div><div class="line">25</div><div class="line">26</div><div class="line">27</div><div class="line">28</div><div class="line">29</div><div class="line">30</div><div class="line">31</div><div class="line">32</div><div class="line">33</div><div class="line">34</div><div class="line">35</div><div class="line">36</div><div class="line">37</div><div class="line">38</div><div class="line">39</div><div class="line">40</div><div class="line">41</div><div class="line">42</div><div class="line">43</div><div class="line">44</div><div class="line">45</div><div class="line">46</div><div class="line">47</div><div class="line">48</div><div class="line">49</div><div class="line">50</div><div class="line">51</div><div class="line">52</div><div class="line">53</div><div class="line">54</div><div class="line">55</div><div class="line">56</div><div class="line">57</div><div class="line">58</div><div class="line">59</div><div class="line">60</div><div class="line">61</div><div class="line">62</div><div class="line">63</div><div class="line">64</div><div class="line">65</div><div class="line">66</div><div class="line">67</div><div class="line">68</div><div class="line">69</div><div class="line">70</div><div class="line">71</div><div class="line">72</div><div class="line">73</div><div class="line">74</div><div class="line">75</div><div class="line">76</div><div class="line">77</div><div class="line">78</div><div class="line">79</div><div class="line">80</div><div class="line">81</div><div class="line">82</div><div class="line">83</div><div class="line">84</div><div class="line">85</div><div class="line">86</div><div class="line">87</div><div class="line">88</div><div class="line">89</div><div class="line">90</div><div class="line">91</div><div class="line">92</div><div class="line">93</div><div class="line">94</div><div class="line">95</div><div class="line">96</div><div class="line">97</div><div class="line">98</div><div class="line">99</div><div class="line">100</div><div class="line">101</div><div class="line">102</div><div class="line">103</div><div class="line">104</div><div class="line">105</div><div class="line">106</div><div class="line">107</div><div class="line">108</div><div class="line">109</div><div class="line">110</div><div class="line">111</div><div class="line">112</div><div class="line">113</div><div class="line">114</div><div class="line">115</div><div class="line">116</div><div class="line">117</div><div class="line">118</div><div class="line">119</div><div class="line">120</div><div class="line">121</div><div class="line">122</div><div class="line">123</div><div class="line">124</div><div class="line">125</div><div class="line">126</div><div class="line">127</div><div class="line">128</div><div class="line">129</div><div class="line">130</div><div class="line">131</div><div class="line">132</div><div class="line">133</div><div class="line">134</div><div class="line">135</div><div class="line">136</div></pre></td><td class="code"><pre><div class="line"><span class="keyword">import</span> pandas <span class="keyword">as</span> pd</div><div class="line"><span class="keyword">import</span> numpy <span class="keyword">as</span> np</div><div class="line"><span class="keyword">import</span> matplotlib.pyplot <span class="keyword">as</span> plt</div><div class="line"><span class="keyword">import</span> random</div><div class="line"><span class="keyword">import</span> math</div><div class="line"><span class="keyword">import</span> seaborn <span class="keyword">as</span> sns</div><div class="line"></div><div class="line"><span class="class"><span class="keyword">class</span> <span class="title">BernoulliArm</span><span class="params">()</span>:</span></div><div class="line">    <span class="function"><span class="keyword">def</span> <span class="title">__init__</span><span class="params">(self, p)</span>:</span></div><div class="line">        self.p = p</div><div class="line"></div><div class="line">    <span class="function"><span class="keyword">def</span> <span class="title">draw</span><span class="params">(self)</span>:</span></div><div class="line">        <span class="keyword">if</span> random.random() &gt; self.p:</div><div class="line">            <span class="keyword">return</span> <span class="number">0.0</span></div><div class="line">        <span class="keyword">else</span>:</div><div class="line">            <span class="keyword">return</span> <span class="number">1.0</span></div><div class="line"></div><div class="line"><span class="class"><span class="keyword">class</span> <span class="title">EpsilonGreedy</span><span class="params">()</span>:</span></div><div class="line">    <span class="function"><span class="keyword">def</span> <span class="title">__init__</span><span class="params">(self, epsilon, counts, values)</span>:</span></div><div class="line">        self.epsilon = epsilon</div><div class="line">        self.counts = counts</div><div class="line">        self.values = values</div><div class="line">        <span class="keyword">return</span></div><div class="line"></div><div class="line">    <span class="function"><span class="keyword">def</span> <span class="title">initialize</span><span class="params">(self, n_arms)</span>:</span></div><div class="line">        self.counts = np.zeros(n_arms)</div><div class="line">        self.values = np.zeros(n_arms)</div><div class="line">        <span class="keyword">return</span></div><div class="line"></div><div class="line">    <span class="function"><span class="keyword">def</span> <span class="title">select_arm</span><span class="params">(self)</span>:</span></div><div class="line">        <span class="keyword">if</span> random.random() &gt; self.epsilon:</div><div class="line">            <span class="keyword">return</span> np.argmax(self.values)</div><div class="line">        <span class="keyword">else</span>:</div><div class="line">            <span class="keyword">return</span> np.random.randint(<span class="number">0</span>, len(self.values))</div><div class="line"></div><div class="line">    <span class="function"><span class="keyword">def</span> <span class="title">update</span><span class="params">(self, chosen_arm, reward)</span>:</span></div><div class="line">        self.counts[chosen_arm] += <span class="number">1</span></div><div class="line">        n = self.counts[chosen_arm]</div><div class="line"></div><div class="line">        value = self.values[chosen_arm]</div><div class="line">        new_value = ((n<span class="number">-1</span>) / float(n)) * value + (<span class="number">1</span> / float(n)) * reward</div><div class="line">        self.values[chosen_arm] = new_value</div><div class="line">        <span class="keyword">return</span></div><div class="line"></div><div class="line"><span class="class"><span class="keyword">class</span> <span class="title">UCB1</span><span class="params">()</span>:</span></div><div class="line">  <span class="function"><span class="keyword">def</span> <span class="title">__init__</span><span class="params">(self, counts, values)</span>:</span></div><div class="line">    self.counts = counts</div><div class="line">    self.values = values</div><div class="line">    <span class="keyword">return</span></div><div class="line"></div><div class="line">  <span class="function"><span class="keyword">def</span> <span class="title">initialize</span><span class="params">(self, n_arms)</span>:</span></div><div class="line">    self.counts = np.zeros(n_arms)</div><div class="line">    self.values = np.zeros(n_arms)</div><div class="line">    <span class="keyword">return</span></div><div class="line"></div><div class="line">  <span class="function"><span class="keyword">def</span> <span class="title">select_arm</span><span class="params">(self)</span>:</span></div><div class="line">    n_arms = len(self.counts)</div><div class="line">    <span class="keyword">for</span> arm <span class="keyword">in</span> range(n_arms):</div><div class="line">      <span class="keyword">if</span> self.counts[arm] == <span class="number">0</span>:</div><div class="line">        <span class="keyword">return</span> arm</div><div class="line"></div><div class="line">    ucb_values = [<span class="number">0.0</span> <span class="keyword">for</span> arm <span class="keyword">in</span> range(n_arms)]</div><div class="line">    total_counts = sum(self.counts)</div><div class="line">    <span class="keyword">for</span> arm <span class="keyword">in</span> range(n_arms):</div><div class="line">      bonus = math.sqrt((<span class="number">2</span> * math.log(total_counts)) / float(self.counts[arm]))</div><div class="line">      ucb_values[arm] = self.values[arm] + bonus</div><div class="line">    <span class="keyword">return</span> np.argmax(ucb_values)</div><div class="line"></div><div class="line">  <span class="function"><span class="keyword">def</span> <span class="title">update</span><span class="params">(self, chosen_arm, reward)</span>:</span></div><div class="line">    self.counts[chosen_arm] = self.counts[chosen_arm] + <span class="number">1</span></div><div class="line">    n = self.counts[chosen_arm]</div><div class="line"></div><div class="line">    value = self.values[chosen_arm]</div><div class="line">    new_value = ((n - <span class="number">1</span>) / float(n)) * value + (<span class="number">1</span> / float(n)) * reward</div><div class="line">    self.values[chosen_arm] = new_value</div><div class="line">    <span class="keyword">return</span></div><div class="line"></div><div class="line"><span class="function"><span class="keyword">def</span> <span class="title">test_algorithm</span><span class="params">(algo, arms, num_sims, horizon)</span>:</span></div><div class="line">    chosen_arms = np.zeros(num_sims * horizon)</div><div class="line">    rewards = np.zeros(num_sims * horizon)</div><div class="line">    cumulative_rewards = np.zeros(num_sims * horizon)</div><div class="line">    sim_nums = np.zeros(num_sims * horizon)</div><div class="line">    times = np.zeros(num_sims * horizon)</div><div class="line"></div><div class="line">    <span class="keyword">for</span> sim <span class="keyword">in</span> range(num_sims):</div><div class="line">        sim += <span class="number">1</span></div><div class="line">        algo.initialize(len(arms))</div><div class="line"></div><div class="line">        <span class="keyword">for</span> t <span class="keyword">in</span> range(horizon):</div><div class="line">            t += <span class="number">1</span></div><div class="line">            index = (sim - <span class="number">1</span>) * horizon + t - <span class="number">1</span></div><div class="line">            sim_nums[index] = sim</div><div class="line">            times[index] = t</div><div class="line"></div><div class="line">            chosen_arm = algo.select_arm()</div><div class="line">            chosen_arms[index] = chosen_arm</div><div class="line"></div><div class="line">            reward = arms[chosen_arm].draw()</div><div class="line">            rewards[index] = reward</div><div class="line"></div><div class="line">            <span class="keyword">if</span> t == <span class="number">1</span>:</div><div class="line">                cumulative_rewards[index] = reward</div><div class="line">            <span class="keyword">else</span>:</div><div class="line">                cumulative_rewards[index] = cumulative_rewards[index - <span class="number">1</span>] + reward</div><div class="line"></div><div class="line">            algo.update(chosen_arm, reward)</div><div class="line"></div><div class="line">    <span class="keyword">return</span> [sim_nums, times, chosen_arms, rewards, cumulative_rewards]</div><div class="line"></div><div class="line">means = np.array([<span class="number">0.1</span>, <span class="number">0.1</span>, <span class="number">0.1</span>, <span class="number">0.1</span>, <span class="number">0.9</span>])</div><div class="line">n_arms = len(means) <span class="comment"># 腕は5本</span></div><div class="line">random.shuffle(means)</div><div class="line"></div><div class="line">arms = [BernoulliArm(x) <span class="keyword">for</span> x <span class="keyword">in</span> means]</div><div class="line"></div><div class="line"><span class="keyword">for</span> epsilon <span class="keyword">in</span> [<span class="number">0.1</span>, <span class="number">0.2</span>, <span class="number">0.3</span>, <span class="number">0.4</span>, <span class="number">0.5</span>]: <span class="comment"># epsilonを変えたらどうなるか？</span></div><div class="line">    algo = EpsilonGreedy(epsilon, [], [])</div><div class="line">    algo.initialize(n_arms)</div><div class="line">    results = test_algorithm(algo, arms, <span class="number">5000</span>, <span class="number">500</span>)</div><div class="line"></div><div class="line">    df = pd.DataFrame(&#123;<span class="string">"times"</span>: results[<span class="number">1</span>], <span class="string">"rewards"</span>: results[<span class="number">3</span>]&#125;)</div><div class="line">    grouped = df[<span class="string">"rewards"</span>].groupby(df[<span class="string">"times"</span>])</div><div class="line"></div><div class="line">    plt.plot(grouped.mean(), label=<span class="string">"epsilon="</span>+str(epsilon))</div><div class="line"></div><div class="line">algo = UCB1([], [])</div><div class="line">algo.initialize(n_arms)</div><div class="line">results = test_algorithm(algo, arms, <span class="number">5000</span>, <span class="number">500</span>)</div><div class="line"></div><div class="line">df = pd.DataFrame(&#123;<span class="string">"times"</span>: results[<span class="number">1</span>], <span class="string">"rewards"</span>: results[<span class="number">3</span>]&#125;)</div><div class="line">grouped = df[<span class="string">"rewards"</span>].groupby(df[<span class="string">"times"</span>])</div><div class="line"></div><div class="line">plt.plot(grouped.mean(), label=<span class="string">"UCB1"</span>)</div><div class="line"></div><div class="line">plt.legend(loc=<span class="string">"best"</span>)</div><div class="line">plt.show()</div></pre></td></tr></table></figure>
+<p><img src="/image/bandits/bandits.png"></p>
+<p>　好奇心旺盛な人は序盤それなりに苦労することがわかる．</p>
+<h1 id="おわりに"><a href="#おわりに" class="headerlink" title="おわりに"></a>おわりに</h1><p>　こうしたナイーブな実装で焼肉の頼み方を最適化したり，店の巡り方を最適化できるかどうかというとまあ実際微妙（たとえば焼肉の各品目から得られる満足度は，限界効用逓減の法則に従ってすり減っていく）だが，日々の意思決定をアルゴリズム的に考えてみる遊びはそれなりにおもしろい．ソーシャルゲームにどう課金するか，というのもこの俎上に載せられる．<br>　『<a href="https://www.amazon.co.jp/dp/B015CKNWJI/" target="_blank" rel="external">Algorithms to Live By: The Computer Science of Human Decisions</a>』という本はそういう，情報系の人間がよくやる与太話をまじめに考察したものだ——書類はどのキャッシュアルゴリズムに従って並べるべきかとか．先に挙げた探索と利用のトレードオフについても述べられている．YouTubeで著者らの講演を観てほしい．</p>
+<center><iframe width="560" height="315" src="https://www.youtube.com/embed/OwKj-wgXteo" frameborder="0" allowfullscreen></iframe></center>
+
+<p>　はい．</p>
+<h1 id="参考文献"><a href="#参考文献" class="headerlink" title="参考文献"></a>参考文献</h1><ul>
+<li><a href="http://qiita.com/Tsutomu-KKE@github/items/f8be15f56cbacdbb7bd9" target="_blank" rel="external">献立を組合せ最適化で考える - Qiita</a></li>
+<li><a href="http://qiita.com/makora9143/items/9e90a533c95c24b85a94" target="_blank" rel="external">備忘録＠Python ORセミナー: Pulp - Qiita</a></li>
+<li><a href="http://qiita.com/yuku_t/items/6844aac6008911401b19" target="_blank" rel="external">A/Bテストよりすごい？バンディットアルゴリズムとは一体何者か - Qiita</a></li>
+<li><a href="http://minerva.cs.uec.ac.jp/~ito/entcog/contents/lecture/date/5-yoshizoe.pdf" target="_blank" rel="external">コンピュータ囲碁における モンテカルロ法 ~理論編~[PDF]</a></li>
+</ul>
+<h1 id="追記-2016-12-06"><a href="#追記-2016-12-06" class="headerlink" title="追記 (2016.12.06)"></a>追記 (2016.12.06)</h1><p>　今回のような設定では多腕バンディット問題というより最適腕識別として考えたほうがよさそう．多腕バンディット問題は累積報酬の最大化が目的だけれど，最適腕識別はどの腕が最良か発見するのが目的．将来の報酬が最大の腕を見つける，ということ．『<a href="https://www.amazon.co.jp/dp/406152917X/" target="_blank" rel="external">バンディット問題の理論とアルゴリズム</a>』を読めばいいんだとか．</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://ntddk.github.io/2016/12/04/yakiniku-optimization/" data-id="cj13oizi6001ppcosdyg86yfa" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/machine-learning/">machine learning</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/optimization/">optimization</a></li></ul>
+
+    </footer>
+  </div>
+  
+    
+<nav id="article-nav">
+  
+    <a href="/2016/11/23/kdd-cup-99-data/" id="article-nav-newer" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Newer</strong>
+      <div class="article-nav-title">
+        
+          KDD Cup 99 Dataおぼえがき
+        
+      </div>
+    </a>
+  
+  
+    <a href="/2017/03/04/thin-hypervisor-2017/" id="article-nav-older" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Older</strong>
+      <div class="article-nav-title">シン・ハイパーバイザ2017 (前編)</div>
+    </a>
+  
+</nav>
+
+  
+</article>
+
+</section>
+        
+      </div>
+      <footer id="footer">
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      &copy; 2017 ntddk<br>
+      <a href="https://github.com/ntddk/hexo-theme-jathena" target="_blank">JAthena</a> by <a href="http://ntddk.github.io" target="_blank">ntddk</a> | Powered by <a href="http://hexo.io/" target="_blank">Hexo</a>
+    </div>
+  </div>
+</footer>
+    </div>
+    
+
+<script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+
+
+  <link rel="stylesheet" href="/fancybox/jquery.fancybox.css">
+  <script src="/fancybox/jquery.fancybox.pack.js"></script>
+
+
+<script src="/js/script.js"></script>
+  </div>
+
+<!-- Begin: Injected MathJax -->
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Config({"tex2jax":{"inlineMath":[["$","$"],["\\(","\\)"]],"skipTags":["script","noscript","style","textarea","pre","code"],"processEscapes":true},"TeX":{"equationNumbers":{"autoNumber":"AMS"}}});
+</script>
+
+<script type="text/x-mathjax-config">
+    MathJax.Hub.Queue(function() {
+        var all = MathJax.Hub.getAllJax(), i;
+        for(i=0; i < all.length; i += 1) {
+            all[i].SourceElement().parentNode.className += ' has-jax';
+        }
+    });
+</script>
+
+<script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.0/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
+</script>
+<!-- End: Injected MathJax -->
+</body>
+</html>

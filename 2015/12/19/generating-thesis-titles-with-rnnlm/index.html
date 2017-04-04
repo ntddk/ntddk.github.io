@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+  <title>RNNLMによる論文タイトルの自動生成 | 一生あとで読んでろ</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="description" content="本稿は慶應義塾大学SFC村井&amp;amp;徳田研 Advent Calendar 2015の19日目である． TL;DR:　村井研・徳田研の卒論・修論・博論アーカイブから過去の論文タイトルを収集し，RNNLM（Recurrent Neural Network Language Model, 再帰型ニューラルネット言語モデル）[1]を用いて論文タイトルを自動生成する． 手順 論文アーカイブを雑にスクレ">
+<meta name="keywords" content="neural network,machine learing">
+<meta property="og:type" content="article">
+<meta property="og:title" content="RNNLMによる論文タイトルの自動生成">
+<meta property="og:url" content="http://ntddk.github.io/2015/12/19/generating-thesis-titles-with-rnnlm/index.html">
+<meta property="og:site_name" content="一生あとで読んでろ">
+<meta property="og:description" content="本稿は慶應義塾大学SFC村井&amp;amp;徳田研 Advent Calendar 2015の19日目である． TL;DR:　村井研・徳田研の卒論・修論・博論アーカイブから過去の論文タイトルを収集し，RNNLM（Recurrent Neural Network Language Model, 再帰型ニューラルネット言語モデル）[1]を用いて論文タイトルを自動生成する． 手順 論文アーカイブを雑にスクレ">
+<meta property="og:image" content="http://ntddk.github.io/image/rnnlm/rnnlm.png">
+<meta property="og:image" content="http://ntddk.github.io/image/rnnlm/bptt.png">
+<meta property="og:updated_time" content="2016-07-08T08:52:28.589Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="RNNLMによる論文タイトルの自動生成">
+<meta name="twitter:description" content="本稿は慶應義塾大学SFC村井&amp;amp;徳田研 Advent Calendar 2015の19日目である． TL;DR:　村井研・徳田研の卒論・修論・博論アーカイブから過去の論文タイトルを収集し，RNNLM（Recurrent Neural Network Language Model, 再帰型ニューラルネット言語モデル）[1]を用いて論文タイトルを自動生成する． 手順 論文アーカイブを雑にスクレ">
+<meta name="twitter:image" content="http://ntddk.github.io/image/rnnlm/rnnlm.png">
+  
+  
+  <link href="//fonts.googleapis.com/css?family=Ubuntu" rel="stylesheet" type="text/css">
+  <link rel="stylesheet" href="/css/style.css">
+  
+</head>
+<body>
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/" id="logo">一生あとで読んでろ</a>
+      </h1>
+      
+        <h2 id="subtitle-wrap">
+          <a href="/" id="subtitle">技術ブログ</a>
+        </h2>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="sub-nav">
+        
+          <a id="nav-home-icon" class="nav-icon" href="/"></a>
+        
+          <a id="nav-about-icon" class="nav-icon" href="/about"></a>
+        
+        
+      </nav>
+    </div>
+  </div>
+</header>
+      <div class="outer">
+        <section id="main"><article id="post-generating-thesis-titles-with-rnnlm" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    
+      <header class="article-header">
+        
+  
+    <h1 class="article-title" itemprop="name">
+      RNNLMによる論文タイトルの自動生成
+    </h1>
+  
+
+      </header>
+    
+    <time class="article-date" datetime="2015-12-19T14:45:00.000Z" itemprop="datePublished">12-19-2015</time>
+    
+  </div>
+  <div class="article-inner">
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p>　本稿は<a href="http://www.adventar.org/calendars/1053" target="_blank" rel="external">慶應義塾大学SFC村井&amp;徳田研 Advent Calendar 2015</a>の19日目である．</p>
+<h1 id="TL-DR"><a href="#TL-DR" class="headerlink" title="TL;DR:"></a>TL;DR:</h1><p>　村井研・徳田研の卒論・修論・博論アーカイブから過去の論文タイトルを収集し，RNNLM（Recurrent Neural Network Language Model, 再帰型ニューラルネット言語モデル）[1]を用いて論文タイトルを自動生成する．</p>
+<h1 id="手順"><a href="#手順" class="headerlink" title="手順"></a>手順</h1><ol>
+<li><a href="http://www.sfc.wide.ad.jp/paper.html" target="_blank" rel="external">論文アーカイブ</a>を雑にスクレイピング．</li>
+<li>簡単のため英語タイトルを削る．データサイズは540行・16294字．</li>
+<li>MeCabの<code>-Owakati</code>オプションで分かち書き．単語数は6272と少ない．</li>
+<li>RNNLMで学習，出力．</li>
+</ol>
+<p>　生成した論文タイトルは次の通り．</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div><div class="line">22</div><div class="line">23</div><div class="line">24</div><div class="line">25</div><div class="line">26</div><div class="line">27</div><div class="line">28</div><div class="line">29</div><div class="line">30</div><div class="line">31</div><div class="line">32</div><div class="line">33</div><div class="line">34</div><div class="line">35</div><div class="line">36</div><div class="line">37</div><div class="line">38</div><div class="line">39</div><div class="line">40</div><div class="line">41</div><div class="line">42</div><div class="line">43</div><div class="line">44</div><div class="line">45</div><div class="line">46</div><div class="line">47</div><div class="line">48</div><div class="line">49</div><div class="line">50</div><div class="line">51</div><div class="line">52</div><div class="line">53</div><div class="line">54</div><div class="line">55</div><div class="line">56</div><div class="line">57</div><div class="line">58</div><div class="line">59</div><div class="line">60</div><div class="line">61</div><div class="line">62</div><div class="line">63</div><div class="line">64</div><div class="line">65</div><div class="line">66</div><div class="line">67</div><div class="line">68</div><div class="line">69</div><div class="line">70</div><div class="line">71</div><div class="line">72</div><div class="line">73</div><div class="line">74</div><div class="line">75</div><div class="line">76</div><div class="line">77</div><div class="line">78</div><div class="line">79</div><div class="line">80</div><div class="line">81</div><div class="line">82</div><div class="line">83</div><div class="line">84</div><div class="line">85</div><div class="line">86</div><div class="line">87</div><div class="line">88</div><div class="line">89</div><div class="line">90</div><div class="line">91</div><div class="line">92</div><div class="line">93</div><div class="line">94</div><div class="line">95</div><div class="line">96</div><div class="line">97</div><div class="line">98</div><div class="line">99</div><div class="line">100</div><div class="line">101</div></pre></td><td class="code"><pre><div class="line">改変適応機環境におけるインターネット化の設計と実装</div><div class="line">暮らし計算発見を利用したUDL機器</div><div class="line">インターネットを用いた機器プローブ体系のVoDについて開発な攻撃運用手法</div><div class="line">自律計算ネットワークの行動に-移動システムに関する研究</div><div class="line">衛星情報を用いたビジュアライゼーション定義アーキテクチャ表をする検出ユビキタスノードのファイル構成に関する研究</div><div class="line">あしあと適応セキュリティネットワークを用いた負荷議事取り入れたセンサNEMOMANET解決</div><div class="line">ユーザエンティティに適した仮想な通信接近による制御対象の設計と実装</div><div class="line">蓄積学校利用性のための再作業に関する持続</div><div class="line">型連携ネットワークのインターネットに基づく遠隔コードの向けたデジタル機構の構築</div><div class="line">アプリケーション：型と時間特定を用いた利用型路準拠相関の構築</div><div class="line">自律電話教育における異種品質空間支援システムの設計と実装</div><div class="line">位置AV端末著作授業特殊トポロジ型し分析高速構築</div><div class="line">広域を利用した次応用におけるレイヤーな授業に関する研究プロシステムに関する研究</div><div class="line">次制御対するカメラを利用したAd型間屋外パブリック構築</div><div class="line">協調:不sネットワークにおけるOSストリーミングの考慮機器コミュニケーション配信システムの設計と実装</div><div class="line">センサ環境におけるデバイスソフトウェア文字通信システム</div><div class="line">無線作業めぐるにおけるパケットIP発信・支援機構</div><div class="line">ELA上環境に応じたしたコンピュータ測定に関する研究</div><div class="line">インターネット型プラットホームの遠隔パケットとシステム</div><div class="line">無線コントロールセンサを考慮する参加参加サービスの研究</div><div class="line">移動者における位置適応オブジェクト手法の研究</div><div class="line">インターネットグルーピングの回覧性をシステムした経路消耗性の実現</div><div class="line">自己情報を用いた実を量子よる協調表行動流通</div><div class="line">デジタル前遠隔しるしの情報共有支援機構</div><div class="line">ネットワークト可視ネットワークを車的基盤」関数の分析</div><div class="line">環境Computing通信DVB携帯性に関する移動同期利用の設計と実装</div><div class="line">マルチパスFunction無線センサノードを用いた技術マルチ支援支援促進に関する研究</div><div class="line">スマート世代ネットワークにおける相互ブリッジ家電システムの設計と実装</div><div class="line">インターネット情報のための興味無支援システムの構築</div><div class="line">オペレーティング型IP環境のプロファイリング的な信頼に関する研究</div><div class="line">実方向自動ポロジにおける同期機器性における研究</div><div class="line">センサ-抽出生成を支援情報登録抽出機構の構築</div><div class="line">アドホックOSにおけるOS環境のGlass性基盤機構の構築</div><div class="line">DV地アプリケーションの者による最適いアルゴリズム</div><div class="line">商上のための選択なMobile効率システムの構築</div><div class="line">ユビキタス世代環境における効率Wireless情報のMarkit</div><div class="line">系列演奏位置スレッドサービス二マッチングマルチプロアクティブモデルの構築</div><div class="line">パケット適応付け利用を考慮したネットワークブログモデルの設計と実装</div><div class="line">TranS情報環境におけるグループホスト同期への安全履歴と分散</div><div class="line">の情報対象でのMediatorコラボレーションに関する研究</div><div class="line">類似Allシステム</div><div class="line">情報グループを利用するデジタル制御動画像配送システムの構築</div><div class="line">RFIDを利用したネットワークのプラットフォーム転送に関する研究</div><div class="line">周辺上セキュリティにおけるコンテキスト者基無線の提案に関する研究</div><div class="line">Link型服行動RCSにおける効率しない機構</div><div class="line">クラシック型車載インターネットを解決した分散音声なりすましシステム</div><div class="line">Dynamic特徴解析に基づく仮想制御機構の設計と実装</div><div class="line">多段CSMAにおける多様な解析管理機構の設計と実装</div><div class="line">移動機:を用いた-コンテンツシステムの構築</div><div class="line">技術センサ環境におけるホーム化による経路サーバ</div><div class="line">アプリケーション回線に基づく薦環境におけるする作成への行動利用に関する研究</div><div class="line">インターネットを用いたしたな動画ルールに関する研究</div><div class="line">機器協調利用Efficientのネットワーク解決のエンド映像構築</div><div class="line">計算情報を利用した家電抽象の迷い連携への構築</div><div class="line">関連情報教育における動的メールイベント収集の研究</div><div class="line">通知におけるデータベース方式購買によるした状態時間グループに関する研究</div><div class="line">コンテキスト:6のためのための設計と実装</div><div class="line">電子ネットワークのための提案と実装</div><div class="line">自己電話を利用したオブジェクト分散型授業属性制御機構の実現</div><div class="line">ネットワークの抽出化環境の向上圧縮システムの構築</div><div class="line">Networks対戦ネットワークにおける家庭テリトリー手法の構築</div><div class="line">広バイト依存患者のための収集及び積極システム</div><div class="line">IPコンテキスト精度点のデータベース的と-発見環境動画像モデル行動-</div><div class="line">通信作業システムの含む属性センサノード付け可能メディアの提案と開発</div><div class="line">情報世代環境時による最適視点環境機構の設計と実装</div><div class="line">協調蓄積モバイルバッテリ支援Shumu機器型設置インシデントIrma保護量</div><div class="line">分散回線にセンサデータ適応をマッチングと基準化に関する研究</div><div class="line">環境さ時複数用方式と審議に関する研究</div><div class="line">自律リンク環境におけるインターネット・属性品質</div><div class="line">オブジェクトしにおけるインタフェース技法化推薦機構の研究</div><div class="line">インターネットにおける光を用いた最適遠隔支援環境の構築</div><div class="line">モーバイルs利用とへの実現自動手法の設計と実装</div><div class="line">インターネットに適した時端末型TCP型データ基準の内</div><div class="line">インターネットを用いた受信・辞書収集</div><div class="line">DOS的利用環境におけるbased配信システムの構築</div><div class="line">i：と利用した情報モーダルの作成に関する研究</div><div class="line">APIの情報におけるソフトウェアするをシステムの自律</div><div class="line">インターネットを用いたセル内回避手法アプリケーションFunction選択制御機構</div><div class="line">マルチ:ユーザ時のLooking支援競合の参加情報に関する研究</div><div class="line">マルチネットワークによる動的リモコンアーキテクチャの分析に関する研究</div><div class="line">インターネット：文字を含むと対策軽減地理ファイルの構築</div><div class="line">アプリケーションのデジタル行動環境における負荷教育の設計と実装</div><div class="line">移動制御型メディア取り入れたにおける自律トポロジモデルの提案</div><div class="line">日本回線時におけるセンサのアーキテクチャ</div><div class="line">『世代sionを支援情報ユーザの実現</div><div class="line">Mobileの行動空間に基づくするコンポーネントシステムの設計と構築</div><div class="line">キットライブラリのアドレス利用を支援するアプリケーションの行動に関する研究</div><div class="line">間:環境における認証検出の考察</div><div class="line">鍵盤を用いた基盤経路トポロジ支援手法の研究</div><div class="line">RFIDネットワークを用いたとユーザ</div><div class="line">自律型機的な支援レイヤー手法の設計と実装</div><div class="line">アドホックを用いたデジタル最適暗号システムの研究</div><div class="line">WWW人IPvシステムの動的2を化フローインフォメーション配送化手法</div><div class="line">次的機タフェース6システムの実現</div><div class="line">IPレイヤーネットワークにおけるグループ取得遠隔システムに関する研究</div><div class="line">二通信ユニバーサルにおける複数共有再についての研究</div><div class="line">Tapirus上の情報的実現あるの構築</div><div class="line">環境上における仮想指機構の構築</div><div class="line">インターネットにおけるRFID経路エンドノードデータベース付けモデルの設計と実装</div><div class="line">2回線学習への効率的型環境の提案と構築</div><div class="line">...</div></pre></td></tr></table></figure>
+<p>　これはRNNLMが生成した論文タイトルを100件無作為抽出したもの．全リストは<a href="https://gist.github.com/ntddk/c1dd4476677667157a97" target="_blank" rel="external">gist</a>に置いている．この程度のデータサイズでRNNLMの性能を云々するのはいささか危うい気がするが，論文タイトルの末尾はえてして「～の構築」「～の研究」「～の実現」になるというルールを獲得できている，ということだろうか．<br>　同じデータセットから，ありがちな2単語プリフィックスのマルコフ連鎖で生成した論文タイトルは次の通り．</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div></pre></td><td class="code"><pre><div class="line">注目した二点間接続基盤ソフトウエアの構築インターネット</div><div class="line">地域における高等教育協力手法の研究ホームネットワークにおける多様</div><div class="line">かつスケーラブルな識別子管理システムゲームコンソールに対応する管理</div><div class="line">運用基盤分析に関する研究ポリシ経路制御に関する研究大</div><div class="line">任意の物理的量子ビットに対する効率的な情報閲覧</div><div class="line">脳疲労検知システムの提案次世代インターネット経路制御を用い</div><div class="line">鍵交換機構の実装と評価初等中等教育におけるWWW</div><div class="line">プロセスデザイン片方向ブロードキャストメディアを用いたユビキタスコンピューティング環境に適し</div><div class="line">連携システムの設計と実装exPhoto:周辺機器と撮影</div><div class="line">に関する研究分散環境におけるプロアクティブ制御方式に関する研究アドホック</div><div class="line">...</div></pre></td></tr></table></figure>
+<p>　パッと見でRNNLMが生成した論文タイトルの方がより自然に思える．で，RNNLMって何なの？</p>
+<h1 id="RNNLM"><a href="#RNNLM" class="headerlink" title="RNNLM"></a>RNNLM</h1><p>　読んで字のごとくRNNLMはRNNの言語モデルへの応用である．<br>　RNNは内部に有向閉路をもつニューラルネット．系列データの各時刻<span>$t$</span><!-- Has MathJax -->につき1つの入力<span>$x^t$</span><!-- Has MathJax -->をとり1つの出力<span>$y^t$</span><!-- Has MathJax -->を返す．ふつう順伝播型ニューラルネットは入力1つをとり1つの入力を与える写像を表現するが，RNNは任意の系列–すなわち過去のすべての入力から任意の系列への写像を表現する．<br>　これは<strong>時刻<span>$t-1$</span><!-- Has MathJax -->の隠れ層の出力を，時刻<span>$t$</span><!-- Has MathJax -->の隠れ層の入力に与える</strong>ことで実現される．</p>
+<p><img src="/image/rnnlm/rnnlm.png" width="30%" height="30%"></p>
+<p>　文章は系列データであり，文章に含まれる各単語は直前の単語の並びに依存している．そこで，1990年のエルマンネット[2]以来，RNNを用いた文章の分析が試みられてきた–近頃「RNNは深層学習の一種」というような言辞を見かけるが，RNN<span>$\in$</span><!-- Has MathJax -->深層学習では<strong>ない</strong>．<br>　RNNLMと既存手法との相違点は，単語を潜在空間に写像して単語の意味を獲得しようとしているところだ．<br>　上図において隠れ層のベクトルは単語の潜在ベクトルとその履歴より<span>$\begin{split}s(t) =&amp; f(Uw(t) + Ws(t-1))\end{split}$</span><!-- Has MathJax -->となる．次の単語の確率は<span>$\begin{split}y(t) =&amp; g(Vs(t))\end{split}$</span><!-- Has MathJax -->となる．<br>　ここで活性化関数<span>$f(z)$</span><!-- Has MathJax -->は標準シグモイド関数で，<span>$g(z)$</span><!-- Has MathJax -->はソフトマックス関数<span>$\dfrac {e^{zm}} {\Sigma _{k}e^{zm}}$</span><!-- Has MathJax -->である．<br>　学習では確率的勾配降下法を用いて重み<span>$U$</span><!-- Has MathJax -->, <span>$W$</span><!-- Has MathJax -->, <span>$V$</span><!-- Has MathJax -->を更新していくが，このときRNNLMは各層を時間方向に展開し，最後の時刻<span>$t$</span><!-- Has MathJax -->から誤差逆伝播計算をおこなう（BPTT, Backpropagation through time法）．<br>　ここにおいてRNNは多層の順伝播型ニューラルネットのようにみなせる．</p>
+<p><img src="/image/rnnlm/bptt.png" width="30%" height="30%"></p>
+<p>　BPTT法において，ある時刻<span>$t$</span><!-- Has MathJax -->における出力層の誤差は正解ベクトル<span>$d(t)$</span><!-- Has MathJax -->から出力<span>$y(t)$</span><!-- Has MathJax -->を引いた出力誤差<span>$e_{o}(t)$</span><!-- Has MathJax -->と，時刻<span>$t+1$</span><!-- Has MathJax -->から伝播してきた誤差の和となる．ここでたとえば<span>$V(t+1) = V(t) + s(t)e_{o}(t)^t\alpha - V(t)\beta$</span><!-- Has MathJax -->．<span>$\alpha$</span><!-- Has MathJax -->は学習率であり，各層で行列の勾配に掛かる．<span>$\beta$</span><!-- Has MathJax -->はL2正則化の係数．<br>　このBPTT法で長い系列を扱うとき勾配が消失してしまう問題[3]があり，解決策としてLSTM（Long Short-Term Memory, 長・短期記憶）[4]が提案されているが，割愛する．<br>　なお今回のパラメータは次の通り．</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div></pre></td><td class="code"><pre><div class="line">last probability of validation data: -441.610349</div><div class="line">number of finished iterations: 14</div><div class="line">current position in training data: 0</div><div class="line">current probability of training data: -441.576456</div><div class="line">save after processing # words: 0</div><div class="line"># of training words: 6272</div><div class="line">input layer size: 1295</div><div class="line">hidden layer size: 200</div><div class="line">compression layer size: 0</div><div class="line">output layer size: 1096</div><div class="line">direct connections: 0</div><div class="line">direct order: 3</div><div class="line">bptt: 6</div><div class="line">bptt block: 10</div><div class="line">vocabulary size: 1095</div><div class="line">class size: 1</div><div class="line">old classes: 0</div><div class="line">independent sentences mode: 1</div><div class="line">starting learning rate: 0.100000</div><div class="line">current learning rate: 0.000195</div><div class="line">learning rate decrease: 1</div></pre></td></tr></table></figure>
+<h1 id="おわりに"><a href="#おわりに" class="headerlink" title="おわりに"></a>おわりに</h1><p>　恥知らずのクソ野郎なので何番煎じともわからない記事を書いてしまった．元ネタは<a href="http://www.phontron.com/nlp-title/" target="_blank" rel="external">NLP論文ネタ一覧</a>．<br>　このほか青空文庫やなろう小説[5]をRNNに学習させてはいるが，LSTM込みでもいまだ人間が見て自然に思える文章の生成は難しく思える．<br>　いずれは論文タイトルばかりか論文の内容も自動生成して知の欺瞞をもう一発カマしたいのだが．SFC自体が知の欺瞞っぽいところはさておき．<br>　物語の自動生成なら円城塔がなんとかしてくれるだろう．</p>
+<h1 id="参考文献"><a href="#参考文献" class="headerlink" title="参考文献"></a>参考文献</h1><ul>
+<li>[1] “RNNLM Toolkit,” <a href="http://rnnlm.org/" target="_blank" rel="external">http://rnnlm.org/</a><ul>
+<li>記事中の画像は開発者による<a href="http://www.fit.vutbr.cz/~imikolov/rnnlm/google.pdf" target="_blank" rel="external">紹介スライド</a>より．</li>
+<li>解説は<a href="http://kiyukuta.github.io/2013/12/09/mlac2013_day9_recurrent_neural_network_language_model.html" target="_blank" rel="external">これもある意味Deep Learning，Recurrent Neural Network Language Modelの話 [MLAC2013_9日目] – KiyuHu</a>がわかりやすい．</li>
+</ul>
+</li>
+<li>[2] Jeffrey L. Elman, “<a href="http://crl.ucsd.edu/~elman/Papers/fsit.pdf" target="_blank" rel="external">Finding Structure in Time[PDF]</a>,” Cognitive Science, vol. 14, issue. 2, pp. 179-211, 1990.</li>
+<li>[3] Sepp Hochreiter, “<a href="http://www.bioinf.jku.at/publications/older/3804.pdf" target="_blank" rel="external">Untersuchungen zu dynamischen neuronalen Netzen[PDF]</a>,” Diploma thesis, TU Munich, 1991.<ul>
+<li>読めない．</li>
+</ul>
+</li>
+<li>[4] Sepp Hochreiter and Jürgen Schmidhuber, “<a href="http://deeplearning.cs.cmu.edu/pdfs/Hochreiter97_lstm.pdf" target="_blank" rel="external">Long Short-Term Memory[PDF]</a>,” Neural Computation, vol. 9, no. 8, pp. 1735-1780, 1997.<ul>
+<li>解説は<a href="http://qiita.com/t_Signull/items/21b82be280b46f467d1b" target="_blank" rel="external">MachineLearning - わかるLSTM ～ 最近の動向と共に - Qiita</a>がわかりやすい．</li>
+</ul>
+</li>
+<li>[5] <a href="http://ncode.syosetu.com/n9073ca/" target="_blank" rel="external">幻想再帰のアリュージョニスト</a>，おすすめです．</li>
+</ul>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://ntddk.github.io/2015/12/19/generating-thesis-titles-with-rnnlm/" data-id="cj13oizgg000fpcos6a7h8mfc" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/machine-learing/">machine learing</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/neural-network/">neural network</a></li></ul>
+
+    </footer>
+  </div>
+  
+    
+<nav id="article-nav">
+  
+    <a href="/2015/12/11/autoprobe/" id="article-nav-newer" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Newer</strong>
+      <div class="article-nav-title">
+        
+          マルウェアの動的解析に基づくC&amp;Cサーバの探索
+        
+      </div>
+    </a>
+  
+  
+    <a href="/2016/01/08/controlling-rolling-spider-with-leap-motion-cylon-js/" id="article-nav-older" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Older</strong>
+      <div class="article-nav-title">凧揚げ</div>
+    </a>
+  
+</nav>
+
+  
+</article>
+
+</section>
+        
+      </div>
+      <footer id="footer">
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      &copy; 2017 ntddk<br>
+      <a href="https://github.com/ntddk/hexo-theme-jathena" target="_blank">JAthena</a> by <a href="http://ntddk.github.io" target="_blank">ntddk</a> | Powered by <a href="http://hexo.io/" target="_blank">Hexo</a>
+    </div>
+  </div>
+</footer>
+    </div>
+    
+
+<script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+
+
+  <link rel="stylesheet" href="/fancybox/jquery.fancybox.css">
+  <script src="/fancybox/jquery.fancybox.pack.js"></script>
+
+
+<script src="/js/script.js"></script>
+  </div>
+
+<!-- Begin: Injected MathJax -->
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Config({"tex2jax":{"inlineMath":[["$","$"],["\\(","\\)"]],"skipTags":["script","noscript","style","textarea","pre","code"],"processEscapes":true},"TeX":{"equationNumbers":{"autoNumber":"AMS"}}});
+</script>
+
+<script type="text/x-mathjax-config">
+    MathJax.Hub.Queue(function() {
+        var all = MathJax.Hub.getAllJax(), i;
+        for(i=0; i < all.length; i += 1) {
+            all[i].SourceElement().parentNode.className += ' has-jax';
+        }
+    });
+</script>
+
+<script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.0/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
+</script>
+<!-- End: Injected MathJax -->
+</body>
+</html>

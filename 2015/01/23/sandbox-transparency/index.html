@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+  <title>サンドボックスの透明性 | 一生あとで読んでろ</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="description" content="VMI仮想マシンモニタからゲストのリソースを監視・制御する技術をVMI(Virtual Machine Introspection)という．その発祥は2003年に遡る．当時はハニーポットの研究が盛んな時期であり，VMIは仮想マシンにおける侵入検知を実現する手法として提案された．これはマルウェア解析の自動化に応用されており，仮想マシンモニタによるサンドボックスを構築し，VMIによってマルウェアの挙動">
+<meta name="keywords" content="virtual machine introspection,dynamic binary translation">
+<meta property="og:type" content="article">
+<meta property="og:title" content="サンドボックスの透明性">
+<meta property="og:url" content="http://ntddk.github.io/2015/01/23/sandbox-transparency/index.html">
+<meta property="og:site_name" content="一生あとで読んでろ">
+<meta property="og:description" content="VMI仮想マシンモニタからゲストのリソースを監視・制御する技術をVMI(Virtual Machine Introspection)という．その発祥は2003年に遡る．当時はハニーポットの研究が盛んな時期であり，VMIは仮想マシンにおける侵入検知を実現する手法として提案された．これはマルウェア解析の自動化に応用されており，仮想マシンモニタによるサンドボックスを構築し，VMIによってマルウェアの挙動">
+<meta property="og:updated_time" content="2016-07-08T08:53:22.736Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="サンドボックスの透明性">
+<meta name="twitter:description" content="VMI仮想マシンモニタからゲストのリソースを監視・制御する技術をVMI(Virtual Machine Introspection)という．その発祥は2003年に遡る．当時はハニーポットの研究が盛んな時期であり，VMIは仮想マシンにおける侵入検知を実現する手法として提案された．これはマルウェア解析の自動化に応用されており，仮想マシンモニタによるサンドボックスを構築し，VMIによってマルウェアの挙動">
+  
+  
+  <link href="//fonts.googleapis.com/css?family=Ubuntu" rel="stylesheet" type="text/css">
+  <link rel="stylesheet" href="/css/style.css">
+  
+</head>
+<body>
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/" id="logo">一生あとで読んでろ</a>
+      </h1>
+      
+        <h2 id="subtitle-wrap">
+          <a href="/" id="subtitle">技術ブログ</a>
+        </h2>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="sub-nav">
+        
+          <a id="nav-home-icon" class="nav-icon" href="/"></a>
+        
+          <a id="nav-about-icon" class="nav-icon" href="/about"></a>
+        
+        
+      </nav>
+    </div>
+  </div>
+</header>
+      <div class="outer">
+        <section id="main"><article id="post-sandbox-transparency" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    
+      <header class="article-header">
+        
+  
+    <h1 class="article-title" itemprop="name">
+      サンドボックスの透明性
+    </h1>
+  
+
+      </header>
+    
+    <time class="article-date" datetime="2015-01-23T14:45:59.000Z" itemprop="datePublished">01-23-2015</time>
+    
+  </div>
+  <div class="article-inner">
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h1 id="VMI"><a href="#VMI" class="headerlink" title="VMI"></a>VMI</h1><p>仮想マシンモニタからゲストのリソースを監視・制御する技術をVMI(Virtual Machine Introspection)という．<br>その発祥は2003年に遡る．当時はハニーポットの研究が盛んな時期であり，VMIは仮想マシンにおける侵入検知を実現する手法として提案された．これはマルウェア解析の自動化に応用されており，仮想マシンモニタによるサンドボックスを構築し，VMIによってマルウェアの挙動を監視するというアプローチが一般的となっている．<br>さて，VMIにおける問題点にセマンティックギャップというものがある．原義は高級言語とハードウェアとの乖離であるが，OSと同じ粒度で情報を取得することのできるゲスト内部(in-the-box)とハードウェアの粒度で情報を取得することしかできないゲスト外部(out-of-the-box)の乖離という意味でも援用される．</p>
+<h1 id="Transparent-Sandbox"><a href="#Transparent-Sandbox" class="headerlink" title="Transparent Sandbox"></a>Transparent Sandbox</h1><p>セマンティックギャップを解決する方法として，ゲスト内部にエージェントを挿入し，仮想マシンモニタに情報を送信するというアプローチが考えられる．<br>だがマルウェア解析において，ゲスト内部にエージェントを挿入することは，自らの姿を曝け出していることにほかならない．ファイルやサービス名，フックによって変化するAPIの挙動といったものは，マルウェアがエージェントと同じ権限で動作する限り避けられない．そもそも仮想マシンモニタは特権を有していたところで<code>RDTSC</code>や<code>ICEBP</code>などの命令，あるいはハードウェア名やIDTといった要素から検出される可能性を孕んでいる．そのため，ゲスト内部にエージェントを挿入することは，仮想マシンモニタがマルウェアから検出される可能性を高めることに繋がる．フォレンジックにおける完全性(integrity)のためにも，ゲスト内部にエージェントを挿入すべきではないと私は考える．<br>この議論に関して，マルウェアから検出されない仮想マシンモニタをtransparent sandbox（透明なサンドボックス？）といい，仮想マシンモニタの検出を試みるマルウェアをevasive malwareという．<br>ではどのような仮想マシンモニタがより「透明」に近いのか．</p>
+<h1 id="仮想マシンモニタの歴史"><a href="#仮想マシンモニタの歴史" class="headerlink" title="仮想マシンモニタの歴史"></a>仮想マシンモニタの歴史</h1><p>ここでPopekとGoldbergの仮想化要件に立ち返ると，ベアメタルな仮想マシンモニタは等価性(equivalence)，資源管理(resource control)，効率性(efficiency)の三原則を実現しており，なおかつユーザセンシティブ命令が特権命令でなければならない．センシティブ命令かつ特権命令でなければ，例外によって仮想マシンモニタに通知することができないためである．<br>だが，以前のx86アーキテクチャはこの要件を満たしていなかった．そこで，ニ種類の解決方法が編み出された．<br>一つ目はバイナリ変換(binary translation)による完全仮想化である．これはソフトウェアで命令をエミュレートする手法で，QEMUやVMwareが該当する．QEMUは全ての命令を中間コードに変換するのに対し，VMwareはPopekとGoldbergの仮想化要件を満たさない命令をライブラリ呼び出しに変換する．<br>二つ目は準仮想化である．これはPopekとGoldbergの仮想化要件を満たさない命令に差し掛かると仮想マシンモニタに通知されるようゲストOSのカーネルを修正する手法で，Xenが該当する．<br>ではバイナリ変換による完全仮想化とカーネル書き換えによる準仮想化のどちらがより「透明」に近いのか．<br>その前にIntel VT-xについて考えなければならない．Intel VT-xはCPUのモード切り替えによってセンシティブ命令かつ特権命令でない命令のトラップを実現する拡張機能である．すなわちPopekとGoldbergの仮想化要件を満たすハードウェア側からのアプローチである．これにより準仮想化カーネルの必要はなくなった．エージェントの挿入が「透明」性に関わるのと同様，カーネルの書き換えは仮想マシンモニタを検出する手掛かりとなる．<br>そのためマルウェア解析においては，バイナリ変換による完全仮想化か，Intel VT-xによる完全仮想化が前提となる．なおKVMはIntel Vt-xを前提としているが，部分的にQEMUを用いている．<br>ではどちらの手法がより「透明」に近いのか．</p>
+<h1 id="バイナリ変換とIntel-VT-x"><a href="#バイナリ変換とIntel-VT-x" class="headerlink" title="バイナリ変換とIntel VT-x"></a>バイナリ変換とIntel VT-x</h1><p>Christopher KruegelはWineのようなシステムコール単位のエミュレーションあるいはフックは情報量として不十分であり，またIntel VT-xによる完全仮想化はRedPillのようなアプローチで検出可能であることから，バイナリ変換による完全仮想化すなわちQEMUを支持している．<br>システムコール単位の監視は<code>IsDebuggerPresent</code>のようなカーネルモードに遷移せず構造体を参照するだけの処理を見逃してしまう．システムコールのフックを用いた研究や製品は多数存在するが，それらは不完全である．この点で私は氏と意見を一にするが，バイナリ変換がより「透明」に近いかどうかは検討の余地があるだろう．寧ろ氏は実行パスの拡張がより容易に行えるがゆえにバイナリ変換を支持しているのだろうということは読み取れるが，氏がチーフサイエンティストを務めるLastlineの製品がQEMUをベースとしていることもあり，些かポジショントークのようにも感じられる．<br>このような論調でバイナリ変換とIntel VT-xを二項対立の図式に落とし込んでいる論文が数多く見られる．しかし，どちらがより「透明」に近いのかという議論はナンセンスであろう．<br>ゲスト内部にエージェントを挿入することで，果たして本当にマルウェアから検出されやすくなるのかと言うと，それは飽くまで可能性でしかない．だがゲスト内部にエージェントを挿入しないという選択で，その問題は検討項目から外すことができる．一方で，バイナリ変換であるという理由でIntel VT-xを用いた仮想マシンモニタよりも検出されにくいといったことはない．逆もまた然りである．<br>そしてそもそも，ネットワーク経由で仮想マシンモニタを検出するという手法がある以上，完全に「透明」なサンドボックスは実現不可能であるとされる．<br>ゆえにそれぞれのアプローチについて「透明」性の他にもメリット・デメリットを検討し，なおかつ両者を接合するようなシステムこそが望ましい．</p>
+<h1 id="参考文献"><a href="#参考文献" class="headerlink" title="参考文献"></a>参考文献</h1><ul>
+<li>Tal Garfinkel, Mendel Rosenblu,<br>“<a href="http://suif.stanford.edu/papers/vmi-ndss03.pdf" target="_blank" rel="external">A Virtual Machine Introspection Based Architecture for Intrusion Detection[PDF]</a>,”<br>Proceedings of the 10th Annual Network and Distributed System Security Symposium, pp. 191–206, SD, USA, 2003.</li>
+<li>Gerald J. Popek, Robert P. Goldberg,<br>“<a href="http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.141.4815&amp;rep=rep1&amp;type=pdf" target="_blank" rel="external">Formal Requirements for Virtualizable Third Generation Architectures[PDF]</a>,”<br>Communications of the ACM CACM Homepage archive, Vol. 17, Issue. 7, pp. 412-421, NY, USA, 1974.</li>
+<li>John Scott Robin, Cynthia E. Irvine,<br>“<a href="http://www.cse.psu.edu/~bhuvan/teaching/spring06/papers/analysis-pentium.pdf" target="_blank" rel="external">Analysis of the Intel Pentium’s Ability to Support a Secure Virtual Machine Monitor[PDF]</a>,”<br>Proceedings of the 9th conference on USENIX Security Symposium, Vol. 9, pp. 10-10, CA, USA, 2000.</li>
+<li>Christopher Kruegel,<br>“<a href="https://www.blackhat.com/docs/us-14/materials/us-14-Kruegel-Full-System-Emulation-Achieving-Successful-Automated-Dynamic-Analysis-Of-Evasive-Malware-WP.pdf" target="_blank" rel="external">Full System Emulation: Achieving Successful Automated Dynamic Analysis of Evasive Malware[PDF]</a>,”<br>Black Hat USA, 2014.</li>
+<li>Tal Garfinkel, Keith Adams, Andrew Warfield and Jason Franklin,<br>“<a href="http://www.cs.cmu.edu/~jfrankli/hotos07/vmm_detection_hotos07.pdf" target="_blank" rel="external">Compatibility is Not Transparency: VMM Detection Myths and Realities[PDF]</a>,”<br>Proceedings of the 11th USENIX workshop on Hot topics in operating systems, No. 6, CA, USA, 2007.</li>
+</ul>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://ntddk.github.io/2015/01/23/sandbox-transparency/" data-id="cj13oizhb000vpcossw3zvskr" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/dynamic-binary-translation/">dynamic binary translation</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/virtual-machine-introspection/">virtual machine introspection</a></li></ul>
+
+    </footer>
+  </div>
+  
+    
+<nav id="article-nav">
+  
+    <a href="/2014/12/11/pintool-nx/" id="article-nav-newer" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Newer</strong>
+      <div class="article-nav-title">
+        
+          Intel PinにおけるNXの扱い
+        
+      </div>
+    </a>
+  
+  
+    <a href="/2015/01/31/xen-libvmi/" id="article-nav-older" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Older</strong>
+      <div class="article-nav-title">XenとLibVMI</div>
+    </a>
+  
+</nav>
+
+  
+</article>
+
+</section>
+        
+      </div>
+      <footer id="footer">
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      &copy; 2017 ntddk<br>
+      <a href="https://github.com/ntddk/hexo-theme-jathena" target="_blank">JAthena</a> by <a href="http://ntddk.github.io" target="_blank">ntddk</a> | Powered by <a href="http://hexo.io/" target="_blank">Hexo</a>
+    </div>
+  </div>
+</footer>
+    </div>
+    
+
+<script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+
+
+  <link rel="stylesheet" href="/fancybox/jquery.fancybox.css">
+  <script src="/fancybox/jquery.fancybox.pack.js"></script>
+
+
+<script src="/js/script.js"></script>
+  </div>
+</body>
+</html>

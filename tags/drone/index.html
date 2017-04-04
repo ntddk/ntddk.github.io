@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+  <title>Tag: drone | 一生あとで読んでろ</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta property="og:type" content="website">
+<meta property="og:title" content="一生あとで読んでろ">
+<meta property="og:url" content="http://ntddk.github.io/tags/drone/index.html">
+<meta property="og:site_name" content="一生あとで読んでろ">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="一生あとで読んでろ">
+  
+  
+  <link href="//fonts.googleapis.com/css?family=Ubuntu" rel="stylesheet" type="text/css">
+  <link rel="stylesheet" href="/css/style.css">
+  
+</head>
+<body>
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/" id="logo">一生あとで読んでろ</a>
+      </h1>
+      
+        <h2 id="subtitle-wrap">
+          <a href="/" id="subtitle">技術ブログ</a>
+        </h2>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="sub-nav">
+        
+          <a id="nav-home-icon" class="nav-icon" href="/"></a>
+        
+          <a id="nav-about-icon" class="nav-icon" href="/about"></a>
+        
+        
+      </nav>
+    </div>
+  </div>
+</header>
+      <div class="outer">
+        <section id="main">
+  
+    <article id="post-controlling-rolling-spider-with-leap-motion-cylon-js" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    
+      <header class="article-header">
+        
+  
+    <a class="article-title" href="/2016/01/08/controlling-rolling-spider-with-leap-motion-cylon-js/">凧揚げ</a>
+  
+
+      </header>
+    
+    <time class="article-date" datetime="2016-01-08T09:00:00.000Z" itemprop="datePublished">01-08-2016</time>
+    
+  </div>
+  <div class="article-inner">
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p>　凧揚げの様子．</p>
+<center><iframe src="https://vine.co/v/ihdD7VVeeYz/embed/simple" width="300" height="300" frameborder="0"></iframe><script src="https://platform.vine.co/static/scripts/embed.js"></script></center>
+
+<h1 id="TL-DR"><a href="#TL-DR" class="headerlink" title="TL;DR:"></a>TL;DR:</h1><p>　新年なので凧揚げをやる．<br>　具体的にはCylon.jsを用いてLeap MotionからRolling Spiderを操作し，ついでにSlackに通知する．<br>　依存関係は次の通り．<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div></pre></td><td class="code"><pre><div class="line"># npm install cylon cylon-keyboard cylon-leapmotion cylon-rolling-spider node-slack</div></pre></td></tr></table></figure></p>
+<h1 id="Cylon-js"><a href="#Cylon-js" class="headerlink" title="Cylon.js"></a>Cylon.js</h1><p>　<a href="http://cylonjs.com/" target="_blank" rel="external">Cylon.js</a>はロボティクス向けに開発されているJavaScriptのラッパーライブラリ．<br>　マイコンボードやドローン，スマートウォッチなど，さまざまなガジェットのSDKを統一されたインターフェイスで利用できる．反面，バグを踏み抜くと少ししんどい．<br>　たとえばキーボードに接続するには，次のように書く．</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div></pre></td><td class="code"><pre><div class="line"><span class="keyword">var</span> Cylon = <span class="built_in">require</span>(<span class="string">'cylon'</span>);</div><div class="line"></div><div class="line">Cylon.robot(&#123;</div><div class="line">    <span class="attr">connections</span>: &#123;</div><div class="line">        <span class="string">'keyboard'</span>: &#123; <span class="attr">adaptor</span>: <span class="string">'keyboard'</span> &#125;</div><div class="line">    &#125;,</div><div class="line">    <span class="attr">devices</span>: &#123;</div><div class="line">        <span class="attr">keyboard</span>: &#123;<span class="attr">driver</span>: <span class="string">'keyboard'</span>, <span class="attr">connection</span>: <span class="string">'keyboard'</span>&#125;</div><div class="line">    &#125;,</div><div class="line"></div><div class="line">    <span class="attr">work</span>: <span class="function"><span class="keyword">function</span> (<span class="params">my</span>) </span>&#123;</div><div class="line">        my.keyboard.on(<span class="string">'a'</span>, <span class="function"><span class="keyword">function</span>(<span class="params">key</span>) </span>&#123;</div><div class="line">            my.log(<span class="string">"A PRESSED!"</span>);</div><div class="line">        &#125;);</div><div class="line">    &#125;</div><div class="line">&#125;).start();</div></pre></td></tr></table></figure>
+<p>　これでお手軽キーロガーのできあがりだ．内部ではkeypressというモジュールが呼ばれる．</p>
+<h1 id="Leap-Motion"><a href="#Leap-Motion" class="headerlink" title="Leap Motion"></a>Leap Motion</h1><p>　<a href="https://www.leapmotion.com/" target="_blank" rel="external">Leap Motion</a>は人間の手の動きを入力に変換できるモーションセンサー．<br>　以前から研究室に転がっていたものの，これまで<a href="http://radiatoryang.itch.io/hurt-me-plenty" target="_blank" rel="external">ケツ叩きゲーム</a>にしか使われてこなかった．<br>　Cylon.jsで複数のガジェットを扱うときは，<code>connections</code>と<code>devices</code>に追記していけばよい．</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div></pre></td><td class="code"><pre><div class="line"><span class="keyword">var</span> Cylon = <span class="built_in">require</span>(<span class="string">'cylon'</span>);</div><div class="line"></div><div class="line">Cylon.robot(&#123;</div><div class="line">    <span class="attr">connections</span>: &#123;</div><div class="line">        <span class="string">'keyboard'</span>: &#123; <span class="attr">adaptor</span>: <span class="string">'keyboard'</span> &#125;,</div><div class="line">        <span class="string">'leapmotion'</span>: &#123; <span class="attr">adaptor</span>: <span class="string">'leapmotion'</span> &#125;</div><div class="line">    &#125;,</div><div class="line">    <span class="attr">devices</span>: &#123;</div><div class="line">        <span class="attr">keyboard</span>: &#123;<span class="attr">driver</span>: <span class="string">'keyboard'</span>, <span class="attr">connection</span>: <span class="string">'keyboard'</span>&#125;,</div><div class="line">        <span class="attr">leapmotion</span>: &#123; <span class="attr">driver</span>: <span class="string">'leapmotion'</span>, <span class="attr">connection</span>: <span class="string">'leapmotion'</span>&#125;,</div><div class="line">    &#125;,</div><div class="line"></div><div class="line">    <span class="attr">work</span>: <span class="function"><span class="keyword">function</span> (<span class="params">my</span>) </span>&#123;</div><div class="line">        my.leapmotion.on(<span class="string">'gesture'</span>, <span class="function"><span class="keyword">function</span>(<span class="params">g</span>) </span>&#123;</div><div class="line">            my.log(g.type.toString());</div><div class="line">            <span class="keyword">if</span> (g.type == <span class="string">"circle"</span>) &#123;</div><div class="line">                ...</div><div class="line">            &#125;</div><div class="line">        &#125;);</div><div class="line">    &#125;</div><div class="line">&#125;).start();</div></pre></td></tr></table></figure>
+<p>　これで手の動きが取れる．内部ではleapjsというモジュールが呼ばれる．<br>　次はドローンだ．</p>
+<h1 id="Rolling-Spider"><a href="#Rolling-Spider" class="headerlink" title="Rolling Spider"></a>Rolling Spider</h1><p>　<a href="http://www.parrot.com/jp/products/rolling-spider/" target="_blank" rel="external">Rolling Spider</a>はParrot社の小型ドローン．というとすぐドローンの定義は自律航行可能であるとかないとかクアッドコプターという呼称がどうとか言いだすやつがいるけど，ここではドローンと呼んでいる．<br>　それでは，Rolling SpiderをLeap Motionで操作してみよう．</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div><div class="line">22</div><div class="line">23</div><div class="line">24</div><div class="line">25</div><div class="line">26</div><div class="line">27</div><div class="line">28</div><div class="line">29</div><div class="line">30</div><div class="line">31</div><div class="line">32</div><div class="line">33</div><div class="line">34</div><div class="line">35</div><div class="line">36</div><div class="line">37</div><div class="line">38</div><div class="line">39</div><div class="line">40</div><div class="line">41</div><div class="line">42</div><div class="line">43</div><div class="line">44</div><div class="line">45</div><div class="line">46</div><div class="line">47</div><div class="line">48</div><div class="line">49</div><div class="line">50</div><div class="line">51</div></pre></td><td class="code"><pre><div class="line"><span class="keyword">var</span> Cylon = <span class="built_in">require</span>(<span class="string">'cylon'</span>);</div><div class="line"></div><div class="line">Cylon.robot(&#123;</div><div class="line">    <span class="attr">connections</span>: &#123;</div><div class="line">        <span class="string">'keyboard'</span>: &#123; <span class="attr">adaptor</span>: <span class="string">'keyboard'</span> &#125;,</div><div class="line">        <span class="string">'leapmotion'</span>: &#123; <span class="attr">adaptor</span>: <span class="string">'leapmotion'</span> &#125;,</div><div class="line">        <span class="string">'rolling-spider'</span>: &#123; <span class="attr">adaptor</span>: <span class="string">'rolling-spider'</span>, <span class="attr">uuid</span>: <span class="string">'***'</span> &#125;</div><div class="line">    &#125;,</div><div class="line">    <span class="attr">devices</span>: &#123;</div><div class="line">        <span class="attr">keyboard</span>: &#123;<span class="attr">driver</span>: <span class="string">'keyboard'</span>, <span class="attr">connection</span>: <span class="string">'keyboard'</span>&#125;,</div><div class="line">        <span class="attr">leapmotion</span>: &#123; <span class="attr">driver</span>: <span class="string">'leapmotion'</span>, <span class="attr">connection</span>: <span class="string">'leapmotion'</span>&#125;,</div><div class="line">        <span class="attr">drone</span>: &#123; <span class="attr">driver</span>: <span class="string">'rolling-spider'</span>, <span class="attr">connection</span>: <span class="string">'rolling-spider'</span> &#125;</div><div class="line">    &#125;,</div><div class="line">​</div><div class="line">    work: <span class="function"><span class="keyword">function</span> (<span class="params">my</span>) </span>&#123;</div><div class="line">        my.leapmotion.on(<span class="string">'gesture'</span>, <span class="function"><span class="keyword">function</span>(<span class="params">g</span>) </span>&#123;</div><div class="line">            my.log(g.type.toString());</div><div class="line">            <span class="keyword">if</span> (g.type == <span class="string">"circle"</span>) &#123;</div><div class="line">                my.drone.takeOff();</div><div class="line">            &#125; <span class="keyword">else</span> <span class="keyword">if</span> (g.type == <span class="string">"swipe"</span> &amp;&amp; !flag) &#123;</div><div class="line">                <span class="keyword">var</span> isHorizontal = <span class="built_in">Math</span>.abs(g.direction[<span class="number">0</span>]) &gt; <span class="built_in">Math</span>.abs(g.direction[<span class="number">1</span>]);</div><div class="line">                <span class="keyword">if</span>(isHorizontal)&#123;</div><div class="line">                    <span class="keyword">if</span>(g.direction[<span class="number">0</span>] &gt; <span class="number">0</span>)&#123;</div><div class="line">                        my.drone.right();</div><div class="line">                    &#125; <span class="keyword">else</span> &#123;</div><div class="line">                        my.drone.left();</div><div class="line">                    &#125;</div><div class="line">                &#125; <span class="keyword">else</span> &#123;</div><div class="line">                    <span class="keyword">if</span>(g.direction[<span class="number">1</span>] &gt; <span class="number">0</span>)&#123;</div><div class="line">                        my.drone.up();</div><div class="line">                    &#125; <span class="keyword">else</span> &#123;</div><div class="line">                        my.drone.down();</div><div class="line">                    &#125;</div><div class="line">                &#125;</div><div class="line">            &#125; <span class="keyword">else</span> <span class="keyword">if</span> (g.type == <span class="string">"keyTap"</span>) &#123;</div><div class="line">                my.drone.land();</div><div class="line">            &#125;</div><div class="line">        &#125;);</div><div class="line"></div><div class="line">        my.keyboard.on(<span class="string">"down"</span>, <span class="function"><span class="keyword">function</span>(<span class="params"></span>) </span>&#123;</div><div class="line">            my.drone.land();    </div><div class="line">        &#125;);</div><div class="line">        my.keyboard.on(<span class="string">"m"</span>, <span class="function"><span class="keyword">function</span>(<span class="params"></span>) </span>&#123;</div><div class="line">            my.drone.emergency();</div><div class="line">        &#125;);</div><div class="line">        my.keyboard.on(<span class="string">"q"</span>, <span class="function"><span class="keyword">function</span>(<span class="params"></span>) </span>&#123;</div><div class="line">            Cylon.halt();</div><div class="line">        &#125;);</div><div class="line"></div><div class="line">    &#125;</div><div class="line">&#125;).start();</div></pre></td></tr></table></figure>
+<p>　とりあえずこれで動く．指を回すとドローンが飛び上がり，スワイプに応じて移動する．内部ではnode-rolling-spiderというモジュールが呼ばれる．<br>　複数台の機体に接続できるから，ドローンの編隊飛行も夢ではない．とはいえ，Bluetoothを経由した中央集権的な制御なので，自律飛行にはいたらないが．ほんとうに自律させたければ，ドローン側のファームウェアに手を入れる必要がある．Parrot社が公開している<a href="https://github.com/Parrot-Developers/RollingSpiderEdu" target="_blank" rel="external">RollingSpiderEdu</a>によると，どうやら共有ライブラリを用いてドローンのファームウェアに機能を追加できるようだ．いずれはレクサスのPVのように美しく飛ばしてみたいが，いっそドローンから自作したほうがいいかもしれないな．</p>
+<center><iframe width="560" height="315" src="https://www.youtube.com/embed/uj0v1BgzUdc" frameborder="0" allowfullscreen></iframe></center>
+
+<p>　なおRolling Spiderの総重量は65gなので，空港等の周辺や人口中心地区の上空でのドローン飛行を制限する<a href="http://www.mlit.go.jp/koku/koku_tk10_000003.html" target="_blank" rel="external">改正航空法</a>の対象とはならない．</p>
+<h1 id="Slack"><a href="#Slack" class="headerlink" title="Slack"></a>Slack</h1><p>　凧揚げもChatOpsの時代．<br>　node-slackというモジュールと，ドローンのコールバック機能を用いれば，バッテリー残量をSlackに通知できる．SlackのWebHooks URLに投げるだけだ．</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div></pre></td><td class="code"><pre><div class="line"><span class="keyword">var</span> Cylon = <span class="built_in">require</span>(<span class="string">'cylon'</span>),</div><div class="line">    Slack = <span class="built_in">require</span>(<span class="string">'node-slack'</span>),</div><div class="line">    slack = <span class="keyword">new</span> Slack(<span class="string">'https://hooks.slack.com/services/***'</span>);</div><div class="line">...</div><div class="line">    work: <span class="function"><span class="keyword">function</span> (<span class="params">my</span>) </span>&#123;</div><div class="line">...</div><div class="line">        my.drone.on(<span class="string">'battery'</span>, <span class="function"><span class="keyword">function</span>(<span class="params"></span>)</span>&#123;</div><div class="line">            slack.send(&#123;</div><div class="line">                <span class="attr">text</span>: <span class="string">':battery:: '</span> + my.drone.getBatteryLevel() + <span class="string">'%'</span>,</div><div class="line">                <span class="attr">channel</span>: <span class="string">'#drone'</span>,</div><div class="line">                <span class="attr">username</span>: <span class="string">'Drone'</span></div><div class="line">            &#125;);</div><div class="line">        &#125;);</div><div class="line">...</div></pre></td></tr></table></figure>
+<p>　こんなふうに通知される．</p>
+<p><img src="/image/drone/slack.png" width="50%" height="50%"></p>
+<p>　ちなみに，ドローンが移動するたびに通知なんかしていると「短期間に送信されたメッセージが多すぎるから表示しないよ！」と怒られる．</p>
+<h1 id="その他の凧揚げ"><a href="#その他の凧揚げ" class="headerlink" title="その他の凧揚げ"></a>その他の凧揚げ</h1><p>　Leap Motionによるドローンの操作はたぶんこの人が初．</p>
+<center><iframe width="560" height="315" src="https://www.youtube.com/embed/hfq2SisPvCU" frameborder="0" allowfullscreen></iframe></center>
+
+<p>　やっぱデカいドローンを飛ばしたいっすね．</p>
+<h1 id="おわりに"><a href="#おわりに" class="headerlink" title="おわりに"></a>おわりに</h1><p>　ジェスチャーでドローンを操作できるようになったことだし，フォースの力みたいでかっこいいと思って，年始にRolling Spiderを多摩川の土手で飛ばしていたらドローン嫌いっぽい人にクソ怒られた．すいません．<br>　あとドローンといえば『<a href="http://www.amazon.co.jp/dp/415031201X" target="_blank" rel="external">伊藤計劃トリビュート</a>』所収の藤井太洋「公正的戦闘規範」がおもしろいぞ！！！</p>
+<h1 id="謝辞"><a href="#謝辞" class="headerlink" title="謝辞"></a>謝辞</h1><ul>
+<li>Leap Motionは<a href="https://twitter.com/shunki9" target="_blank" rel="external">@shunki9</a>から借りた．</li>
+<li>Rolling Spiderは<a href="http://www.gehirn.co.jp/" target="_blank" rel="external">Gehirn Inc.</a>に買ってもらった．</li>
+</ul>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://ntddk.github.io/2016/01/08/controlling-rolling-spider-with-leap-motion-cylon-js/" data-id="cj13oizgg000cpcos2tq31fe7" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/drone/">drone</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+  
+</section>
+        
+      </div>
+      <footer id="footer">
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      &copy; 2017 ntddk<br>
+      <a href="https://github.com/ntddk/hexo-theme-jathena" target="_blank">JAthena</a> by <a href="http://ntddk.github.io" target="_blank">ntddk</a> | Powered by <a href="http://hexo.io/" target="_blank">Hexo</a>
+    </div>
+  </div>
+</footer>
+    </div>
+    
+
+<script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+
+
+  <link rel="stylesheet" href="/fancybox/jquery.fancybox.css">
+  <script src="/fancybox/jquery.fancybox.pack.js"></script>
+
+
+<script src="/js/script.js"></script>
+  </div>
+</body>
+</html>

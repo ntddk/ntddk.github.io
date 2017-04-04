@@ -1,0 +1,871 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+  <title>Archives | 一生あとで読んでろ</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta property="og:type" content="website">
+<meta property="og:title" content="一生あとで読んでろ">
+<meta property="og:url" content="http://ntddk.github.io/archives/page/2/index.html">
+<meta property="og:site_name" content="一生あとで読んでろ">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="一生あとで読んでろ">
+  
+  
+  <link href="//fonts.googleapis.com/css?family=Ubuntu" rel="stylesheet" type="text/css">
+  <link rel="stylesheet" href="/css/style.css">
+  
+</head>
+<body>
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/" id="logo">一生あとで読んでろ</a>
+      </h1>
+      
+        <h2 id="subtitle-wrap">
+          <a href="/" id="subtitle">技術ブログ</a>
+        </h2>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="sub-nav">
+        
+          <a id="nav-home-icon" class="nav-icon" href="/"></a>
+        
+          <a id="nav-about-icon" class="nav-icon" href="/about"></a>
+        
+        
+      </nav>
+    </div>
+  </div>
+</header>
+      <div class="outer">
+        <section id="main">
+  
+    <article id="post-controlling-rolling-spider-with-leap-motion-cylon-js" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    
+      <header class="article-header">
+        
+  
+    <a class="article-title" href="/2016/01/08/controlling-rolling-spider-with-leap-motion-cylon-js/">凧揚げ</a>
+  
+
+      </header>
+    
+    <time class="article-date" datetime="2016-01-08T09:00:00.000Z" itemprop="datePublished">01-08-2016</time>
+    
+  </div>
+  <div class="article-inner">
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p>　凧揚げの様子．</p>
+<center><iframe src="https://vine.co/v/ihdD7VVeeYz/embed/simple" width="300" height="300" frameborder="0"></iframe><script src="https://platform.vine.co/static/scripts/embed.js"></script></center>
+
+<h1 id="TL-DR"><a href="#TL-DR" class="headerlink" title="TL;DR:"></a>TL;DR:</h1><p>　新年なので凧揚げをやる．<br>　具体的にはCylon.jsを用いてLeap MotionからRolling Spiderを操作し，ついでにSlackに通知する．<br>　依存関係は次の通り．<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div></pre></td><td class="code"><pre><div class="line"># npm install cylon cylon-keyboard cylon-leapmotion cylon-rolling-spider node-slack</div></pre></td></tr></table></figure></p>
+<h1 id="Cylon-js"><a href="#Cylon-js" class="headerlink" title="Cylon.js"></a>Cylon.js</h1><p>　<a href="http://cylonjs.com/" target="_blank" rel="external">Cylon.js</a>はロボティクス向けに開発されているJavaScriptのラッパーライブラリ．<br>　マイコンボードやドローン，スマートウォッチなど，さまざまなガジェットのSDKを統一されたインターフェイスで利用できる．反面，バグを踏み抜くと少ししんどい．<br>　たとえばキーボードに接続するには，次のように書く．</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div></pre></td><td class="code"><pre><div class="line"><span class="keyword">var</span> Cylon = <span class="built_in">require</span>(<span class="string">'cylon'</span>);</div><div class="line"></div><div class="line">Cylon.robot(&#123;</div><div class="line">    <span class="attr">connections</span>: &#123;</div><div class="line">        <span class="string">'keyboard'</span>: &#123; <span class="attr">adaptor</span>: <span class="string">'keyboard'</span> &#125;</div><div class="line">    &#125;,</div><div class="line">    <span class="attr">devices</span>: &#123;</div><div class="line">        <span class="attr">keyboard</span>: &#123;<span class="attr">driver</span>: <span class="string">'keyboard'</span>, <span class="attr">connection</span>: <span class="string">'keyboard'</span>&#125;</div><div class="line">    &#125;,</div><div class="line"></div><div class="line">    <span class="attr">work</span>: <span class="function"><span class="keyword">function</span> (<span class="params">my</span>) </span>&#123;</div><div class="line">        my.keyboard.on(<span class="string">'a'</span>, <span class="function"><span class="keyword">function</span>(<span class="params">key</span>) </span>&#123;</div><div class="line">            my.log(<span class="string">"A PRESSED!"</span>);</div><div class="line">        &#125;);</div><div class="line">    &#125;</div><div class="line">&#125;).start();</div></pre></td></tr></table></figure>
+<p>　これでお手軽キーロガーのできあがりだ．内部ではkeypressというモジュールが呼ばれる．</p>
+<h1 id="Leap-Motion"><a href="#Leap-Motion" class="headerlink" title="Leap Motion"></a>Leap Motion</h1><p>　<a href="https://www.leapmotion.com/" target="_blank" rel="external">Leap Motion</a>は人間の手の動きを入力に変換できるモーションセンサー．<br>　以前から研究室に転がっていたものの，これまで<a href="http://radiatoryang.itch.io/hurt-me-plenty" target="_blank" rel="external">ケツ叩きゲーム</a>にしか使われてこなかった．<br>　Cylon.jsで複数のガジェットを扱うときは，<code>connections</code>と<code>devices</code>に追記していけばよい．</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div></pre></td><td class="code"><pre><div class="line"><span class="keyword">var</span> Cylon = <span class="built_in">require</span>(<span class="string">'cylon'</span>);</div><div class="line"></div><div class="line">Cylon.robot(&#123;</div><div class="line">    <span class="attr">connections</span>: &#123;</div><div class="line">        <span class="string">'keyboard'</span>: &#123; <span class="attr">adaptor</span>: <span class="string">'keyboard'</span> &#125;,</div><div class="line">        <span class="string">'leapmotion'</span>: &#123; <span class="attr">adaptor</span>: <span class="string">'leapmotion'</span> &#125;</div><div class="line">    &#125;,</div><div class="line">    <span class="attr">devices</span>: &#123;</div><div class="line">        <span class="attr">keyboard</span>: &#123;<span class="attr">driver</span>: <span class="string">'keyboard'</span>, <span class="attr">connection</span>: <span class="string">'keyboard'</span>&#125;,</div><div class="line">        <span class="attr">leapmotion</span>: &#123; <span class="attr">driver</span>: <span class="string">'leapmotion'</span>, <span class="attr">connection</span>: <span class="string">'leapmotion'</span>&#125;,</div><div class="line">    &#125;,</div><div class="line"></div><div class="line">    <span class="attr">work</span>: <span class="function"><span class="keyword">function</span> (<span class="params">my</span>) </span>&#123;</div><div class="line">        my.leapmotion.on(<span class="string">'gesture'</span>, <span class="function"><span class="keyword">function</span>(<span class="params">g</span>) </span>&#123;</div><div class="line">            my.log(g.type.toString());</div><div class="line">            <span class="keyword">if</span> (g.type == <span class="string">"circle"</span>) &#123;</div><div class="line">                ...</div><div class="line">            &#125;</div><div class="line">        &#125;);</div><div class="line">    &#125;</div><div class="line">&#125;).start();</div></pre></td></tr></table></figure>
+<p>　これで手の動きが取れる．内部ではleapjsというモジュールが呼ばれる．<br>　次はドローンだ．</p>
+<h1 id="Rolling-Spider"><a href="#Rolling-Spider" class="headerlink" title="Rolling Spider"></a>Rolling Spider</h1><p>　<a href="http://www.parrot.com/jp/products/rolling-spider/" target="_blank" rel="external">Rolling Spider</a>はParrot社の小型ドローン．というとすぐドローンの定義は自律航行可能であるとかないとかクアッドコプターという呼称がどうとか言いだすやつがいるけど，ここではドローンと呼んでいる．<br>　それでは，Rolling SpiderをLeap Motionで操作してみよう．</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div><div class="line">22</div><div class="line">23</div><div class="line">24</div><div class="line">25</div><div class="line">26</div><div class="line">27</div><div class="line">28</div><div class="line">29</div><div class="line">30</div><div class="line">31</div><div class="line">32</div><div class="line">33</div><div class="line">34</div><div class="line">35</div><div class="line">36</div><div class="line">37</div><div class="line">38</div><div class="line">39</div><div class="line">40</div><div class="line">41</div><div class="line">42</div><div class="line">43</div><div class="line">44</div><div class="line">45</div><div class="line">46</div><div class="line">47</div><div class="line">48</div><div class="line">49</div><div class="line">50</div><div class="line">51</div></pre></td><td class="code"><pre><div class="line"><span class="keyword">var</span> Cylon = <span class="built_in">require</span>(<span class="string">'cylon'</span>);</div><div class="line"></div><div class="line">Cylon.robot(&#123;</div><div class="line">    <span class="attr">connections</span>: &#123;</div><div class="line">        <span class="string">'keyboard'</span>: &#123; <span class="attr">adaptor</span>: <span class="string">'keyboard'</span> &#125;,</div><div class="line">        <span class="string">'leapmotion'</span>: &#123; <span class="attr">adaptor</span>: <span class="string">'leapmotion'</span> &#125;,</div><div class="line">        <span class="string">'rolling-spider'</span>: &#123; <span class="attr">adaptor</span>: <span class="string">'rolling-spider'</span>, <span class="attr">uuid</span>: <span class="string">'***'</span> &#125;</div><div class="line">    &#125;,</div><div class="line">    <span class="attr">devices</span>: &#123;</div><div class="line">        <span class="attr">keyboard</span>: &#123;<span class="attr">driver</span>: <span class="string">'keyboard'</span>, <span class="attr">connection</span>: <span class="string">'keyboard'</span>&#125;,</div><div class="line">        <span class="attr">leapmotion</span>: &#123; <span class="attr">driver</span>: <span class="string">'leapmotion'</span>, <span class="attr">connection</span>: <span class="string">'leapmotion'</span>&#125;,</div><div class="line">        <span class="attr">drone</span>: &#123; <span class="attr">driver</span>: <span class="string">'rolling-spider'</span>, <span class="attr">connection</span>: <span class="string">'rolling-spider'</span> &#125;</div><div class="line">    &#125;,</div><div class="line">​</div><div class="line">    work: <span class="function"><span class="keyword">function</span> (<span class="params">my</span>) </span>&#123;</div><div class="line">        my.leapmotion.on(<span class="string">'gesture'</span>, <span class="function"><span class="keyword">function</span>(<span class="params">g</span>) </span>&#123;</div><div class="line">            my.log(g.type.toString());</div><div class="line">            <span class="keyword">if</span> (g.type == <span class="string">"circle"</span>) &#123;</div><div class="line">                my.drone.takeOff();</div><div class="line">            &#125; <span class="keyword">else</span> <span class="keyword">if</span> (g.type == <span class="string">"swipe"</span> &amp;&amp; !flag) &#123;</div><div class="line">                <span class="keyword">var</span> isHorizontal = <span class="built_in">Math</span>.abs(g.direction[<span class="number">0</span>]) &gt; <span class="built_in">Math</span>.abs(g.direction[<span class="number">1</span>]);</div><div class="line">                <span class="keyword">if</span>(isHorizontal)&#123;</div><div class="line">                    <span class="keyword">if</span>(g.direction[<span class="number">0</span>] &gt; <span class="number">0</span>)&#123;</div><div class="line">                        my.drone.right();</div><div class="line">                    &#125; <span class="keyword">else</span> &#123;</div><div class="line">                        my.drone.left();</div><div class="line">                    &#125;</div><div class="line">                &#125; <span class="keyword">else</span> &#123;</div><div class="line">                    <span class="keyword">if</span>(g.direction[<span class="number">1</span>] &gt; <span class="number">0</span>)&#123;</div><div class="line">                        my.drone.up();</div><div class="line">                    &#125; <span class="keyword">else</span> &#123;</div><div class="line">                        my.drone.down();</div><div class="line">                    &#125;</div><div class="line">                &#125;</div><div class="line">            &#125; <span class="keyword">else</span> <span class="keyword">if</span> (g.type == <span class="string">"keyTap"</span>) &#123;</div><div class="line">                my.drone.land();</div><div class="line">            &#125;</div><div class="line">        &#125;);</div><div class="line"></div><div class="line">        my.keyboard.on(<span class="string">"down"</span>, <span class="function"><span class="keyword">function</span>(<span class="params"></span>) </span>&#123;</div><div class="line">            my.drone.land();    </div><div class="line">        &#125;);</div><div class="line">        my.keyboard.on(<span class="string">"m"</span>, <span class="function"><span class="keyword">function</span>(<span class="params"></span>) </span>&#123;</div><div class="line">            my.drone.emergency();</div><div class="line">        &#125;);</div><div class="line">        my.keyboard.on(<span class="string">"q"</span>, <span class="function"><span class="keyword">function</span>(<span class="params"></span>) </span>&#123;</div><div class="line">            Cylon.halt();</div><div class="line">        &#125;);</div><div class="line"></div><div class="line">    &#125;</div><div class="line">&#125;).start();</div></pre></td></tr></table></figure>
+<p>　とりあえずこれで動く．指を回すとドローンが飛び上がり，スワイプに応じて移動する．内部ではnode-rolling-spiderというモジュールが呼ばれる．<br>　複数台の機体に接続できるから，ドローンの編隊飛行も夢ではない．とはいえ，Bluetoothを経由した中央集権的な制御なので，自律飛行にはいたらないが．ほんとうに自律させたければ，ドローン側のファームウェアに手を入れる必要がある．Parrot社が公開している<a href="https://github.com/Parrot-Developers/RollingSpiderEdu" target="_blank" rel="external">RollingSpiderEdu</a>によると，どうやら共有ライブラリを用いてドローンのファームウェアに機能を追加できるようだ．いずれはレクサスのPVのように美しく飛ばしてみたいが，いっそドローンから自作したほうがいいかもしれないな．</p>
+<center><iframe width="560" height="315" src="https://www.youtube.com/embed/uj0v1BgzUdc" frameborder="0" allowfullscreen></iframe></center>
+
+<p>　なおRolling Spiderの総重量は65gなので，空港等の周辺や人口中心地区の上空でのドローン飛行を制限する<a href="http://www.mlit.go.jp/koku/koku_tk10_000003.html" target="_blank" rel="external">改正航空法</a>の対象とはならない．</p>
+<h1 id="Slack"><a href="#Slack" class="headerlink" title="Slack"></a>Slack</h1><p>　凧揚げもChatOpsの時代．<br>　node-slackというモジュールと，ドローンのコールバック機能を用いれば，バッテリー残量をSlackに通知できる．SlackのWebHooks URLに投げるだけだ．</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div></pre></td><td class="code"><pre><div class="line"><span class="keyword">var</span> Cylon = <span class="built_in">require</span>(<span class="string">'cylon'</span>),</div><div class="line">    Slack = <span class="built_in">require</span>(<span class="string">'node-slack'</span>),</div><div class="line">    slack = <span class="keyword">new</span> Slack(<span class="string">'https://hooks.slack.com/services/***'</span>);</div><div class="line">...</div><div class="line">    work: <span class="function"><span class="keyword">function</span> (<span class="params">my</span>) </span>&#123;</div><div class="line">...</div><div class="line">        my.drone.on(<span class="string">'battery'</span>, <span class="function"><span class="keyword">function</span>(<span class="params"></span>)</span>&#123;</div><div class="line">            slack.send(&#123;</div><div class="line">                <span class="attr">text</span>: <span class="string">':battery:: '</span> + my.drone.getBatteryLevel() + <span class="string">'%'</span>,</div><div class="line">                <span class="attr">channel</span>: <span class="string">'#drone'</span>,</div><div class="line">                <span class="attr">username</span>: <span class="string">'Drone'</span></div><div class="line">            &#125;);</div><div class="line">        &#125;);</div><div class="line">...</div></pre></td></tr></table></figure>
+<p>　こんなふうに通知される．</p>
+<p><img src="/image/drone/slack.png" width="50%" height="50%"></p>
+<p>　ちなみに，ドローンが移動するたびに通知なんかしていると「短期間に送信されたメッセージが多すぎるから表示しないよ！」と怒られる．</p>
+<h1 id="その他の凧揚げ"><a href="#その他の凧揚げ" class="headerlink" title="その他の凧揚げ"></a>その他の凧揚げ</h1><p>　Leap Motionによるドローンの操作はたぶんこの人が初．</p>
+<center><iframe width="560" height="315" src="https://www.youtube.com/embed/hfq2SisPvCU" frameborder="0" allowfullscreen></iframe></center>
+
+<p>　やっぱデカいドローンを飛ばしたいっすね．</p>
+<h1 id="おわりに"><a href="#おわりに" class="headerlink" title="おわりに"></a>おわりに</h1><p>　ジェスチャーでドローンを操作できるようになったことだし，フォースの力みたいでかっこいいと思って，年始にRolling Spiderを多摩川の土手で飛ばしていたらドローン嫌いっぽい人にクソ怒られた．すいません．<br>　あとドローンといえば『<a href="http://www.amazon.co.jp/dp/415031201X" target="_blank" rel="external">伊藤計劃トリビュート</a>』所収の藤井太洋「公正的戦闘規範」がおもしろいぞ！！！</p>
+<h1 id="謝辞"><a href="#謝辞" class="headerlink" title="謝辞"></a>謝辞</h1><ul>
+<li>Leap Motionは<a href="https://twitter.com/shunki9" target="_blank" rel="external">@shunki9</a>から借りた．</li>
+<li>Rolling Spiderは<a href="http://www.gehirn.co.jp/" target="_blank" rel="external">Gehirn Inc.</a>に買ってもらった．</li>
+</ul>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://ntddk.github.io/2016/01/08/controlling-rolling-spider-with-leap-motion-cylon-js/" data-id="cj13oizgg000cpcos2tq31fe7" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/drone/">drone</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+    <article id="post-generating-thesis-titles-with-rnnlm" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    
+      <header class="article-header">
+        
+  
+    <a class="article-title" href="/2015/12/19/generating-thesis-titles-with-rnnlm/">RNNLMによる論文タイトルの自動生成</a>
+  
+
+      </header>
+    
+    <time class="article-date" datetime="2015-12-19T14:45:00.000Z" itemprop="datePublished">12-19-2015</time>
+    
+  </div>
+  <div class="article-inner">
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p>　本稿は<a href="http://www.adventar.org/calendars/1053" target="_blank" rel="external">慶應義塾大学SFC村井&amp;徳田研 Advent Calendar 2015</a>の19日目である．</p>
+<h1 id="TL-DR"><a href="#TL-DR" class="headerlink" title="TL;DR:"></a>TL;DR:</h1><p>　村井研・徳田研の卒論・修論・博論アーカイブから過去の論文タイトルを収集し，RNNLM（Recurrent Neural Network Language Model, 再帰型ニューラルネット言語モデル）[1]を用いて論文タイトルを自動生成する．</p>
+<h1 id="手順"><a href="#手順" class="headerlink" title="手順"></a>手順</h1><ol>
+<li><a href="http://www.sfc.wide.ad.jp/paper.html" target="_blank" rel="external">論文アーカイブ</a>を雑にスクレイピング．</li>
+<li>簡単のため英語タイトルを削る．データサイズは540行・16294字．</li>
+<li>MeCabの<code>-Owakati</code>オプションで分かち書き．単語数は6272と少ない．</li>
+<li>RNNLMで学習，出力．</li>
+</ol>
+<p>　生成した論文タイトルは次の通り．</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div><div class="line">22</div><div class="line">23</div><div class="line">24</div><div class="line">25</div><div class="line">26</div><div class="line">27</div><div class="line">28</div><div class="line">29</div><div class="line">30</div><div class="line">31</div><div class="line">32</div><div class="line">33</div><div class="line">34</div><div class="line">35</div><div class="line">36</div><div class="line">37</div><div class="line">38</div><div class="line">39</div><div class="line">40</div><div class="line">41</div><div class="line">42</div><div class="line">43</div><div class="line">44</div><div class="line">45</div><div class="line">46</div><div class="line">47</div><div class="line">48</div><div class="line">49</div><div class="line">50</div><div class="line">51</div><div class="line">52</div><div class="line">53</div><div class="line">54</div><div class="line">55</div><div class="line">56</div><div class="line">57</div><div class="line">58</div><div class="line">59</div><div class="line">60</div><div class="line">61</div><div class="line">62</div><div class="line">63</div><div class="line">64</div><div class="line">65</div><div class="line">66</div><div class="line">67</div><div class="line">68</div><div class="line">69</div><div class="line">70</div><div class="line">71</div><div class="line">72</div><div class="line">73</div><div class="line">74</div><div class="line">75</div><div class="line">76</div><div class="line">77</div><div class="line">78</div><div class="line">79</div><div class="line">80</div><div class="line">81</div><div class="line">82</div><div class="line">83</div><div class="line">84</div><div class="line">85</div><div class="line">86</div><div class="line">87</div><div class="line">88</div><div class="line">89</div><div class="line">90</div><div class="line">91</div><div class="line">92</div><div class="line">93</div><div class="line">94</div><div class="line">95</div><div class="line">96</div><div class="line">97</div><div class="line">98</div><div class="line">99</div><div class="line">100</div><div class="line">101</div></pre></td><td class="code"><pre><div class="line">改変適応機環境におけるインターネット化の設計と実装</div><div class="line">暮らし計算発見を利用したUDL機器</div><div class="line">インターネットを用いた機器プローブ体系のVoDについて開発な攻撃運用手法</div><div class="line">自律計算ネットワークの行動に-移動システムに関する研究</div><div class="line">衛星情報を用いたビジュアライゼーション定義アーキテクチャ表をする検出ユビキタスノードのファイル構成に関する研究</div><div class="line">あしあと適応セキュリティネットワークを用いた負荷議事取り入れたセンサNEMOMANET解決</div><div class="line">ユーザエンティティに適した仮想な通信接近による制御対象の設計と実装</div><div class="line">蓄積学校利用性のための再作業に関する持続</div><div class="line">型連携ネットワークのインターネットに基づく遠隔コードの向けたデジタル機構の構築</div><div class="line">アプリケーション：型と時間特定を用いた利用型路準拠相関の構築</div><div class="line">自律電話教育における異種品質空間支援システムの設計と実装</div><div class="line">位置AV端末著作授業特殊トポロジ型し分析高速構築</div><div class="line">広域を利用した次応用におけるレイヤーな授業に関する研究プロシステムに関する研究</div><div class="line">次制御対するカメラを利用したAd型間屋外パブリック構築</div><div class="line">協調:不sネットワークにおけるOSストリーミングの考慮機器コミュニケーション配信システムの設計と実装</div><div class="line">センサ環境におけるデバイスソフトウェア文字通信システム</div><div class="line">無線作業めぐるにおけるパケットIP発信・支援機構</div><div class="line">ELA上環境に応じたしたコンピュータ測定に関する研究</div><div class="line">インターネット型プラットホームの遠隔パケットとシステム</div><div class="line">無線コントロールセンサを考慮する参加参加サービスの研究</div><div class="line">移動者における位置適応オブジェクト手法の研究</div><div class="line">インターネットグルーピングの回覧性をシステムした経路消耗性の実現</div><div class="line">自己情報を用いた実を量子よる協調表行動流通</div><div class="line">デジタル前遠隔しるしの情報共有支援機構</div><div class="line">ネットワークト可視ネットワークを車的基盤」関数の分析</div><div class="line">環境Computing通信DVB携帯性に関する移動同期利用の設計と実装</div><div class="line">マルチパスFunction無線センサノードを用いた技術マルチ支援支援促進に関する研究</div><div class="line">スマート世代ネットワークにおける相互ブリッジ家電システムの設計と実装</div><div class="line">インターネット情報のための興味無支援システムの構築</div><div class="line">オペレーティング型IP環境のプロファイリング的な信頼に関する研究</div><div class="line">実方向自動ポロジにおける同期機器性における研究</div><div class="line">センサ-抽出生成を支援情報登録抽出機構の構築</div><div class="line">アドホックOSにおけるOS環境のGlass性基盤機構の構築</div><div class="line">DV地アプリケーションの者による最適いアルゴリズム</div><div class="line">商上のための選択なMobile効率システムの構築</div><div class="line">ユビキタス世代環境における効率Wireless情報のMarkit</div><div class="line">系列演奏位置スレッドサービス二マッチングマルチプロアクティブモデルの構築</div><div class="line">パケット適応付け利用を考慮したネットワークブログモデルの設計と実装</div><div class="line">TranS情報環境におけるグループホスト同期への安全履歴と分散</div><div class="line">の情報対象でのMediatorコラボレーションに関する研究</div><div class="line">類似Allシステム</div><div class="line">情報グループを利用するデジタル制御動画像配送システムの構築</div><div class="line">RFIDを利用したネットワークのプラットフォーム転送に関する研究</div><div class="line">周辺上セキュリティにおけるコンテキスト者基無線の提案に関する研究</div><div class="line">Link型服行動RCSにおける効率しない機構</div><div class="line">クラシック型車載インターネットを解決した分散音声なりすましシステム</div><div class="line">Dynamic特徴解析に基づく仮想制御機構の設計と実装</div><div class="line">多段CSMAにおける多様な解析管理機構の設計と実装</div><div class="line">移動機:を用いた-コンテンツシステムの構築</div><div class="line">技術センサ環境におけるホーム化による経路サーバ</div><div class="line">アプリケーション回線に基づく薦環境におけるする作成への行動利用に関する研究</div><div class="line">インターネットを用いたしたな動画ルールに関する研究</div><div class="line">機器協調利用Efficientのネットワーク解決のエンド映像構築</div><div class="line">計算情報を利用した家電抽象の迷い連携への構築</div><div class="line">関連情報教育における動的メールイベント収集の研究</div><div class="line">通知におけるデータベース方式購買によるした状態時間グループに関する研究</div><div class="line">コンテキスト:6のためのための設計と実装</div><div class="line">電子ネットワークのための提案と実装</div><div class="line">自己電話を利用したオブジェクト分散型授業属性制御機構の実現</div><div class="line">ネットワークの抽出化環境の向上圧縮システムの構築</div><div class="line">Networks対戦ネットワークにおける家庭テリトリー手法の構築</div><div class="line">広バイト依存患者のための収集及び積極システム</div><div class="line">IPコンテキスト精度点のデータベース的と-発見環境動画像モデル行動-</div><div class="line">通信作業システムの含む属性センサノード付け可能メディアの提案と開発</div><div class="line">情報世代環境時による最適視点環境機構の設計と実装</div><div class="line">協調蓄積モバイルバッテリ支援Shumu機器型設置インシデントIrma保護量</div><div class="line">分散回線にセンサデータ適応をマッチングと基準化に関する研究</div><div class="line">環境さ時複数用方式と審議に関する研究</div><div class="line">自律リンク環境におけるインターネット・属性品質</div><div class="line">オブジェクトしにおけるインタフェース技法化推薦機構の研究</div><div class="line">インターネットにおける光を用いた最適遠隔支援環境の構築</div><div class="line">モーバイルs利用とへの実現自動手法の設計と実装</div><div class="line">インターネットに適した時端末型TCP型データ基準の内</div><div class="line">インターネットを用いた受信・辞書収集</div><div class="line">DOS的利用環境におけるbased配信システムの構築</div><div class="line">i：と利用した情報モーダルの作成に関する研究</div><div class="line">APIの情報におけるソフトウェアするをシステムの自律</div><div class="line">インターネットを用いたセル内回避手法アプリケーションFunction選択制御機構</div><div class="line">マルチ:ユーザ時のLooking支援競合の参加情報に関する研究</div><div class="line">マルチネットワークによる動的リモコンアーキテクチャの分析に関する研究</div><div class="line">インターネット：文字を含むと対策軽減地理ファイルの構築</div><div class="line">アプリケーションのデジタル行動環境における負荷教育の設計と実装</div><div class="line">移動制御型メディア取り入れたにおける自律トポロジモデルの提案</div><div class="line">日本回線時におけるセンサのアーキテクチャ</div><div class="line">『世代sionを支援情報ユーザの実現</div><div class="line">Mobileの行動空間に基づくするコンポーネントシステムの設計と構築</div><div class="line">キットライブラリのアドレス利用を支援するアプリケーションの行動に関する研究</div><div class="line">間:環境における認証検出の考察</div><div class="line">鍵盤を用いた基盤経路トポロジ支援手法の研究</div><div class="line">RFIDネットワークを用いたとユーザ</div><div class="line">自律型機的な支援レイヤー手法の設計と実装</div><div class="line">アドホックを用いたデジタル最適暗号システムの研究</div><div class="line">WWW人IPvシステムの動的2を化フローインフォメーション配送化手法</div><div class="line">次的機タフェース6システムの実現</div><div class="line">IPレイヤーネットワークにおけるグループ取得遠隔システムに関する研究</div><div class="line">二通信ユニバーサルにおける複数共有再についての研究</div><div class="line">Tapirus上の情報的実現あるの構築</div><div class="line">環境上における仮想指機構の構築</div><div class="line">インターネットにおけるRFID経路エンドノードデータベース付けモデルの設計と実装</div><div class="line">2回線学習への効率的型環境の提案と構築</div><div class="line">...</div></pre></td></tr></table></figure>
+<p>　これはRNNLMが生成した論文タイトルを100件無作為抽出したもの．全リストは<a href="https://gist.github.com/ntddk/c1dd4476677667157a97" target="_blank" rel="external">gist</a>に置いている．この程度のデータサイズでRNNLMの性能を云々するのはいささか危うい気がするが，論文タイトルの末尾はえてして「～の構築」「～の研究」「～の実現」になるというルールを獲得できている，ということだろうか．<br>　同じデータセットから，ありがちな2単語プリフィックスのマルコフ連鎖で生成した論文タイトルは次の通り．</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div></pre></td><td class="code"><pre><div class="line">注目した二点間接続基盤ソフトウエアの構築インターネット</div><div class="line">地域における高等教育協力手法の研究ホームネットワークにおける多様</div><div class="line">かつスケーラブルな識別子管理システムゲームコンソールに対応する管理</div><div class="line">運用基盤分析に関する研究ポリシ経路制御に関する研究大</div><div class="line">任意の物理的量子ビットに対する効率的な情報閲覧</div><div class="line">脳疲労検知システムの提案次世代インターネット経路制御を用い</div><div class="line">鍵交換機構の実装と評価初等中等教育におけるWWW</div><div class="line">プロセスデザイン片方向ブロードキャストメディアを用いたユビキタスコンピューティング環境に適し</div><div class="line">連携システムの設計と実装exPhoto:周辺機器と撮影</div><div class="line">に関する研究分散環境におけるプロアクティブ制御方式に関する研究アドホック</div><div class="line">...</div></pre></td></tr></table></figure>
+<p>　パッと見でRNNLMが生成した論文タイトルの方がより自然に思える．で，RNNLMって何なの？</p>
+<h1 id="RNNLM"><a href="#RNNLM" class="headerlink" title="RNNLM"></a>RNNLM</h1><p>　読んで字のごとくRNNLMはRNNの言語モデルへの応用である．<br>　RNNは内部に有向閉路をもつニューラルネット．系列データの各時刻<span>$t$</span><!-- Has MathJax -->につき1つの入力<span>$x^t$</span><!-- Has MathJax -->をとり1つの出力<span>$y^t$</span><!-- Has MathJax -->を返す．ふつう順伝播型ニューラルネットは入力1つをとり1つの入力を与える写像を表現するが，RNNは任意の系列–すなわち過去のすべての入力から任意の系列への写像を表現する．<br>　これは<strong>時刻<span>$t-1$</span><!-- Has MathJax -->の隠れ層の出力を，時刻<span>$t$</span><!-- Has MathJax -->の隠れ層の入力に与える</strong>ことで実現される．</p>
+<p><img src="/image/rnnlm/rnnlm.png" width="30%" height="30%"></p>
+<p>　文章は系列データであり，文章に含まれる各単語は直前の単語の並びに依存している．そこで，1990年のエルマンネット[2]以来，RNNを用いた文章の分析が試みられてきた–近頃「RNNは深層学習の一種」というような言辞を見かけるが，RNN<span>$\in$</span><!-- Has MathJax -->深層学習では<strong>ない</strong>．<br>　RNNLMと既存手法との相違点は，単語を潜在空間に写像して単語の意味を獲得しようとしているところだ．<br>　上図において隠れ層のベクトルは単語の潜在ベクトルとその履歴より<span>$\begin{split}s(t) =&amp; f(Uw(t) + Ws(t-1))\end{split}$</span><!-- Has MathJax -->となる．次の単語の確率は<span>$\begin{split}y(t) =&amp; g(Vs(t))\end{split}$</span><!-- Has MathJax -->となる．<br>　ここで活性化関数<span>$f(z)$</span><!-- Has MathJax -->は標準シグモイド関数で，<span>$g(z)$</span><!-- Has MathJax -->はソフトマックス関数<span>$\dfrac {e^{zm}} {\Sigma _{k}e^{zm}}$</span><!-- Has MathJax -->である．<br>　学習では確率的勾配降下法を用いて重み<span>$U$</span><!-- Has MathJax -->, <span>$W$</span><!-- Has MathJax -->, <span>$V$</span><!-- Has MathJax -->を更新していくが，このときRNNLMは各層を時間方向に展開し，最後の時刻<span>$t$</span><!-- Has MathJax -->から誤差逆伝播計算をおこなう（BPTT, Backpropagation through time法）．<br>　ここにおいてRNNは多層の順伝播型ニューラルネットのようにみなせる．</p>
+<p><img src="/image/rnnlm/bptt.png" width="30%" height="30%"></p>
+<p>　BPTT法において，ある時刻<span>$t$</span><!-- Has MathJax -->における出力層の誤差は正解ベクトル<span>$d(t)$</span><!-- Has MathJax -->から出力<span>$y(t)$</span><!-- Has MathJax -->を引いた出力誤差<span>$e_{o}(t)$</span><!-- Has MathJax -->と，時刻<span>$t+1$</span><!-- Has MathJax -->から伝播してきた誤差の和となる．ここでたとえば<span>$V(t+1) = V(t) + s(t)e_{o}(t)^t\alpha - V(t)\beta$</span><!-- Has MathJax -->．<span>$\alpha$</span><!-- Has MathJax -->は学習率であり，各層で行列の勾配に掛かる．<span>$\beta$</span><!-- Has MathJax -->はL2正則化の係数．<br>　このBPTT法で長い系列を扱うとき勾配が消失してしまう問題[3]があり，解決策としてLSTM（Long Short-Term Memory, 長・短期記憶）[4]が提案されているが，割愛する．<br>　なお今回のパラメータは次の通り．</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div></pre></td><td class="code"><pre><div class="line">last probability of validation data: -441.610349</div><div class="line">number of finished iterations: 14</div><div class="line">current position in training data: 0</div><div class="line">current probability of training data: -441.576456</div><div class="line">save after processing # words: 0</div><div class="line"># of training words: 6272</div><div class="line">input layer size: 1295</div><div class="line">hidden layer size: 200</div><div class="line">compression layer size: 0</div><div class="line">output layer size: 1096</div><div class="line">direct connections: 0</div><div class="line">direct order: 3</div><div class="line">bptt: 6</div><div class="line">bptt block: 10</div><div class="line">vocabulary size: 1095</div><div class="line">class size: 1</div><div class="line">old classes: 0</div><div class="line">independent sentences mode: 1</div><div class="line">starting learning rate: 0.100000</div><div class="line">current learning rate: 0.000195</div><div class="line">learning rate decrease: 1</div></pre></td></tr></table></figure>
+<h1 id="おわりに"><a href="#おわりに" class="headerlink" title="おわりに"></a>おわりに</h1><p>　恥知らずのクソ野郎なので何番煎じともわからない記事を書いてしまった．元ネタは<a href="http://www.phontron.com/nlp-title/" target="_blank" rel="external">NLP論文ネタ一覧</a>．<br>　このほか青空文庫やなろう小説[5]をRNNに学習させてはいるが，LSTM込みでもいまだ人間が見て自然に思える文章の生成は難しく思える．<br>　いずれは論文タイトルばかりか論文の内容も自動生成して知の欺瞞をもう一発カマしたいのだが．SFC自体が知の欺瞞っぽいところはさておき．<br>　物語の自動生成なら円城塔がなんとかしてくれるだろう．</p>
+<h1 id="参考文献"><a href="#参考文献" class="headerlink" title="参考文献"></a>参考文献</h1><ul>
+<li>[1] “RNNLM Toolkit,” <a href="http://rnnlm.org/" target="_blank" rel="external">http://rnnlm.org/</a><ul>
+<li>記事中の画像は開発者による<a href="http://www.fit.vutbr.cz/~imikolov/rnnlm/google.pdf" target="_blank" rel="external">紹介スライド</a>より．</li>
+<li>解説は<a href="http://kiyukuta.github.io/2013/12/09/mlac2013_day9_recurrent_neural_network_language_model.html" target="_blank" rel="external">これもある意味Deep Learning，Recurrent Neural Network Language Modelの話 [MLAC2013_9日目] – KiyuHu</a>がわかりやすい．</li>
+</ul>
+</li>
+<li>[2] Jeffrey L. Elman, “<a href="http://crl.ucsd.edu/~elman/Papers/fsit.pdf" target="_blank" rel="external">Finding Structure in Time[PDF]</a>,” Cognitive Science, vol. 14, issue. 2, pp. 179-211, 1990.</li>
+<li>[3] Sepp Hochreiter, “<a href="http://www.bioinf.jku.at/publications/older/3804.pdf" target="_blank" rel="external">Untersuchungen zu dynamischen neuronalen Netzen[PDF]</a>,” Diploma thesis, TU Munich, 1991.<ul>
+<li>読めない．</li>
+</ul>
+</li>
+<li>[4] Sepp Hochreiter and Jürgen Schmidhuber, “<a href="http://deeplearning.cs.cmu.edu/pdfs/Hochreiter97_lstm.pdf" target="_blank" rel="external">Long Short-Term Memory[PDF]</a>,” Neural Computation, vol. 9, no. 8, pp. 1735-1780, 1997.<ul>
+<li>解説は<a href="http://qiita.com/t_Signull/items/21b82be280b46f467d1b" target="_blank" rel="external">MachineLearning - わかるLSTM ～ 最近の動向と共に - Qiita</a>がわかりやすい．</li>
+</ul>
+</li>
+<li>[5] <a href="http://ncode.syosetu.com/n9073ca/" target="_blank" rel="external">幻想再帰のアリュージョニスト</a>，おすすめです．</li>
+</ul>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://ntddk.github.io/2015/12/19/generating-thesis-titles-with-rnnlm/" data-id="cj13oizgg000fpcos6a7h8mfc" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/machine-learing/">machine learing</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/neural-network/">neural network</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+    <article id="post-autoprobe" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    
+      <header class="article-header">
+        
+  
+    <a class="article-title" href="/2015/12/11/autoprobe/">マルウェアの動的解析に基づくC&amp;Cサーバの探索</a>
+  
+
+      </header>
+    
+    <time class="article-date" datetime="2015-12-11T03:00:00.000Z" itemprop="datePublished">12-11-2015</time>
+    
+  </div>
+  <div class="article-inner">
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p>　本稿は<a href="http://www.adventar.org/calendars/784" target="_blank" rel="external">情報セキュリティ系論文紹介 Advent Calendar 2015</a>の11日目である．</p>
+<h1 id="TL-DR"><a href="#TL-DR" class="headerlink" title="TL;DR:"></a>TL;DR:</h1><p>　テイント解析（taint analysis）やプログラムスライシング（program slicing），記号的実行（symbolic execution）やファジング（fuzzing）といったバイナリ解析技術を総動員して，マルウェアが通信するC&amp;Cサーバのフィンガープリントを<strong>C&amp;Cサーバと通信せずとも</strong>生成する手法–AUTOPROBE[1]を紹介する．</p>
+<h1 id="背景"><a href="#背景" class="headerlink" title="背景"></a>背景</h1><p>　マルウェアによるサイバー犯罪はC&amp;Cサーバやコンフィグファイルの配布元，二次検体の配布元など様々な悪性サーバ（malicious server）からなるインフラによって支えられている．攻撃者はこれらの悪性サーバを頻繁に閉鎖・移転させて対策から逃れようとする．とりわけ攻撃者の命令を送信してマルウェアの動作を決定するC&amp;Cサーバはその後の攻撃の起点となるため早期発見が望ましい．したがって不審なサーバがC&amp;Cサーバかどうか判定するフィンガープリントが必要となる．<br>　しかしながら従来のフィンガープリント生成手法にはC&amp;Cサーバとの長期的な通信を前提としている[2]，サーバとして動作するマルウェアを前提としている[3]といった問題点があった．</p>
+<h1 id="問題定義"><a href="#問題定義" class="headerlink" title="問題定義"></a>問題定義</h1><p>　あるマルウェアのファミリFに属する検体Pを入力として受け取り，Fが用いるC&amp;Cサーバのフィンガープリントφを出力することがAUTOPROBEの目的である．C&amp;Cサーバ側のコードは参照できず，マルウェアの検体はシンボル情報やソースコードを含んでいなくともよい．またマルウェアは複数のリクエストをC&amp;Cサーバに送信するものとする．</p>
+<h1 id="提案手法"><a href="#提案手法" class="headerlink" title="提案手法"></a>提案手法</h1><p>　あるサーバにマルウェアと同様のリクエストを送って，マルウェアがコマンドとして解釈できるレスポンスが返ってきたら，そのサーバは疑いようもなくC&amp;Cサーバである–AUTOPROBEの鍵となる発想は至極単純だ．<br>　AUTOPROBEは検体の命令・API・システムコールの実行を–おそらくQEMUによって–トレースし，リクエストを生成する処理とレスポンスをハンドルする処理をそれぞれマルウェアから抽出する．つづいて前者によって不審なサーバに対するリクエストを生成し，後者によってレスポンスをハンドルする．レスポンスハンドリングの可否をもってフィンガープリントとするから，その処理の抽出さえできれば不審なサーバがC&amp;Cサーバかどうか判定するまで実際のC&amp;Cサーバと通信する必要はない–でもどうやって？</p>
+<h2 id="リクエスト生成"><a href="#リクエスト生成" class="headerlink" title="リクエスト生成"></a>リクエスト生成</h2><p>　マルウェアの多くは時間や擬似乱数，OS情報などの環境依存の値によって動作を変更する．たとえばWin32/LoadMoney.AFはレジストリキーの有無によって送信するリクエストを変更する．</p>
+<p><img src="/image/autoprobe/win32_loadmoney.af.png" width="50%" height="50%"></p>
+<p>　不審なサーバがC&amp;Cサーバかどうか判定するためには攻撃者の期待するリクエストをより多く送信しより多くレスポンスを得たい．そこでAUTOPROBEは以下のアルゴリズムにしたがって複数の実行トレースを得る．これは条件分岐の度に直前のシステムコールを参照する，ある種の深さ優先探索として実装される．</p>
+<p><img src="/image/autoprobe/request.png" width="50%" height="50%"></p>
+<p>　さらにAUTOPROBEはトレースをスライスし，システムコールの結果に依存する値を環境依存の値として決定論的な値・定数と区別する．ここで環境依存の値を書き換えれば攻撃者の期待するリクエストを送信できるようになる．また環境依存の値に影響するシステムコールの戻り値に時間，IPアドレス，擬似乱数，OS情報など200種類のラベルを設定しているとのことだ．</p>
+<h2 id="レスポンスハンドリング"><a href="#レスポンスハンドリング" class="headerlink" title="レスポンスハンドリング"></a>レスポンスハンドリング</h2><p>　生成したリクエストをC&amp;Cサーバに送信してレスポンスを得たら，AUTOPROBEはレスポンスの各バイトを記号値として扱い，実行トレースから検体の分岐制約を充足する解およびスライスθ<sub>1</sub>を得る．ここで探索の終了条件は<code>closesocket</code>や<code>exitprocess</code>に到達した場合，データを受信してから50個の条件分岐にわたってそのデータを参照するものが存在しない場合である．つづいてレスポンスとして正しく解釈できない値を検体に与え，実行トレースから分岐制約を充足する解およびスライスθ<sub>2</sub>を得る．ここでηは以下の式によって得られる実行経路の類似度である．</p>
+<p><img src="/image/autoprobe/slice.png" width="50%" height="50%"></p>
+<p>　bnとfnはそれぞれ各スライスに含まれるユニークなコードブロックとシステムコールの数を示す．AUTOPROBEはηが閾値10を下回ればレスポンスを正しく解釈していない実行経路とみなしてスライスを破棄し，上回れば別々のハンドラであるとしてそれぞれの分岐制約をフィンガープリントとして保持する．たとえばこんなふうに．</p>
+<p><img src="/image/autoprobe/equations.png" width="50%" height="50%"></p>
+<p>　C&amp;Cサーバからレスポンスを得られなければ，AUTOPROBEは記号的実行とファジング，フラグレジスタの書き換えによる強制実行（forced execution）を併用してレスポンスに依存する実行経路を探索する．</p>
+<p><img src="/image/autoprobe/response.png" width="55%" height="55%"></p>
+<p>　このファジングでは検体にランダム値を与えるが，検体が用いるアルゴリズムがHTTPなど既知のものであればエラーメッセージのハンドラを起点に探索する．<br>　AUTOPROBEはこのように探索したレスポンスのハンドラをフィンガープリントとするが，期待されるレスポンスが得られずさきほどのアルゴリズムによって探索した場合は以下のようにC&amp;Cサーバの尤もらしさを算出する．</p>
+<p><img src="/image/autoprobe/score.png" width="50%" height="50%"></p>
+<h1 id="評価"><a href="#評価" class="headerlink" title="評価"></a>評価</h1><p>　論文ではふたつのデータセットを用いてAUTOPROBEの性能を評価している．ひとつはSality, ZeroAccess, Ramnit, Bamital, Taidoorを含む37ファミリ10亜種計370検体．もうひとつはネットワーク通信の特徴量に基づいてフィンガープリントを生成する既存研究–CYBERPROBE[2]で用いられた19ファミリ． “which have been kindly provided to us by the authors of CYBERPROBE”って書いてるけどAUTOPROBEと同じメンバーじゃねえか．<br>　検体の実行時間は5分．</p>
+<h2 id="リクエスト生成-1"><a href="#リクエスト生成-1" class="headerlink" title="リクエスト生成"></a>リクエスト生成</h2><p>　まずはリクエストの生成から．可能であればC&amp;Cサーバとの接続をともなうがAlexaトップ10,000サイトは除外している．ここでAUTOPROBEはC&amp;Cサーバに接続せずとも検体のバイナリを分析してCYBERPROBEと同様の結果を得ている．</p>
+<p><img src="/image/autoprobe/request_eval.png"></p>
+<p>　AUTOPROBEはふたつのデータセットに含まれる56ファミリのトレースから105のリクエストを生成した．生成にかかった時間は平均13.2分．リクエストはすべてHTTPであったとのこと．</p>
+<h2 id="レスポンスハンドリング-1"><a href="#レスポンスハンドリング-1" class="headerlink" title="レスポンスハンドリング"></a>レスポンスハンドリング</h2><p>　生成したリクエストのうち76件がC&amp;Cサーバからのレスポンスを引き出した．さらにAUTOPROBEは<code>HTTP 200</code>レスポンスコードを含む同数のランダムなレスポンスを生成し，検体に与えた．これはレスポンスハンドリングの可否によって検体の異なる挙動を確認したいためだ．結果として76件のテストケース中71件（93％）で検体は異なる挙動を示した–<strong>期待される受信データを得たマルウェアは一般に10以上のシステムコールと50以上のコードブロックを実行する</strong>．残りの5件はC&amp;Cサーバではなかった．つまりAUTOPROBEはマルウェアの通信先がC&amp;Cサーバかどうか正しく判定できている．</p>
+<h2 id="ケーススタディ"><a href="#ケーススタディ" class="headerlink" title="ケーススタディ"></a>ケーススタディ</h2><p>　たとえばBamitalのリクエストはファイル名・<code>GetVersionEx</code>によって得たOS情報・DGA (domain generation algorithm) によって生成したホスト名を含んでいた．AUTOPROBEはこれらの値が依存するシステムコールを得ている．</p>
+<p><img src="/image/autoprobe/bamital.png" width="50%" height="50%"></p>
+<p>　C&amp;Cサーバと接続せずとも<code>HTTP/1.1 200 OK</code>を与えればBamitalのハンドラは分析できるとのこと．<br>　また標的型攻撃に用いられるTaidoorのリクエストは<code>GetAdaptersInfo</code>によって得たMACアドレスに依存する値を含んでいた．これによってTaidoorのC&amp;Cサーバは感染端末のみで動作するレスポンスを送信していたようだ．<br>　ドライブバイダウンロード検体であるSalityのC&amp;Cサーバは<code>spm/s_tasks.php</code>, <code>logos_s.gif</code>, <code>231013_d.exe</code>というファイルをレスポンスに含んでいた．AUTOPROBEはこれらのファイルの存在するサーバをSalityのC&amp;Cサーバとみなす．などなど．</p>
+<h2 id="限定的な探索"><a href="#限定的な探索" class="headerlink" title="限定的な探索"></a>限定的な探索</h2><p>　Malware Domain Listに含まれる9,500アドレスの近傍/24サブネット・2.6Mアドレスのスキャン結果．</p>
+<p><img src="/image/autoprobe/localized.png" width="60%" height="60%"></p>
+<p>　VirusTotal, Malware Domain List, そしてURLQueryに発見されていないC&amp;Cサーバを特定できている．</p>
+<h2 id="インターネット全体の探索"><a href="#インターネット全体の探索" class="headerlink" title="インターネット全体の探索"></a>インターネット全体の探索</h2><p>　ここではBGPからインターネット全体をスキャンし，7,100万ものHTTPサーバを発見している．</p>
+<p><img src="/image/autoprobe/horizontal.png"></p>
+<p>　このうちマルウェア3ファミリのC&amp;Cサーバをどれだけ発見できるかCYBERPROBEと比較した結果．</p>
+<p><img src="/image/autoprobe/comparison.png"></p>
+<p>　CYBERPROBEが40件のC&amp;Cサーバを特定しているのにたいしてAUTOPROBEは54件のC&amp;Cサーバを特定している．<br>　高度化するマルウェアが通信内容を難読化・秘匿する傾向にあることを鑑みると，CYBERPROBEのようにネットワーク通信の特徴量を用いる手法よりもAUTOPROBEのようにバイナリ解析を応用した手法こそ吟味されるべきだろう．</p>
+<h1 id="感想"><a href="#感想" class="headerlink" title="感想"></a>感想</h1><p>　AUTOPROBEは折しも私が昨年度のインターンシップでほとんど同じようなテーマに取り組んでいたとき発表された．テイント解析のソースを受信データではなくシステムコールの結果に設定することで，リクエストのセマンティクスを復元しようとするAUTOPROBEの発想は野心的であり，さまざまなバイナリ解析技術を結集して未知のC&amp;Cサーバを発見する手際は鮮やかというほかない．<br>　私は来年書くことになる卒業論文のテーマとして，インターネット接続のない閉環境におけるマルウェアの分析に本手法を応用できないか検討している．Ryzhykら[4]はデバイスドライバと環境（デバイスおよびOS）との相互作用を有限オートマトンを用いて表現し，デバイスドライバを半自動的に合成する手法を提案している．問題領域は異なるがこうした手法も検討したい．</p>
+<h1 id="用語解説"><a href="#用語解説" class="headerlink" title="用語解説"></a>用語解説</h1><ul>
+<li>テイント解析<ul>
+<li>任意のデータに設定したタグをルールにしたがって伝搬させることで，データ間の依存関係を分析する手法</li>
+</ul>
+</li>
+<li>プログラムスライシング<ul>
+<li>任意のデータに依存する処理部分をプログラムから抽出する手法</li>
+</ul>
+</li>
+<li>記号的実行<ul>
+<li>プログラムの分岐条件を充足論理問題とし，制約を充足する解を得る手法</li>
+</ul>
+</li>
+<li>ファジング<ul>
+<li>開発者が意図しない入力を自動生成してプログラムに与えることで脆弱性を顕在化させる手法</li>
+</ul>
+</li>
+</ul>
+<h1 id="参考文献"><a href="#参考文献" class="headerlink" title="参考文献"></a>参考文献</h1><ul>
+<li>[1] Zhaoyan Xu, Antonio Nappa, Robert Baykov, Guangliang Yang, Juan Caballero, and Guofei Gu, “<a href="http://www.cs.wm.edu/~ksun/csci780-f14/papers/AutoProbe-CCS14.pdf" target="_blank" rel="external">AUTOPROBE: Towards Automatic Active Malicious Server Probing Using Dynamic Binary Analysis[PDF]</a>,” In Proc. of the 21st ACM Conference on Computer and Communications Security (CCS’14), 2014.</li>
+<li>[2] Antonio Nappa, Zhaoyan Xu, M. Zubair Rafique, Juan Caballero, and Guofei Gu, “<a href="http://faculty.cs.tamu.edu/guofei/paper/CyberProbe_NDSS14.pdf" target="_blank" rel="external">Cyberprobe: Towards Internet-Scale Active Detection of Malicious Servers[PDF]</a>,” In Network and Distributed System Security Symposium (NDSS’14), 2014.</li>
+<li>[3] Zhaoyan Xu, Lingfeng Chen, Guofei Gu, and Christopher Kruegel, “<a href="http://dl.acm.org/citation.cfm?id=2382257" target="_blank" rel="external">Peerpress: Utilizing Enemies’ P2P Strength against Them</a>,” In ACM Conference on Computer and Communications Security (CCS’12), 2012.</li>
+<li>[4] Leonid Ryzhyk, Adam Walker, John Keys, Alexander Legg, Arun Raghunath, Michael Stumm, and Mona Vij, “<a href="https://www.usenix.org/conference/osdi14/technical-sessions/presentation/ryzhyk" target="_blank" rel="external">User-Guided Device Driver Synthesis</a>,” In Proc. of the 11th USENIX Conference on Operating Systems Design and Implementation (OSDI’14), 2014.</li>
+</ul>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://ntddk.github.io/2015/12/11/autoprobe/" data-id="cj13oizgg0006pcostpriencm" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/symbolic-execution/">symbolic execution</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/taint-analysis/">taint analysis</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+    <article id="post-is-linear-obfuscation-a-threat" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    
+      <header class="article-header">
+        
+  
+    <a class="article-title" href="/2015/11/09/is-linear-obfuscation-a-threat/">コラッツの問題を用いた難読化は脅威なのか</a>
+  
+
+      </header>
+    
+    <time class="article-date" datetime="2015-11-09T08:30:00.000Z" itemprop="datePublished">11-09-2015</time>
+    
+  </div>
+  <div class="article-inner">
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h1 id="TL-DR"><a href="#TL-DR" class="headerlink" title="TL;DR:"></a>TL;DR:</h1><p>　ソフトウェアの多くは外部からの入力に依存する実行パス（trigger-based code）をもつ．<br>　これを記号的実行（symbolic execution, シンボリック実行）などの解析手法から隠蔽する手法として，コラッツの問題を用いた線型難読化（linear obfuscation）がある[1]．<br>　本稿ではしかし，線型難読化されたコードはコンパイラ最適化によってある程度除去できることを示す．</p>
+<h1 id="コラッツの問題"><a href="#コラッツの問題" class="headerlink" title="コラッツの問題"></a>コラッツの問題</h1><p>　コラッツの問題は数論の未解決問題のひとつである．<br>　任意の1でない自然数nに対して，nが偶数ならば2で割り，nが奇数ならば3倍して1を足す．この操作を繰り返していくと，どのような自然数nから出発しても，有限回の操作のうちに必ず1に到達する．<br>　この定理は経験則的に正しいと考えられているが，いまだ証明はなされていない．</p>
+<h1 id="線型難読化"><a href="#線型難読化" class="headerlink" title="線型難読化"></a>線型難読化</h1><p>　たとえば次のプログラム<code>tr.c</code>は外部からの入力に依存する実行パスをもつ．</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div></pre></td><td class="code"><pre><div class="line"><span class="comment">// tr.c</span></div><div class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;stdio.h&gt;</span></span></div><div class="line"></div><div class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">(<span class="keyword">int</span> argc, <span class="keyword">char</span> *argv[])</span></span></div><div class="line">&#123;</div><div class="line">    <span class="keyword">int</span> x=argc;</div><div class="line">    <span class="keyword">if</span>(x==<span class="number">2</span>)</div><div class="line">        <span class="built_in">printf</span>(<span class="string">"triggered!\n"</span>);</div><div class="line"></div><div class="line">    <span class="keyword">return</span> <span class="number">0</span>;</div><div class="line">&#125;</div></pre></td></tr></table></figure>
+<p>　LLVM bitcodeレベルでの<code>tr.c</code>の制御フローグラフは次のようになる．</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div></pre></td><td class="code"><pre><div class="line"># clang -emit-llvm -c -g tr.c</div><div class="line"># opt tr.bc -dot-cfg &gt; /dev/null</div><div class="line"># dot -Tpng cfg.main.dot &gt; tr.png</div></pre></td></tr></table></figure>
+<p><img src="/image/tr.png"></p>
+<p>　この単純なプログラムにたいして，コラッツの問題にもとづくループを挿入する．</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div><div class="line">22</div><div class="line">23</div><div class="line">24</div></pre></td><td class="code"><pre><div class="line"><span class="comment">// tr2.c</span></div><div class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;stdio.h&gt;</span></span></div><div class="line"></div><div class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">(<span class="keyword">int</span> argc, <span class="keyword">char</span> *argv[])</span></span></div><div class="line">&#123;</div><div class="line">    <span class="keyword">int</span> x = argc;</div><div class="line">    <span class="keyword">int</span> y = x + <span class="number">1000</span>;</div><div class="line"></div><div class="line">    <span class="keyword">while</span>(y &gt; <span class="number">1</span>)</div><div class="line">    &#123;</div><div class="line">        <span class="keyword">if</span>(y % <span class="number">2</span> == <span class="number">1</span>)</div><div class="line">            y = <span class="number">3</span> * y + <span class="number">1</span>;</div><div class="line">        <span class="keyword">else</span></div><div class="line">            y = y / <span class="number">2</span>;</div><div class="line"></div><div class="line">        <span class="keyword">if</span>((x - y &gt; <span class="number">0</span>)&amp;&amp;(x + y &lt; <span class="number">4</span>))</div><div class="line">        &#123;</div><div class="line">            <span class="built_in">printf</span>(<span class="string">"triggered!\n"</span>);</div><div class="line">            <span class="keyword">break</span>;</div><div class="line">        &#125;</div><div class="line">    &#125;</div><div class="line"></div><div class="line">    <span class="keyword">return</span> <span class="number">0</span>;</div><div class="line">&#125;</div></pre></td></tr></table></figure>
+<p>　変数<code>y</code>は必ず1に到達する，いわば偽の変数である．<br>　難読化された<code>tr2.c</code>の制御フローグラフは次のようになる．</p>
+<p><img src="/image/tr2.png"></p>
+<p>　ループが挿入されたことによって実行パスが複雑化していることが見て取れる．</p>
+<h1 id="記号的実行"><a href="#記号的実行" class="headerlink" title="記号的実行"></a>記号的実行</h1><p>　では，線型難読化がどれほど記号的実行にたいして効力をもつか見てみよう．<br>　今回はLLVM bitcodeを扱う記号的実行ツール<a href="klee.github.io">KLEE</a>を用いる．<br>　まず次のコードを解析対象のソースに追記する必要がある．これは，変数<code>x</code>にたいして記号的実行を適用するという意味である．</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div></pre></td><td class="code"><pre><div class="line">@@ -3,6 +3,7 @@</div><div class="line"> int main(int argc, char *argv[])</div><div class="line"> &#123;</div><div class="line">     int x=argc;</div><div class="line">+    klee_make_symbolic(&amp;x, sizeof(x), &quot;x&quot;);</div><div class="line">     if(x==2)</div><div class="line">         printf(&quot;triggered!\n&quot;);</div></pre></td></tr></table></figure>
+<p>　次に，LLVM bitcodeを生成する．</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div></pre></td><td class="code"><pre><div class="line"># clang -emit-llvm -c -g tr.c</div><div class="line">tr.c:6:5: warning: implicit declaration of function &apos;klee_make_symbolic&apos; is</div><div class="line">      invalid in C99 [-Wimplicit-function-declaration]</div><div class="line">    klee_make_symbolic(&amp;x, sizeof(x), &quot;x&quot;);</div><div class="line">    ^</div><div class="line">1 warning generated.</div></pre></td></tr></table></figure>
+<p>　警告が出るが，気にしてはいけない．この関数呼び出しがKLEEにトラップされることになるのだ．<br>　ソースコードのないマルウェアなどを分析するにあたっては，IDAなどのデコンパイラでソースを出力し，型情報やシグナルハンドラなどの記述を整えたのち上記のようなコードを挿入するか，あるいはS2EやPANDAといった動的解析環境を頼ることになるだろう．<br>　それはさておき，KLEEを動かしてみよう．少し前までKLEEをビルドして動かすのはとても面倒だったが，いまではDocker Imageが提供されている．</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div></pre></td><td class="code"><pre><div class="line"># sudo docker pull klee/klee</div><div class="line"># sudo docker run --rm -ti klee/klee</div></pre></td></tr></table></figure>
+<p>　線型難読化をおこなう前の<code>tr.c</code>について記号的実行をおこなった結果を示す．</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div></pre></td><td class="code"><pre><div class="line">klee@4d625535c122:~$ time klee tr.bc</div><div class="line">KLEE: output directory is &quot;/home/klee/klee-out-1&quot;</div><div class="line">KLEE: WARNING: undefined reference to function: printf</div><div class="line">KLEE: WARNING ONCE: calling external: printf(39707328)</div><div class="line">triggered!</div><div class="line"></div><div class="line">KLEE: done: total instructions = 17</div><div class="line">KLEE: done: completed paths = 2</div><div class="line">KLEE: done: generated tests = 2</div><div class="line"></div><div class="line">real    0m0.032s</div><div class="line">user    0m0.009s</div><div class="line">sys     0m0.012s</div></pre></td></tr></table></figure>
+<p>　パスは2つしか存在しないため，32msecで解析が終わっている．<br>　ならば，線型難読化を施した後の<code>tr2.c</code>についてはどうか．</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div></pre></td><td class="code"><pre><div class="line">klee@4d625535c122:~$ time klee tr2.bc</div><div class="line">KLEE: output directory is &quot;/home/klee/klee-out-2&quot;</div><div class="line">KLEE: WARNING: undefined reference to function: printf</div><div class="line">KLEE: WARNING ONCE: calling external: printf(49859696)</div><div class="line">triggered!</div><div class="line">triggered!</div><div class="line">triggered!</div><div class="line">triggered!</div><div class="line">triggered!</div><div class="line">...</div><div class="line"></div><div class="line">KLEE: done: total instructions = 285809</div><div class="line">KLEE: done: completed paths = 158</div><div class="line">KLEE: done: generated tests = 158</div><div class="line"></div><div class="line">real    6m11.933s</div><div class="line">user    3m56.240s</div><div class="line">sys     2m14.245s</div></pre></td></tr></table></figure>
+<p>　さきほどに比べ，実行パスは158に増加し，解析に11622.9倍（！）もの時間がかかっている．<br>　今回の単純なプログラムでさえこのようになるならば，複数の入出力に依存する実行パスに線型難読化が施されたらどうなることか．</p>
+<h1 id="コンパイラ最適化"><a href="#コンパイラ最適化" class="headerlink" title="コンパイラ最適化"></a>コンパイラ最適化</h1><p>　難読化とはえてしてコンパイラ最適化の逆写像である．<br>　KLEEがLLVMにもとづいているということもあって，LLVMの最適化が線型難読化を除去できるかどうか興味をもった．検証してみよう．</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div></pre></td><td class="code"><pre><div class="line"># opt -O3 tr2.bc -o tr3.bc</div></pre></td></tr></table></figure>
+<p>　<code>-O3</code>をもって最適化した後の制御フローグラフは次のようになる．</p>
+<p><img src="/image/tr3.png"></p>
+<p>　最初の<code>tr.c</code>ほどではないが，いくらか単純になっていることがわかる．<code>printf()</code>も<code>puts()</code>に変換されている．<br>　では，実行パスは減少しているだろうか．記号的実行をおこなった結果は次の通り．</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div></pre></td><td class="code"><pre><div class="line">klee@4d625535c122:~$ time klee tr3.bc</div><div class="line">KLEE: output directory is &quot;/home/klee/klee-out-4&quot;</div><div class="line">KLEE: WARNING: undefined reference to function: puts</div><div class="line">KLEE: WARNING ONCE: calling external: puts(32090720)</div><div class="line">triggered!</div><div class="line">triggered!</div><div class="line">triggered!</div><div class="line">triggered!</div><div class="line">triggered!</div><div class="line">triggered!</div><div class="line">triggered!</div><div class="line">triggered!</div><div class="line">triggered!</div><div class="line"></div><div class="line">KLEE: done: total instructions = 3383</div><div class="line">KLEE: done: completed paths = 10</div><div class="line">KLEE: done: generated tests = 10</div><div class="line"></div><div class="line">real    0m2.845s</div><div class="line">user    0m2.490s</div><div class="line">sys     0m0.357s</div></pre></td></tr></table></figure>
+<p>　実行パスは10とさきほどの<code>tr2.c</code>よりも減少している．実行時間は<code>tr.c</code>の88.9倍であった．</p>
+<h1 id="おわりに"><a href="#おわりに" class="headerlink" title="おわりに"></a>おわりに</h1><p>　線型難読化は脅威ではないことがわかった–少なくとも提唱者の思惑ほどには．<br>　塵も積もれば山となるように，線型難読化を多数の箇所に施せばその効力は増すだろう．しかしそれはクラスタリングなどの手法で対処される可能性を高めるだけである．もちろん，どれほどの範囲で難読化を適用すれば効果的かという閾値を探ることに価値はある．<br>　LLVMの<code>-O3</code>最適化は複数の最適化パスを組み合わせ，再帰的に適用することによっておこなわれる．どのパスが線型難読化の除去にもっとも寄与しているか調べてみるとおもしろいかもしれない（やる気がない）．</p>
+<h1 id="参考文献"><a href="#参考文献" class="headerlink" title="参考文献"></a>参考文献</h1><ul>
+<li>[1]Zhi Wang, Jiang Ming, Chunfu Jia, Debin Gao, “<a href="http://flyer.sis.smu.edu.sg/esorics11.pdf" target="_blank" rel="external">Linear Obfuscation to Combat Symbolic Execution[PDF]</a>,” Proceedings of the 16th European Conference on Research in Computer Security(ESORICS’11), pp.210-226, 2011.</li>
+</ul>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://ntddk.github.io/2015/11/09/is-linear-obfuscation-a-threat/" data-id="cj13oizgg000hpcoskqov32zi" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/symbolic-execution/">symbolic execution</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+    <article id="post-xen-add-hypercall" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    
+      <header class="article-header">
+        
+  
+    <a class="article-title" href="/2015/09/14/xen-add-hypercall/">Xenにハイパーコールを追加する</a>
+  
+
+      </header>
+    
+    <time class="article-date" datetime="2015-09-14T13:00:00.000Z" itemprop="datePublished">09-14-2015</time>
+    
+  </div>
+  <div class="article-inner">
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h1 id="はじめに"><a href="#はじめに" class="headerlink" title="はじめに"></a>はじめに</h1><p>いわゆるVM床抜きをXenで試す．</p>
+<h1 id="Xenのインストール"><a href="#Xenのインストール" class="headerlink" title="Xenのインストール"></a>Xenのインストール</h1><p>いつかインストールしたXen 4.4.1を用いた．</p>
+<ul>
+<li><p>依存パッケージ</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div></pre></td><td class="code"><pre><div class="line"># sudo apt-get install wget git bcc bin86 gawk bridge-utils iproute libcurl3 libcurl4-openssl-dev bzip2 module-init-tools pciutils-dev build-essential make gcc libc6-dev libc6-dev-i386 linux-libc-dev zlib1g-dev python python-dev python-twisted python-gevent libncurses5-dev patch libvncserver-dev libssl-dev libsdl-dev iasl libbz2-dev e2fslibs-dev git-core uuid-dev ocaml libx11-dev bison flex ocaml-findlib xz-utils gettext libyajl-dev libpixman-1-dev libaio-dev libfdt-dev cabextract libglib2.0-dev autoconf automake libtool check libjansson-dev libfuse-dev</div></pre></td></tr></table></figure>
+</li>
+<li><p>Xenのビルド</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div></pre></td><td class="code"><pre><div class="line"># wget http://bits.xensource.com/oss-xen/release/4.4.1/xen-4.4.1.tar.gz</div><div class="line"># tar xzvf xen-4.4.1.tar.gz</div><div class="line"># cd ./xen-4.4.1</div><div class="line"># export C_INCLUDE_PATH=/usr/include/x86_64-linux-gnu</div><div class="line"># ./configure --enable-systemd --enable-githttp</div><div class="line"># make -j4 dist-xen</div><div class="line"># make -j4 dist-tools</div></pre></td></tr></table></figure>
+</li>
+<li><p>DomUの設定</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div></pre></td><td class="code"><pre><div class="line"># sudo su</div><div class="line"># make -j4 install-xen</div><div class="line"># make -j4 install-tools</div><div class="line"># echo &quot;GRUB_CMDLINE_XEN_DEFAULT=\&quot;dom0_mem=4096M,max:4096M dom0_max_vcpus=4 dom0_vcpus_pin=true hap_1gb=false hap_2mb=false\&quot;&quot; &gt;&gt; /etc/default/grub</div><div class="line"># echo &quot;/usr/local/lib&quot; &gt; /etc/ld.so.conf.d/xen.conf</div><div class="line"># ldconfig</div><div class="line"># update-grub</div><div class="line"># echo &quot;none /proc/xen xenfs defaults,nofail 0 0&quot; &gt;&gt; /etc/fstab</div><div class="line"># echo &quot;xen-evtchn&quot; &gt;&gt; /etc/modules</div><div class="line"># echo &quot;xen-privcmd&quot; &gt;&gt; /etc/modules</div><div class="line"># update-rc.d xencommons defaults 19 18</div><div class="line"># update-rc.d xendomains defaults 21 20</div><div class="line"># update-rc.d xen-watchdog defaults 22 23</div><div class="line"># reboot</div></pre></td></tr></table></figure>
+</li>
+<li><p>動作確認</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div></pre></td><td class="code"><pre><div class="line"># sudo xen-detect</div><div class="line">Running in PV context on Xen v4.4.</div></pre></td></tr></table></figure>
+</li>
+</ul>
+<h1 id="ハイパーコールの追加"><a href="#ハイパーコールの追加" class="headerlink" title="ハイパーコールの追加"></a>ハイパーコールの追加</h1><p>予約済みの<code>__HYPERVISOR_xc_reserved_op</code>に代わって39番目のハイパーコールを定義する．</p>
+<ul>
+<li><p>xen-4.4.1/xen/include/public/xen.h</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div></pre></td><td class="code"><pre><div class="line">@@ -100,6 +100,7 @@</div><div class="line"> #define __HYPERVISOR_domctl               36</div><div class="line"> #define __HYPERVISOR_kexec_op             37</div><div class="line"> #define __HYPERVISOR_tmem_op              38</div><div class="line">+#define __HYPERVISOR_rdtsc_hypercall      39</div><div class="line"> #define __HYPERVISOR_xc_reserved_op       39 /* reserved for XenClient */</div><div class="line"></div><div class="line"> /* Architecture-specific hypercall definitions. */</div></pre></td></tr></table></figure>
+</li>
+<li><p>xen-4.4.1/xen/arch/x86/x86_64/entry.S</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div></pre></td><td class="code"><pre><div class="line">@@ -757,6 +757,7 @@</div><div class="line">         .quad do_domctl</div><div class="line">         .quad do_kexec_op</div><div class="line">         .quad do_tmem_op</div><div class="line">+        .quad do_rdtsc_hypercall</div><div class="line">         .rept __HYPERVISOR_arch_0-((.-hypercall_table)/8)</div><div class="line">         .quad do_ni_hypercall</div><div class="line">         .endr</div><div class="line">@@ -805,6 +806,7 @@</div><div class="line">         .byte 1 /* do_domctl            */</div><div class="line">         .byte 2 /* do_kexec             */</div><div class="line">         .byte 1 /* do_tmem_op           */</div><div class="line">+        .byte 1 /* do_rdtsc_hypercall   */</div><div class="line">         .rept __HYPERVISOR_arch_0-(.-hypercall_args_table)</div><div class="line">         .byte 0 /* do_ni_hypercall      */</div><div class="line">         .endr</div></pre></td></tr></table></figure>
+</li>
+<li><p>xen-4.4.1/xen/include/asm-x86/hypercall.h</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div></pre></td><td class="code"><pre><div class="line">@@ -110,4 +110,8 @@</div><div class="line"> arch_compat_vcpu_op(</div><div class="line">     int cmd, struct vcpu *v, XEN_GUEST_HANDLE_PARAM(void) arg);</div><div class="line"></div><div class="line">+extern int</div><div class="line">+do_rdtsc_hypercall(</div><div class="line">+    char* str);</div><div class="line">+</div><div class="line"> #endif /* __ASM_X86_HYPERCALL_H__ */</div></pre></td></tr></table></figure>
+</li>
+<li><p>xen-4.4.1/xen/arch/x86/traps.c</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div></pre></td><td class="code"><pre><div class="line">@@ -3762,6 +3762,14 @@</div><div class="line">     __domain_crash_synchronous();</div><div class="line"> &#125;</div><div class="line"></div><div class="line">+int do_rdtsc_hypercall(char* str)</div><div class="line">+&#123;</div><div class="line">+    unsigned long long tsc;</div><div class="line">+    __asm__ volatile(&quot;rdtsc&quot; : &quot;=A&quot; (tsc));</div><div class="line">+    printk(&quot;str: %s, tsc: %llu\n&quot;, str, tsc);</div><div class="line">+    return 0;</div><div class="line">+&#125;</div><div class="line">+</div><div class="line"> /*</div><div class="line">  * Local variables:</div><div class="line">  * mode: C</div></pre></td></tr></table></figure>
+</li>
+</ul>
+<p>このハイパーコールは引数として受け取った文字列をTSCの値とともにコンソールログに出力する．有効化するには再度<code>make -j4 dist-xen</code>して再起動するとよい．</p>
+<h1 id="ハイパーコールの呼び出し"><a href="#ハイパーコールの呼び出し" class="headerlink" title="ハイパーコールの呼び出し"></a>ハイパーコールの呼び出し</h1><p>ハイパーコールの呼び出しはlibxcやlibxlによって抽象化されているが，ここではそれらが内部で参照している/proc/xen/privcmdに対してioctlを発行してみる．</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div><div class="line">22</div><div class="line">23</div><div class="line">24</div><div class="line">25</div><div class="line">26</div><div class="line">27</div><div class="line">28</div><div class="line">29</div><div class="line">30</div><div class="line">31</div><div class="line">32</div><div class="line">33</div><div class="line">34</div><div class="line">35</div><div class="line">36</div><div class="line">37</div><div class="line">38</div><div class="line">39</div><div class="line">40</div><div class="line">41</div><div class="line">42</div></pre></td><td class="code"><pre><div class="line"><span class="comment">// rdtsc_hypercall.c</span></div><div class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;stdio.h&gt;</span></span></div><div class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;stdlib.h&gt;</span></span></div><div class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;errno.h&gt;</span></span></div><div class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;sys/ioctl.h&gt;</span></span></div><div class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;linux/types.h&gt;</span></span></div><div class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;fcntl.h&gt;</span></span></div><div class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;string.h&gt;</span></span></div><div class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;xenctrl.h&gt;</span></span></div><div class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;xen/sys/privcmd.h&gt;</span></span></div><div class="line"></div><div class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">(<span class="keyword">int</span> argc, <span class="keyword">char</span> *argv[])</span></span></div><div class="line">&#123;</div><div class="line">    <span class="keyword">if</span>(argc != <span class="number">2</span>)</div><div class="line">    &#123;</div><div class="line">            <span class="built_in">printf</span>(<span class="string">"input the param"</span>);</div><div class="line">            <span class="built_in">exit</span>(<span class="number">1</span>);</div><div class="line">    &#125;</div><div class="line"></div><div class="line">    <span class="keyword">char</span> *message = <span class="built_in">malloc</span>(<span class="keyword">sizeof</span>(<span class="keyword">char</span>)*(<span class="built_in">strlen</span>(argv[<span class="number">1</span>])+<span class="number">1</span>));</div><div class="line">    <span class="built_in">strcpy</span>(message, argv[<span class="number">1</span>]);</div><div class="line"></div><div class="line">    <span class="keyword">privcmd_hypercall_t</span> my_hypercall = &#123;</div><div class="line">            <span class="number">39</span>, <span class="comment">// __HYPERVISOR_rdtsc_hypercall</span></div><div class="line">            &#123;(__u64)message, <span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>&#125;</div><div class="line">    &#125;;</div><div class="line"></div><div class="line">    <span class="keyword">int</span> fd = open(<span class="string">"/proc/xen/privcmd"</span>, O_RDWR);</div><div class="line">    <span class="keyword">if</span>(fd &lt; <span class="number">0</span>)</div><div class="line">    &#123;</div><div class="line">            <span class="built_in">printf</span>(<span class="string">"cannot open /proc/xen/privcmd"</span>);</div><div class="line">            <span class="built_in">exit</span>(<span class="number">1</span>);</div><div class="line">    &#125;</div><div class="line"></div><div class="line">    <span class="keyword">if</span>(!ioctl(fd, IOCTL_PRIVCMD_HYPERCALL, &amp;my_hypercall))</div><div class="line">    &#123;</div><div class="line">            <span class="built_in">printf</span>(<span class="string">"cannot call do_rdtsc_hypercall"</span>);</div><div class="line">            <span class="built_in">exit</span>(<span class="number">1</span>);</div><div class="line">    &#125;</div><div class="line"></div><div class="line">    <span class="keyword">return</span> <span class="number">0</span>;</div><div class="line">&#125;</div></pre></td></tr></table></figure>
+<p>このプログラムを実行するとハイパーコールが呼び出されたことが分かる．</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div></pre></td><td class="code"><pre><div class="line"># gcc -o rdtsc_hypercall rdtsc_hypercall.c</div><div class="line"># sudo ./rdtsc_hypercall test</div><div class="line"># sudo xl dmesg | less</div><div class="line">(XEN) str: test, tsc: 2835883086</div></pre></td></tr></table></figure>
+<h1 id="おわりに"><a href="#おわりに" class="headerlink" title="おわりに"></a>おわりに</h1><p>Xenに追加したハイパーコールを呼び出すことができた．<br>さしあたってはMirage OSからこのハイパーコールを呼び出す方法を知りたいのだが．</p>
+<h1 id="参考文献"><a href="#参考文献" class="headerlink" title="参考文献"></a>参考文献</h1><ul>
+<li>“C77 - paravirt.org - circle,” <a href="http://circle.paravirt.org/c77" target="_blank" rel="external">http://circle.paravirt.org/c77</a></li>
+<li>“笑遍世界 &gt;&gt; Xen添加一个hypercall,” <a href="http://smilejay.com/2012/05/xen_hypercall/" target="_blank" rel="external">http://smilejay.com/2012/05/xen_hypercall/</a></li>
+<li>“Making a New Hypercall &amp;&amp; Invoking It from userland via Privcmd | Sanity of Fortunate Fool” <a href="http://sanifool.com/2013/02/08/invoking-an-hypercall-from-userland-via-privcmd/" target="_blank" rel="external">http://sanifool.com/2013/02/08/invoking-an-hypercall-from-userland-via-privcmd/</a></li>
+<li>“CPUクロックに基づく相対時刻の計測,” <a href="http://www.02.246.ne.jp/~torutk/cxx/clock/cpucounter.html" target="_blank" rel="external">http://www.02.246.ne.jp/~torutk/cxx/clock/cpucounter.html</a></li>
+<li>“libxenctrlのメモ - はわわーっ,” <a href="http://yomi322.hateblo.jp/entry/2015/02/19/235522" target="_blank" rel="external">http://yomi322.hateblo.jp/entry/2015/02/19/235522</a></li>
+<li>“libxenctrlのメモ #2 - はわわーっ,” <a href="http://yomi322.hateblo.jp/entry/2015/02/20/212853" target="_blank" rel="external">http://yomi322.hateblo.jp/entry/2015/02/20/212853</a></li>
+<li>“xenのハイパーコールを呼んでみる - はわわーっ,” <a href="http://yomi322.hateblo.jp/entry/2015/02/21/145334" target="_blank" rel="external">http://yomi322.hateblo.jp/entry/2015/02/21/145334</a></li>
+</ul>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://ntddk.github.io/2015/09/14/xen-add-hypercall/" data-id="cj13oizhq001kpcos5uzl8gb6" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/virtual-machine-introspection/">virtual machine introspection</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+    <article id="post-automated-malware-analysis-using-decaf-in-seccamp15" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    
+      <header class="article-header">
+        
+  
+    <a class="article-title" href="/2015/08/16/automated-malware-analysis-using-decaf-in-seccamp15/">DECAFによるマルウェア自動解析</a>
+  
+
+      </header>
+    
+    <time class="article-date" datetime="2015-08-16T09:00:00.000Z" itemprop="datePublished">08-16-2015</time>
+    
+  </div>
+  <div class="article-inner">
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h1 id="はじめに"><a href="#はじめに" class="headerlink" title="はじめに"></a>はじめに</h1><p>2015.08.11~15にわたって開催された<a href="https://www.ipa.go.jp/jinzai/camp/2015/zenkoku2015.html" target="_blank" rel="external">セキュリティ・キャンプ全国大会 2015</a>に解析トラックの講師として参加した．講義では「仮想化技術を用いてマルウェア解析」と題して，QEMUをベースに開発が行われている<a href="https://github.com/sycurelab/DECAF" target="_blank" rel="external">DECAF</a>という解析プラットフォームを用いて演習を行った．</p>
+<h1 id="講義資料"><a href="#講義資料" class="headerlink" title="講義資料"></a>講義資料</h1><script async class="speakerdeck-embed" data-id="11c7632b9b844e199ac966e4494a1dd2" data-ratio="1.77777777777778" src="//speakerdeck.com/assets/embed.js"></script>
+
+<h1 id="講義内容"><a href="#講義内容" class="headerlink" title="講義内容"></a>講義内容</h1><p>演習では実際のマルウェアに用いられている解析妨害機能を備えたサンプルプログラムを扱った．素のDECAFには解析妨害機能への対策が施されていない．そこで，受講者にはDECAFのプラグインを拡張し，対策手法を実装して頂いた．<br>演習で用いたプログラムはGitHub上で公開している．</p>
+<ul>
+<li>解析妨害機能を備えたサンプルプログラム<ul>
+<li><a href="https://github.com/ntddk/blue" target="_blank" rel="external">ntddk/blue</a></li>
+</ul>
+</li>
+<li>DECAFプラグインのひな形<ul>
+<li><a href="https://github.com/ntddk/geteip" target="_blank" rel="external">ntddk/geteip</a></li>
+</ul>
+</li>
+</ul>
+<p>ひな形にある通り，IsDebuggerPresent()をフックするDECAFプラグインは以下のように書ける．</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div><div class="line">22</div><div class="line">23</div><div class="line">24</div><div class="line">25</div><div class="line">26</div><div class="line">27</div><div class="line">28</div><div class="line">29</div><div class="line">30</div><div class="line">31</div><div class="line">32</div><div class="line">33</div><div class="line">34</div><div class="line">35</div><div class="line">36</div><div class="line">37</div></pre></td><td class="code"><pre><div class="line"><span class="keyword">static</span> DECAF_Handle isdebuggerpresent_handle = DECAF_NULL_HANDLE;</div><div class="line"></div><div class="line"><span class="keyword">typedef</span> <span class="keyword">struct</span> &#123;</div><div class="line">        <span class="keyword">uint32_t</span> call_stack[<span class="number">1</span>]; <span class="comment">//paramters and return address</span></div><div class="line">        DECAF_Handle hook_handle;</div><div class="line">&#125; IsDebuggerPresent_hook_context_t;</div><div class="line"></div><div class="line"><span class="comment">/*</span></div><div class="line"> * BOOL IsDebuggerPresent(VOID);</div><div class="line"> */</div><div class="line"></div><div class="line"><span class="function"><span class="keyword">static</span> <span class="keyword">void</span> <span class="title">IsDebuggerPresent_ret</span><span class="params">(<span class="keyword">void</span> *param)</span></span></div><div class="line">&#123;</div><div class="line">        IsDebuggerPresent_hook_context_t *ctx = (IsDebuggerPresent_hook_context_t *)param;</div><div class="line">        hookapi_remove_hook(ctx-&gt;hook_handle);</div><div class="line">        DECAF_printf(<span class="string">"EIP = %08x, EAX = %d\n"</span>, cpu_single_env-&gt;eip, cpu_single_env-&gt;regs[R_EAX]);</div><div class="line">        <span class="built_in">free</span>(ctx);</div><div class="line">&#125;</div><div class="line"></div><div class="line"><span class="function"><span class="keyword">static</span> <span class="keyword">void</span> <span class="title">IsDebuggerPresent_call</span><span class="params">(<span class="keyword">void</span> *opaque)</span></span></div><div class="line">&#123;</div><div class="line">        DECAF_printf(<span class="string">"IsDebuggerPresent "</span>);</div><div class="line">        IsDebuggerPresent_hook_context_t *ctx = (IsDebuggerPresent_hook_context_t*)<span class="built_in">malloc</span>(<span class="keyword">sizeof</span>(IsDebuggerPresent_hook_context_t));</div><div class="line">        <span class="keyword">if</span>(!ctx) <span class="keyword">return</span>;</div><div class="line">        DECAF_read_mem(<span class="literal">NULL</span>, cpu_single_env-&gt;regs[R_ESP], <span class="number">4</span>, ctx-&gt;call_stack);</div><div class="line">        ctx-&gt;hook_handle = hookapi_hook_return(ctx-&gt;call_stack[<span class="number">0</span>], IsDebuggerPresent_ret, ctx, <span class="keyword">sizeof</span>(*ctx));</div><div class="line">&#125;</div><div class="line"></div><div class="line"><span class="function"><span class="keyword">static</span> <span class="keyword">void</span> <span class="title">geteip_loadmainmodule_callback</span><span class="params">(VMI_Callback_Params* params)</span></span></div><div class="line">&#123;</div><div class="line">        <span class="keyword">if</span>(<span class="built_in">strcmp</span>(params-&gt;cp.name,targetname) == <span class="number">0</span>)</div><div class="line">        &#123;</div><div class="line">                DECAF_printf(<span class="string">"Process %s you spcecified starts \n"</span>, params-&gt;cp.name);</div><div class="line">                target_cr3 = params-&gt;cp.cr3;</div><div class="line">                isdebuggerpresent_handle = hookapi_hook_function_byname(<span class="string">"kernel32.dll"</span>, <span class="string">"IsDebuggerPresent"</span>, <span class="number">1</span>, target_cr3, IsDebuggerPresent_call, <span class="literal">NULL</span>, <span class="number">0</span>);</div><div class="line">        &#125;</div><div class="line">&#125;</div></pre></td></tr></table></figure>
+<p>現在のプロセスがデバッガのコンテキストで実行されていない場合，IsDebuggerPresent()は0を返す．ここで，IsDebuggerPresent()の戻り値を0にするには，モジュール（この場合はkernel32.dll）から戻る段階でeaxを書き換えてやればよい．</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div></pre></td><td class="code"><pre><div class="line"><span class="function"><span class="keyword">static</span> <span class="keyword">void</span> <span class="title">IsDebuggerPresent_ret</span><span class="params">(<span class="keyword">void</span> *param)</span></span></div><div class="line">&#123;</div><div class="line">        IsDebuggerPresent_hook_context_t *ctx = (IsDebuggerPresent_hook_context_t *)param;</div><div class="line">        hookapi_remove_hook(ctx-&gt;hook_handle);</div><div class="line">        cpu_single_env-&gt;regs[R_EAX] = <span class="number">0</span>; <span class="comment">// 追加</span></div><div class="line">        DECAF_printf(<span class="string">"EIP = %08x, EAX = %d\n"</span>, cpu_single_env-&gt;eip, cpu_single_env-&gt;regs[R_EAX]);</div><div class="line">        <span class="built_in">free</span>(ctx);</div><div class="line">&#125;</div></pre></td></tr></table></figure>
+<p>このようにDECAFのプラグインを書くことで，ゲストOSに解析用のエージェントを挿入することなくAPIの戻り値を書き換えることができる．<br>APIの引数を書き換えたい場合はモジュールに入る段階でコンテキスト構造体の<code>call_stack[]</code>を書き換えてやればよい．</p>
+<h1 id="おわりに"><a href="#おわりに" class="headerlink" title="おわりに"></a>おわりに</h1><p>受講者にサンドボックス開発の楽しさと難しさを実感してもらえたなら，講師として冥利に尽きる．<br>サンプルプログラムには4種類の解析妨害機能を実装しており，APIフックで対処できるのはうち前半2つだけとなっている．限られた演習時間の制約上，3つ目以降の解析妨害機能を回避できた受講者はいなかった．解析トラックリーダーの岩村さんから，受講者の2割がギリギリ解けないような問題を作るようにと仰せつかっていたが，やや意地悪な問題設定だったと思う．<br>なお，今回は拙作のサンプルを用いたが，より多くの解析妨害機能を備えたOSSに<a href="https://github.com/a0rtega/pafish" target="_blank" rel="external">pafish</a>がある．pafishはBackdoor.Win32.Agent.dkbp(MD5: de1af0e97e94859d372be7fcf3a5daa5)など一部のマルウェアに流用されている．</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://ntddk.github.io/2015/08/16/automated-malware-analysis-using-decaf-in-seccamp15/" data-id="cj13oizgg0005pcoskak23umo" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/dynamic-binary-translation/">dynamic binary translation</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/symbolic-execution/">symbolic execution</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/taint-analysis/">taint analysis</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/virtual-machine-introspection/">virtual machine introspection</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+    <article id="post-qemu-dbt-bottleneck" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    
+      <header class="article-header">
+        
+  
+    <a class="article-title" href="/2015/07/13/qemu-dbt-bottleneck/">QEMUの動的バイナリ変換におけるボトルネック</a>
+  
+
+      </header>
+    
+    <time class="article-date" datetime="2015-07-13T06:00:00.000Z" itemprop="datePublished">07-13-2015</time>
+    
+  </div>
+  <div class="article-inner">
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h1 id="はじめに"><a href="#はじめに" class="headerlink" title="はじめに"></a>はじめに</h1><p>QEMUは動的バイナリ変換を用いた完全仮想化式のハイパーバイザである．<br>QEMUは実行対象の命令列を逆アセンブルし，いちど中間表現に変換したうえで，ホストのアーキテクチャの命令列に変換して実行する．これによりQEMUは異なるアーキテクチャのバイナリを実行することができる．<br>しかしQEMUは遅かったため，アクセラレータとしてkqemuが開発された．<br>kqemuはユーザーモードのコードをホストのCPUに実行させる準仮想化ドライバであり，やがてKVMへと変貌を遂げた．さらにKVMはハードウェアによる仮想化支援機能を用いることで，さらなる高速化を実現した．もはやKVMにおいてQEMUはハードウェアのエミュレーションにしか用いられていない．<br>かわいそうなQEMU！<br>しかしQEMUの活躍する場面はいまだ多く残されている．たとえばマルウェア解析で．<br>それでも遅いのは困りものだ．QEMUはどこが遅いのだろうか．<br>ここでは<code>perf</code>を用いてQEMUのボトルネックを<strong>雑に</strong>特定する．</p>
+<h1 id="実験"><a href="#実験" class="headerlink" title="実験"></a>実験</h1><p>今回はARMエミュレーションについて調査した．ホスト・ゲストともOSにはUbuntu 12.04(3.2.0-23-generic)を用いた．<code>perf</code>でQEMUのプロファイリングを行っている間，ゲストではgccを用いてコンパイルを実行した．</p>
+<ul>
+<li><p>ARM版Ubuntu 12.04のインストール</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div></pre></td><td class="code"><pre><div class="line"># sudo apt-get install qemu</div><div class="line"># wget http://odroid.us/odroid/users/osterluk/qemu-example/qemu-example.tgz</div><div class="line"># tar xzf qemu-example.tgz ./zImage</div><div class="line"># wget http://releases.linaro.org/12.04/ubuntu/precise-images/developer/linaro-precise-developer-20120426-86.tar.gz</div><div class="line"># tar xzf linaro-precise-developer-20120426-86.tar.gz</div><div class="line"># qemu-img create -f raw rootfs.img 3G</div><div class="line"># mkfs.ext3 rootfs.img</div><div class="line"># mkdir mnt</div><div class="line"># sudo mount -o loop rootfs.img mnt</div><div class="line"># rsync -a binary/boot/filesystem.dir/ mnt/</div><div class="line"># sudo umount mnt</div></pre></td></tr></table></figure>
+</li>
+<li><p>QEMUのビルド</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div></pre></td><td class="code"><pre><div class="line"># sudo apt-get build-dep qemu</div><div class="line"># git clone git://git.qemu-project.org/qemu.git</div><div class="line"># cd qemu</div><div class="line"># git log | grep &apos;^commit&apos; | head -1 | awk &apos;&#123;print $2&#125;&apos;</div><div class="line">6169b60285fe1ff730d840a49527e721bfb30899</div><div class="line"># git submodule update --init dtc</div><div class="line"># git submodule update --init pixman</div><div class="line"># ./configure --extra-ldflags=-pg --target-list=arm-softmmu</div><div class="line"># make</div></pre></td></tr></table></figure>
+</li>
+<li><p><code>perf</code>のインストール</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div></pre></td><td class="code"><pre><div class="line"># sudo apt-get install linux-tools</div><div class="line"># sudo echo 0 &gt; /proc/sys/kernel/perf_event_paranoid</div></pre></td></tr></table></figure>
+</li>
+<li><p><code>perf</code>によるプロファイリング</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div></pre></td><td class="code"><pre><div class="line"># perf record -a -g -F100000 qemu/arm-softmmu/qemu-system-arm -M vexpress-a9 -m 512 -kernel zImage -sd rootfs.img -append &quot;root=/dev/mmcblk0 rw physmap.enabled=0 console=ttyAMA0&quot; -monitor stdio</div><div class="line">WARNING: Image format was not specified for &apos;../../rootfs.img&apos; and probing guessed raw.</div><div class="line">         Automatically detecting the format is dangerous for raw images, write operations on block 0 will be restricted.</div><div class="line">         Specify the &apos;raw&apos; format explicitly to remove the restrictions.</div><div class="line">QEMU 2.3.90 monitor - type &apos;help&apos; for more information</div><div class="line">(qemu) audio: Could not init `oss&apos; audio driver</div><div class="line"></div><div class="line">(qemu) q</div><div class="line">[ perf record: Woken up 37 times to write data ]</div><div class="line">[ perf record: Captured and wrote 9.465 MB perf.data (~413514 samples) ]</div><div class="line"></div><div class="line"></div><div class="line">Failed to open /tmp/perf-6993.map, continuing without symbols</div><div class="line">Failed to open [vmxnet], continuing without symbols</div><div class="line">Failed to open [vmci], continuing without symbols</div><div class="line">Failed to open [vsock], continuing without symbols</div><div class="line">no symbols found in /bin/dash, maybe install a debug package?</div><div class="line">no symbols found in /usr/bin/xargs, maybe install a debug package?</div><div class="line">no symbols found in /usr/bin/updatedb.mlocate, maybe install a debug package?</div><div class="line">no symbols found in /usr/bin/dpkg-query, maybe install a debug package?</div></pre></td></tr></table></figure>
+</li>
+<li><p>Flame Graphsによる可視化</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div></pre></td><td class="code"><pre><div class="line"># wget https://raw.githubusercontent.com/brendangregg/FlameGraph/master/stackcollapse-perf.pl</div><div class="line"># wget https://raw.githubusercontent.com/brendangregg/FlameGraph/master/flamegraph.pl</div><div class="line"># perf script&gt; perf_data.txt</div><div class="line"># perl stackcollapse-perf.pl perf_data.txt|perl flamegraph.pl --title &quot;Flame Graphs - qemu-system-arm&quot; &gt; flamegraphs-qemu-system-arm.svg</div></pre></td></tr></table></figure>
+</li>
+</ul>
+<p><code>perf</code>の結果をFlame Graphsを用いて可視化すると下図のようになった．Flame GraphsはUSENIX LISA’2013にて発表された可視化ツールである．</p>
+<p><img src="/image/flamegraphs-qemu-system-arm.png"></p>
+<p>x軸は時系列，y軸はコールスタックを意味する．横幅が広く上位に位置する関数がボトルネックであるといえる．<br>よってボトルネックは<code>clear_page()</code>すなわちTCGの各関数で発生しているページフォルトである．</p>
+<h1 id="おわりに"><a href="#おわりに" class="headerlink" title="おわりに"></a>おわりに</h1><p>ページフォルトだけは勘弁してほしい．</p>
+<h1 id="参考文献"><a href="#参考文献" class="headerlink" title="参考文献"></a>参考文献</h1><ul>
+<li>“perf + Flame Graphs で Linux カーネル内のボトルネックを特定する - ablog,” <a href="http://d.hatena.ne.jp/yohei-a/20150706/1436208007" target="_blank" rel="external">http://d.hatena.ne.jp/yohei-a/20150706/1436208007</a></li>
+<li>Brendan Gregg, “<a href="https://www.usenix.org/conference/lisa13/technical-sessions/plenary/gregg" target="_blank" rel="external">Blazing Performance with Flame Graphs</a>,” Proceedings of the 27th Large Installation System Administration Conference, USENIX LISA’13, Washington, D.C., USA, 2013.</li>
+</ul>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://ntddk.github.io/2015/07/13/qemu-dbt-bottleneck/" data-id="cj13oizhb000rpcosxbjnjazo" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/dynamic-binary-translation/">dynamic binary translation</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+    <article id="post-semiotics-of-programming" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    
+      <header class="article-header">
+        
+  
+    <a class="article-title" href="/2015/04/04/semiotics-of-programming/">そろそろ『記号と再帰』について一言言っておくか</a>
+  
+
+      </header>
+    
+    <time class="article-date" datetime="2015-04-04T13:34:16.000Z" itemprop="datePublished">04-04-2015</time>
+    
+  </div>
+  <div class="article-inner">
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h1 id="はじめに"><a href="#はじめに" class="headerlink" title="はじめに"></a>はじめに</h1><p>田中久美子『記号と再帰: 記号論の形式・プログラムの必然』(“Semiotics of Programming,” Cambridge University Press, 2010.)は，プログラミング言語の記号論についての記念碑的な書籍である．かねてよりPeter B. Andersenらによってコンピュータ記号論(computional semiotics)は語られていたものの，プログラミング言語については議論が追い付いていなかった．<br>本書はまず，対応関係が不明瞭であったソシュールの記号論とパースのそれとを，関数型パラダイムとオブジェクト指向パラダイムとの対比をもって整理する．その上で，記号の本質は再帰にある(p.1)として，絵画，プログラミング言語，哲学を横断した考察が展開される．とまあ随分と衒学的な書籍なのだが，それゆえ危うさを孕んでいるようにも思う．ここではあえて，本書の批判とはいかないまでも，いくつかの不満点を提示したい．</p>
+<h1 id="汎記号主義"><a href="#汎記号主義" class="headerlink" title="汎記号主義"></a>汎記号主義</h1><p>本書は「記号を媒介することなく対象を人間が認識できない」(p.27)とされ，「記号の解釈を記号系の中だけで捉える」(p.26)という汎記号主義を前提としている．この妥当性について考えても埒が明かないので，ひとまずはそういうことにしておこう．</p>
+<h1 id="HaskellとJavaによるプログラム例"><a href="#HaskellとJavaによるプログラム例" class="headerlink" title="HaskellとJavaによるプログラム例"></a>HaskellとJavaによるプログラム例</h1><p>本書で用いられるプログラミング言語は，HaskellとJavaである．<br>以下はHaskellによる平面上の長方形，楕円，円の面積を計算するプログラムである(p.15)．</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div></pre></td><td class="code"><pre><div class="line">data Shape = Rectangle  Double Double</div><div class="line">            | Ellipse   Double Double</div><div class="line">            | Circle    Double</div><div class="line"></div><div class="line">area (Rectangle width height) = width * height</div><div class="line">area (Ellipse   width height) = pi * width * height / 4.0</div><div class="line">area (Circle  radius)       = area (Ellipse (radius * 2.0)(radius *2.0))</div><div class="line"></div><div class="line">main = let</div><div class="line">        r = Rectangle 5.0 8.0</div><div class="line">        u = Ellipse   3.0 4.0</div><div class="line">        v = Circle    3.0</div><div class="line">        ss = [r, u, v]</div><div class="line">    in</div><div class="line">        for (\s -&gt; putStr(&quot;area: &quot;++show (area s)++&quot;\n&quot;)) ss</div><div class="line"></div><div class="line">for f [] = do return ()</div><div class="line">for f (s:ss) = do &#123; (f s); for f ss&#125;</div></pre></td></tr></table></figure>
+<p>いきなり不安になってくる．Haskellについてはずぶの素人の私だが，それでもこのような場面では<code>forM</code>や<code>mapM</code>を用いるべきだと知っている．「このfor関数は，次の図2.2のJavaプログラムとの整合性をふまえて定義されている」(p.17)とあるが，首を傾げざるを得ない．なお<code>map</code>はp.141に至るまで登場しない．<br>続いて，同様にJavaによるプログラムが示される(p.18)．</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div><div class="line">22</div><div class="line">23</div><div class="line">24</div><div class="line">25</div><div class="line">26</div><div class="line">27</div></pre></td><td class="code"><pre><div class="line">class Shape&#123;</div><div class="line">    double width, height;</div><div class="line">    Shape (double w, double h)&#123; width = w; height = h; &#125;</div><div class="line">    public double area () &#123; return width * height; &#125;</div><div class="line">&#125;</div><div class="line"></div><div class="line">class Rectangle extends Shape&#123;</div><div class="line">    Rectangle (double w, double h)&#123; super(w, h); &#125;</div><div class="line">&#125;</div><div class="line"></div><div class="line">class Ellipse extends Shape&#123; </div><div class="line">    Ellipse (double w, double h)&#123; super(w, h); &#125;</div><div class="line">    public double area()&#123; return Math.PI*width*height/4.0; &#125;</div><div class="line">&#125;</div><div class="line"></div><div class="line">class Circle extends Ellipse&#123;</div><div class="line">    Circle(double r)&#123; super(r*2.0, r*2.0); &#125;</div><div class="line">&#125;</div><div class="line"></div><div class="line">void run()&#123;</div><div class="line">    Rectangle r = new Rectangle(5.0, 8.0);</div><div class="line">    Ellipse   u = new Ellipse(3.0, 4.0);</div><div class="line">    Circle    v = new Circle(3.0);</div><div class="line"></div><div class="line">    Shape [] ss = new Shape[]&#123;r, u, v&#125;;</div><div class="line">    for (Shape s : ss)&#123; putStr(&quot;area: &quot; + s.area() + &quot;\n&quot;); &#125;</div><div class="line">&#125;</div></pre></td></tr></table></figure>
+<p>これらのプログラムは異なるパラダイム，異なる記法によって書かれているが，しかし同じ出力を得ることができる．ここに本書は，ソシュール二元論とパース三元論を託つける．</p>
+<h1 id="ソシュール二元論とパース三元論"><a href="#ソシュール二元論とパース三元論" class="headerlink" title="ソシュール二元論とパース三元論"></a>ソシュール二元論とパース三元論</h1><p>ソシュールとパースはそれぞれ記号について以下のように整理した．</p>
+<ul>
+<li>ソシュール二元論</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th style="text-align:center">シニフィアン</th>
+<th style="text-align:center">シニフィエ</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:center">“tree”</td>
+<td style="text-align:center">木</td>
+</tr>
+<tr>
+<td style="text-align:center">ラベル</td>
+<td style="text-align:center">内容</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li>パース三元論</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th style="text-align:center">表意体</th>
+<th style="text-align:center">解釈項</th>
+<th style="text-align:center">対象</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:center">“tree”</td>
+<td style="text-align:center">木の解釈</td>
+<td style="text-align:center">木</td>
+</tr>
+<tr>
+<td style="text-align:center">ラベル</td>
+<td style="text-align:center">イデア</td>
+<td style="text-align:center">対象</td>
+</tr>
+</tbody>
+</table>
+<p>この対応について，本書は，パース「記号は人に働きかけ，人の心の中に等価な記号を作り出し，あるいはより発展した記号を作り出す．もとの記号が作り出すこの記号のことを私は解釈項と呼ぶ」を根拠に(p.40)，「解釈項は記号の解釈を呼び，記号過程を生成するもので」あり「これに対応するものがソシュールの記号モデルの中にあるならば，それはシニフィエ以外にありえない」(p.41)と導く．<br>続いて，「記号の差異は他の記号と対比されてはじめて立ち現れるものである．とすると，記号の解釈にまつわる記号の使用はソシュールの記号モデルの構成要素には含まれてはいなが，全体論的価値として位置付けられていると考えることができる」(p.41)ことから，「ソシュールのシニフィエはパースの直接対象に対応し，そしてパースの解釈項はソシュールの記号モデルに外在する全体論的価値に内包される」(pp.41-42)という仮説を提示する．</p>
+<h1 id="全体論的価値"><a href="#全体論的価値" class="headerlink" title="全体論的価値"></a>全体論的価値</h1><p>関数型パラダイムとオブジェクト指向パラダイムの比較を通じて仮説を検証する前に，この「全体論的価値」とは何を意味するのだろうか．おそらくは意図的なのだろうが，本書にはパロールやラング，レフェランといった語が一切登場しない．これによって混乱してしまったのは私だけだろうか．記号論についてもずぶの素人である私の苦し紛れの解釈では「全体論的価値」はラングに相当するが，詳細は述べられていない．ソシュールの「言語記号は恣意的です」という原理も後に登場する(p.57)が，社会的慣習と全体論的価値が絡められることはなかった．</p>
+<h1 id="ソシュール二元論とパース三元論の接続"><a href="#ソシュール二元論とパース三元論の接続" class="headerlink" title="ソシュール二元論とパース三元論の接続"></a>ソシュール二元論とパース三元論の接続</h1><p>さて，ソシュールとパースの関係は，先に挙げたプログラム例の<code>area</code>関数のあり方によって整理される．</p>
+<table>
+<thead>
+<tr>
+<th style="text-align:center">プログラミング言語</th>
+<th style="text-align:center">Haskell</th>
+<th style="text-align:center">Java</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:center">記号論</td>
+<td style="text-align:center">二元論</td>
+<td style="text-align:center">三元論</td>
+</tr>
+<tr>
+<td style="text-align:center">area関数</td>
+<td style="text-align:center">外在的</td>
+<td style="text-align:center">内在的</td>
+</tr>
+</tbody>
+</table>
+<p>Haskellのプログラム例では，<code>area</code>は他のデータ構造に<strong>外在する</strong>が，Javaのプログラム例では<strong>内在する</strong>(p.42)．言い換えれば，Haskellにおいては記号がその使用によって意味付けられるが，Javaにおいては記号の定義がその使用を内在する．つまり，次のような対応関係になる(p.49)．</p>
+<ul>
+<li>ソシュールのシニフィアンはパースの表意体に対応する．</li>
+<li>ソシュールのシニフィエはパースの直接対象に相当する（心的な対象）．</li>
+<li>パースの解釈項は識別子の使用に相当する．パースの記号モデルでは，記号の使用は解釈項として記号モデルの中に埋め込まれ，記号過程は解釈項を次々と呼ぶことによって生成される．ソシュールにおいては，記号過程は記号が別の記号に呼ばれ，それがまた別の記号に呼ばれることにより生成される．ある記号の使用によって記号に付される価値は記号モデルに外在し，それは記号を併置した際の差異として現れる．</li>
+</ul>
+<p>こうして，ソシュールとパースの論が接続された．なるほど綺麗にまとまったかのように思える．</p>
+<h1 id="プログラミングパラダイム"><a href="#プログラミングパラダイム" class="headerlink" title="プログラミングパラダイム"></a>プログラミングパラダイム</h1><p>しかし，これはプログラミングパラダイムから見て妥当だろうか．HaskellやJavaに固有の特徴と，パラダイムの特徴を同一視していないだろうか．本書において，HaskellやJavaを選択した基準は最後まで明確に示されない（私はJavaScriptが良いのではないかと思った）．<br>CTMCPこと『コンピュータプログラミングの概念・技法・モデル』(“Concepts, Techniques, and Models of Computer Programming, “ The MIT Press, 2004.)のPeter Van-Royによると，オブジェクト指向パラダイムとは関数型パラダイムに状態(state)を追加したものである．私はこの考えに沿った展開に期待していたのだが，しかし状態の概念はp.190に至るまでほとんどといって触れられず，HaskellとJavaの比較に絡められることはなかった．<br>オブジェクト指向すなわちカプセル化という前提に立っているところ，プロトタイプベースのオブジェクト指向について触れていないところも勿体無い．</p>
+<h1 id="モナドと状態"><a href="#モナドと状態" class="headerlink" title="モナドと状態"></a>モナドと状態</h1><p>状態の概念は，「インタラクションを参照透明に記述しようと思うと，」「莫大な量の記号を使い捨てなければならない」(pp.198-199)からこそモナドが考案されたという流れで援用される．すなわち，参照透明性を保ちつつ状態を記述するためにモナドがある(p.196)．失敗系モナドが無視されているにせよ，このあたりの説明が明快なだけに，HaskellとJavaの比較において状態の概念が持ち出されなかったことが残念に思われる．</p>
+<h1 id="参照の値渡し"><a href="#参照の値渡し" class="headerlink" title="参照の値渡し"></a>参照の値渡し</h1><p>本書はJavaを「関数に値とアドレスのどちらかを渡すのかは，再び文脈により実用論的に決まり，」「プログラマが定義して導入する複合型」は「アドレスを渡す」ものとして紹介している(p.117)．これは端的に誤りである．なぜなら，Javaはあらゆる場面において値渡しであり，参照は参照の値(reference values)として扱われるためである．</p>
+<h1 id="おわりに"><a href="#おわりに" class="headerlink" title="おわりに"></a>おわりに</h1><p>主にプログラミングの観点から，『記号と再帰』に見られる不満点を述べた．要約すると次のようになる．</p>
+<ul>
+<li>Haskellのコードが微妙</li>
+<li>全体論的価値の定義が不明瞭</li>
+<li>HaskellとJavaを題材に選んだ根拠が不明瞭</li>
+<li>Javaの参照の値渡しについての説明が不適切</li>
+</ul>
+<p>だからといって私は本書が駄本であると切り捨てたいわけではない．<br>シニフィアンを持たない状態で分節されたλ項にシニフィアンが付与されていく簡約の過程は大変面白かったし，再帰から是態（交換不可能性？）が立ち上るという考えも論証不足ながら興味深かった．<br>汎記号主義という極端な見地から，記号が投機的に記号系に導入されるからこそ再帰が成立すると言い切ることで，ここまで手際よく語ることができるのかという興奮があった．<br>だからこそ，（今後本書が重版されることがあればの話だが）今回述べたような不満点が解消されることを望む．<br>終盤に本書は，「何ら形式的な制約なく自然に作られた」自然言語の構造的な系と，「停止性が保証される最小の記号群からはじめ，停止性の制約下でボトムアップに構築される」プログラミング言語の構成的な系とを対比している(p.183)．再帰による是態の獲得．構造的な系．次に語られるのはニューラルネットの記号論だろうか．</p>
+<h1 id="参考文献"><a href="#参考文献" class="headerlink" title="参考文献"></a>参考文献</h1><ul>
+<li>“Classification of the principal programming paradigms,” <a href="https://www.info.ucl.ac.be/~pvr/paradigms" target="_blank" rel="external">https://www.info.ucl.ac.be/~pvr/paradigms</a></li>
+<li>“幻想再帰のアリュージョニスト,” <a href="http://ncode.syosetu.com/n9073ca/" target="_blank" rel="external">http://ncode.syosetu.com/n9073ca/</a></li>
+<li>“EnJoe140で短編中さんはTwitterを使っています: 【記号と再帰―記号論の形式・プログラムの必然】止めて差し上げた方が良いのではないか。 <a href="http://book.akahoshitakuya.com/cmt/8818094" target="_blank" rel="external">http://book.akahoshitakuya.com/cmt/8818094</a> #bookmeter,” <a href="https://twitter.com/EnJoeToh/status/13886544494460928" target="_blank" rel="external">https://twitter.com/EnJoeToh/status/13886544494460928</a></li>
+</ul>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://ntddk.github.io/2015/04/04/semiotics-of-programming/" data-id="cj13oizhb000xpcosoge2ob9g" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/computational-semiotics/">computational semiotics</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+    <article id="post-pin-to-pemu" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    
+      <header class="article-header">
+        
+  
+    <a class="article-title" href="/2015/04/03/pin-to-pemu/">PinからPEMUへ</a>
+  
+
+      </header>
+    
+    <time class="article-date" datetime="2015-04-03T11:45:00.000Z" itemprop="datePublished">04-03-2015</time>
+    
+  </div>
+  <div class="article-inner">
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h1 id="Dynamic-Binary-Instrumentation"><a href="#Dynamic-Binary-Instrumentation" class="headerlink" title="Dynamic Binary Instrumentation"></a>Dynamic Binary Instrumentation</h1><p>Dynamic Binary Instrumentation(DBI)とは，実行中のプログラムにコードを挿入する技術である．<br>その目的は，プログラムの性能評価であったり，アーキテクチャのシミュレーションであったり，プログラムのデバッグであったり，プログラムのsheparding（ポリシを用いたセキュリティ制限）であったり，プログラムの最適化であったり，テイント解析などのデータフロー解析であったり，リバースエンジニアリングであったり，マルウェア解析であったり，……と多岐にわたっている．<br>デバッガとDBIを区別することは難しく，ニュアンスの問題になってしまうが，DBIはより「挿入するコードがプログラマブルであること」を重視している．また，instrumentation（名詞）/instrument（動詞）という語は，コードの挿入を通してプログラムの情報を取得したり，プログラムを制御したりといったニュアンスを含んでいる．<br>DBIのメリットとして，言語に依存しないこと，古いソフトウェアに対しても適用できること，再コンパイルの必要がないこと，動的に生成されるコードを扱うことができること，実行中のプロセスにアタッチできることが挙げられる．</p>
+<h1 id="Pin"><a href="#Pin" class="headerlink" title="Pin"></a>Pin</h1><p>Intelによって開発されている<a href="https://software.intel.com/en-us/articles/pin-a-dynamic-binary-instrumentation-tool" target="_blank" rel="external">Pin</a>は，DBIフレームワークの中でも最も成功している一つであり，そのAPIの数は450種類を越える．<br>Pinにおけるinstrumentationの手法は，コードの実行時にinstrumentするjust-in-time Instrumentation(JITI)と，イメージ（実行ファイルや共有ライブラリ，構造体）のロード時にinstrumentするahead-of-time-insturumentation(AOTI)の二種類に大別される．<br>これらのinstrumentにあたって，Pinは解析対象のプログラムにpinvm.dllを挿入する．</p>
+<h2 id="JITI"><a href="#JITI" class="headerlink" title="JITI"></a>JITI</h2><p>JIITは以下の三種類を単位として行うことができる．</p>
+<h3 id="Instruction-Level"><a href="#Instruction-Level" class="headerlink" title="Instruction Level"></a>Instruction Level</h3><p>第一に，最も低い粒度として，命令単位のinstrumentationがサポートされている．<br>これは，<code>INS_AddInstrumentFunction</code>のコールバックとして実現される．関連するAPIは，Pin 2.1.3の時点で142種類存在する．</p>
+<h3 id="Basic-Block-Level-BBL"><a href="#Basic-Block-Level-BBL" class="headerlink" title="Basic Block Level(BBL)"></a>Basic Block Level(BBL)</h3><p>第二に，Basic Block(BB)単位のinstrumentationがサポートされている．<br>ここでのBBとは，一つの入口と一つの出口を持ち，内部に分岐を含まない命令列のことであり，コンパイラ最適化におけるそれと同義である．Pinでは，<code>BBL_InsHead</code>や<code>BBL_InsTail</code>，<code>BBL_Next</code>や<code>BBL_Prev</code>といった関数を用いてBBの有向グラフを操作することができる．一方で<code>BBL_AddInstrumentationFunction</code>のコールバックは<strong>存在しない</strong>．関連するAPIは，Pin 2.1.3の時点で14種類存在する．</p>
+<h3 id="Trace-Level"><a href="#Trace-Level" class="headerlink" title="Trace Level"></a>Trace Level</h3><p>第三に，Trace単位のinstrumentationがサポートされている．<br>Traceとは，Pin独自の単位であり，分岐命令を入り口とし，無条件分岐（<code>jmp</code>, <code>call</code>, <code>ret</code>など）を出口とする命令列のことである．つまり，Traceは<strong>複数のBBを含みうる</strong>．これは，<code>TRACE_AddInstrumentFunction</code>のコールバックとして実現される．関連するAPIは，Pin 2.1.3の時点で14種類存在する．<br>Pinでは，objdumpなどと同様に線型分析法によってバイナリを逆アセンブルし，Traceを取得する．ここで，JITIに用いるVMをトラップすることなく別のTraceに分岐を行うための<a href="http://www.cs.virginia.edu/kim/courses/cs851/papers/luk05pin.pdf" target="_blank" rel="external">trace-linking optimization[PDF]</a>が行われる．そのため，Trace単位のinstrumentationが命令単位のinstrumentationよりも高速になる場合がある．</p>
+<h2 id="AOTI"><a href="#AOTI" class="headerlink" title="AOTI"></a>AOTI</h2><p>AOTIは以下の二種類を単位として行うことができる．</p>
+<h3 id="IMG-instrumentation"><a href="#IMG-instrumentation" class="headerlink" title="IMG instrumentation"></a>IMG instrumentation</h3><p>第一に，IMG単位のinstrumentationがサポートされている．<br>IMGは，特定の実行ファイルないし共有ライブラリ，構造体に相当する単位である．これは，<code>IMG_AddInstrumentFunction</code> APIによって実現される．また，IMGのセクション(SEC)についてもinstrumentを行うことができる．関連するAPIは，IMGについて27種類，SECについて16種類が存在する．</p>
+<h3 id="RTN-instrumentation"><a href="#RTN-instrumentation" class="headerlink" title="RTN instrumentation"></a>RTN instrumentation</h3><p>第二に，RTN単位のinstrumentationがサポートされている．<br>RTNとは関数(Routine)に相当する単位である．これは，<code>RTN_AddInstrumentFunction</code> APIによって実現される．関連するAPIは，Pin 2.1.3の時点で39種類存在する．</p>
+<h2 id="Transparency"><a href="#Transparency" class="headerlink" title="Transparency"></a>Transparency</h2><p>このように様々な機能を備えるPinだが，マルウェア解析においてはどれほど有用なのだろうか．<br>Pinのinstrumentationは，素朴なDLLインジェクションによって成り立っており，Anti-Debuggingについては考えられていない．そのためPinは，親プロセス，引数，ロードされるpinvm.dll, エクスポート関数である<code>CharmVersionC</code>, <code>ZwAllocateVirtualMemory</code>の実行権限，<code>KiUserApcDispatcher</code>, <code>KiUserCallbackDispatcher</code>, <code>KiUserExceptionDispatcher</code>, <code>LdrInitializeThunk</code>のインラインフック，命令のパターン，セクション名，<code>FSTENV</code>命令，<code>FSAVE</code>命令，<code>FXSAVE</code>命令，……といった様々な要素から検出される危険性を孕んでいる．<br>これらは，<a href="http://corelabs.coresecurity.com/index.php?module=Wiki&amp;action=view&amp;type=tool&amp;name=eXait" target="_blank" rel="external">eXait</a>を用いてテストできる．なお，筆者の環境では<code>int2e</code>/<code>SYSENTER</code>についてfalse positiveが発生した．<br>Pinを検出するマルウェアの存在は寡聞にして知らないが，Pinをマルウェア解析に用いるのであれば，現状の構造は不適切である．<br>Anti-Debuggingのイタチごっこから脱するためには，エージェントをゲストOSに挿入するin-VMではなく，エージェントをゲストOSに挿入しないout-of-VMな解析環境でなければならない．</p>
+<h1 id="QEMU"><a href="#QEMU" class="headerlink" title="QEMU"></a>QEMU</h1><p>さらにPinにはカーネルへのinstrumentationが不可能であるという欠点が存在する．<br>翻って<a href="https://github.com/qemu/qemu" target="_blank" rel="external">QEMU</a>は，フルシステムエミュレーションを行うため，アーキテクチャに依存することなくカーネルへのinstrumentationを行うことができる．しかしながら，QEMUのソースコードは難解であり，PinのようにユーザーフレンドリーなAPIが提供されていない．QEMUはC言語によるメタプログラミングとオブジェクト指向の良質なサンプルであるとも言えるが，できることなら避けて通りたい道である．</p>
+<h1 id="TEMU"><a href="#TEMU" class="headerlink" title="TEMU"></a>TEMU</h1><p>QEMUにテイント解析機能を搭載し，これまで多くの研究で用いられてきた<a href="http://bitblaze.cs.berkeley.edu/temu.html" target="_blank" rel="external">TEMU</a>は，QEMUのソースコードを理解するための労力を削減することに成功した（と，後述するPEMUの論文にすら書かれている）が，APIの充実度はPinに劣っている．また，カーネルモジュールをゲストOSに挿入する必要があり，マルウェアから検出される可能性があること，いまや時代遅れのQEMU 0.9.1をベースとしていることから，現代的なマルウェア解析環境の候補からは外れつつある．<br>後継の<a href="https://github.com/sycurelab/DECAF" target="_blank" rel="external">DECAF</a>はQEMU 1.0.0をベースとしており，カーネルモジュールを必要としないものの，APIの充実度はTEMUと変わらない．</p>
+<h1 id="PEMU"><a href="#PEMU" class="headerlink" title="PEMU"></a>PEMU</h1><p>こうした流れを汲んで開発されたのが，VEE’15にて新たに発表された<a href="https://github.com/utds3lab/pemu" target="_blank" rel="external">PEMU</a>である．嬉しい事にオープンソースとして提供されている．<br>Pinはin-VMであり，マルウェアの解析やカーネルへのinstrumentationに適さない．QEMUやTEMUはout-of-VMだが，Pinほど充実したAPIを用いることができない．そこでPEMUは，両者の利点と欠点を踏まえた上で，以下の四点を目的として開発された．</p>
+<ol>
+<li>Rich APIs<ul>
+<li>Pinの既存APIをそのまま流用できること</li>
+</ul>
+</li>
+<li>Cross-OS<ul>
+<li>WindowsとLinuxをサポート</li>
+</ul>
+</li>
+<li>Strong Isolation<ul>
+<li>ゲストOSのRing 3やRing 0ではなく，out-of-VM(Ring -1)から監視(VM Introspection)を行うこと</li>
+</ul>
+</li>
+<li>VM Introspection<ul>
+<li>ゲストOSのプロセスやカーネルのセマンティクス情報を取得するAPIを提供すること</li>
+</ul>
+</li>
+</ol>
+<p>これらを達成するため，PEMUはQEMUの動的バイナリ変換器Tiny Code Generator(TCG)に手を加えてPin APIのサポートを追加した．</p>
+<h2 id="Instrumentation-Engine"><a href="#Instrumentation-Engine" class="headerlink" title="Instrumentation Engine"></a>Instrumentation Engine</h2><p>さて，PEMUにおけるinstrumentationはどのようになっているのだろうか．<br>問題となるのは，QEMUとPinとの差異である．QEMUは命令とBB単位でしかinstrumentできず，PinにおけるTrace単位をサポートしていない．また，PEMUのベースとなっているQEMU 1.5.3では，BBの数が640までと制限されている．<br>そこで，PEMUではBBとTraceを対応付けるTRACE Constructorと，PinのAPIを通じてinstrumentするCode Injectorが導入された．</p>
+<h3 id="TRACE-Constructor"><a href="#TRACE-Constructor" class="headerlink" title="TRACE Constructor"></a>TRACE Constructor</h3><p>TRACE Constructorは，複数のBBを組み合わせてTraceの単位に抽象化するものである．<br>まずXED2ライブラリを用いて，ゲストの実行前にQEMUでBBの先頭から条件分岐命令まで逆アセンブルを行う(<code>/target-i386/PEMU/DISAS.c</code>)．スワップされたか，ロードされていない命令については，ページフォルトを通じて取得する．さらに，コードを挿入する命令の位置をglobal hooking point hash-table(HPHT)にキャッシュする(<code>/target-i386/PEMU/hashTable.c</code>)．<br>ここにおけるアルゴリズムは以下のようになっている．</p>
+<p><img src="/image/pemu_algorithm.png"></p>
+<p>まず，Trace単位の開始アドレスであるPCの度にXED2を呼び出し，PCをTPCという保存領域に保存する．次に，全命令を逆アセンブルし，命令単位のinstrumentationが必要な場合はそのアドレスをHPHTに保存する．さらに，無条件分岐の度にBBとTraceを対応付け，BB単位のinstrumentationが必要な場合はそのアドレスをHPHTに保存する．そして，新しいBBを割り当て，次のTrace単位が始まるアドレスを探す．Trace単位のinstrumentationが必要な場合はそのアドレスをHPHTに保存する．そして，さらなるTraceを逆アセンブルしていくといった仕組みになる．</p>
+<h3 id="Code-Injector"><a href="#Code-Injector" class="headerlink" title="Code Injector"></a>Code Injector</h3><p>TraceとBBの対応が取れた後は，QEMUのTCGが提供する<code>tcg_gen_helper</code>を用いてHPHTを参照し，instrumentを行えばよい（<code>/target-i386/PEMU/pemu_hook_helper.c</code>）．<br>IMGやSEC単位のinstrumentは<code>malloc</code>などの引数を確認する（セマンティクス情報を復元する）ことで実現している．<br>全体像は以下のようになる．</p>
+<p><img src="/image/pemu_engine.png"></p>
+<h2 id="Introspection-Engine"><a href="#Introspection-Engine" class="headerlink" title="Introspection Engine"></a>Introspection Engine</h2><p>PEMUでは，Page Global Directory(PGD)とCR3レジスタの対応を用いてプロセスの識別を行う(<code>target-i386/PEMU/pemu_helper.h</code>)．ここでは，プロセス作成時に発生するCR3レジスタへの<code>MOV</code>を検出して利用する．終了したプロセスのCR3は再利用されるため，プロセスの終了を検出する必要があるが，これは<code>exit</code> syscallを監視することで実現できる．スレッドは，kernel stack pointerのマスクから識別する．<br>ゲストとのセマンティックギャップの解決にあたっては，一時的にゲストを停止してシステムコールを挿入する手法を用いる．<code>PEMU_</code>というprefixでsyscallに相当するAPIが提供され，<code>getpid</code>, <code>gettimeofday</code>などゲストOSの情報を取得するためのAPI 28種類と，<code>open</code>, <code>fstat</code>, <code>lseek</code>などゲストOSを操作するためのAPI 15種を用いることができる．これらは都度レジスタコンテキストの退避と復元を伴って実行される．</p>
+<h2 id="評価"><a href="#評価" class="headerlink" title="評価"></a>評価</h2><p>論文での性能評価では，32-bit Ubuntu 12.04(Linux kernel 3.0.0-31-generic-pae)をホストとし，Intel Core i7, メモリ8GBのマシンが用いられた．速度の評価には32-bit Ubuntu 11.04(Linux kernel 2.6.38-8-generic)がゲストとして用いられた．<br>その結果として，PEMUではQEMUよりも4.33倍，Pinよりも83.61倍のオーバーヘッドが生じることが明らかになっている．</p>
+<p><img src="/image/pemu_performance.png"></p>
+<p>また，eXaitを用いた検出テストのため，Windows XP 32bitがゲストとして用いられた．論文ではeXaitの17手法全てがPinを検出した一方で，いずれの手法もPEMUを検出することができなかった．</p>
+<h2 id="関連研究"><a href="#関連研究" class="headerlink" title="関連研究"></a>関連研究</h2><p>PEMUがQEMUにPin APIのサポートを追加したのに対して，<a href="http://dl.acm.org/citation.cfm?id=1254830" target="_blank" rel="external">PinOS</a>はXenにPin APIのサポートを追加した．だがPinOSのinstrumentationは貧弱であり，セマンティクス情報を取得するAPIが提供されていない．また，解析ルーチンがカーネルや解析対象からアクセスできるため，isolationとして不十分である．<br>また，PinOS以外にカーネルへのinstrumentationをサポートしている<a href="https://github.com/DynamoRIO/drk" target="_blank" rel="external">DRK</a>は，LKMとして実装されているため，in-VMな手法に留まっている．</p>
+<h1 id="おわりに"><a href="#おわりに" class="headerlink" title="おわりに"></a>おわりに</h1><p>こうして，Pin APIを用いてout-of-VMにマルウェアを解析するための道標が示された．<br>今後のPEMUを用いた研究に期待したい，と他人事のように言っている場合ではなく，そろそろ論文を書かなければ．</p>
+<h1 id="補足"><a href="#補足" class="headerlink" title="補足"></a>補足</h1><p>PEMUは新しいといえどQEMU 1.5.3をベースとしており，やがてはQEMU 0.9.1をベースとしているTEMUのように技術的負債となるだろう．<br>そこで，PEMUを<a href="https://github.com/ntddk/pemu" target="_blank" rel="external">forkし</a>，<a href="https://github.com/ntddk/pemu/commit/af5bf0b7a3efcbb7c4b21abbfba0da02f034f95a" target="_blank" rel="external">QEMU 1.5.3からQEMU 2.2.1にアップデートを試みた</a>．が，QEMU 2.2.1に至るまで<code>cpu_single_env</code>変数が廃止されたことと，謎のコンパイルエラーが発生することから頓挫中である．そのうち何とかする．</p>
+<h1 id="参考文献"><a href="#参考文献" class="headerlink" title="参考文献"></a>参考文献</h1><ul>
+<li>Chi-Keung Luk, Robert Cohn, Robert Muth, Harish Patil, Artur Klauser, Geoff Lowney, Steven Wallace, Vijay Janapa Reddi and Kim Hazelwood,<br>“<a href="http://www.cs.virginia.edu/kim/courses/cs851/papers/luk05pin.pdf" target="_blank" rel="external">Pin: building customized program analysis tools with dynamic instrumentation[PDF]</a>,”<br>In Proceedings of the 2005 ACM SIGPLAN conference on Programming language design and implementation, PLDI’05, pp. 190–200, 2005.</li>
+<li>Francisco Falcón, Nahuel Riva,<br>“<a href="http://recon.cx/2012/schedule/events/216.en.html" target="_blank" rel="external">Dynamic Binary Instrumentation Frameworks: I know you’re there spying on me</a>,”<br>RECon 2012.</li>
+<li>Junyuan Zeng, Yangchun Fu, and Zhiqiang Lin,<br>“<a href="http://dl.acm.org/citation.cfm?id=2731201" target="_blank" rel="external">PEMU: A Pin Highly Compatible Out-of-VM Dynamic Binary Instrumentation Framework</a>,”<br>In Proceedings of the 11th ACM SIGPLAN/SIGOPS International Conference on Virtual Execution Environments, pp. 147-160, VEE’15, 2015.</li>
+<li>Prashanth P. Bungale, Chi-Keung Luk,<br>“<a href="http://dl.acm.org/citation.cfm?id=1254830" target="_blank" rel="external">PinOS: a programmable framework for whole-system dynamic instrumentation</a>,”<br>In Proceedings of the 3rd international conference on Virtual execution environments, VEE’07, pp. 137-147, 2007.</li>
+<li>Peter Feiner, Angela Demke, and Ashvin Goel,<br>“<a href="http://dl.acm.org/citation.cfm?id=2150992" target="_blank" rel="external">Comprehensive Kernel Instrumentation via Dynamic Binary Translation</a>,”<br>In Proceedings of the 17th international conference on Architectural Support for Programming Languages and Operating Systems, ASPLOS’12, pp. 135-146, 2012.</li>
+<li>Yangchun Fu, Junyuan Zeng, and Zhiqiang Lin,<br>“<a href="https://www.usenix.org/conference/atc14/technical-sessions/presentation/fu" target="_blank" rel="external">HYPERSHELL: A Practical Hypervisor Layer Guest OS Shell for Automated In-VM Management</a>,”<br>In Proceedings of the 2014 USENIX conference on USENIX Annual Technical Conference, USENIX ATC’14, pp. 85-96, 2014.</li>
+</ul>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://ntddk.github.io/2015/04/03/pin-to-pemu/" data-id="cj13oizh8000mpcos9yinf99r" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/dynamic-binary-translation/">dynamic binary translation</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/taint-analysis/">taint analysis</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/virtual-machine-introspection/">virtual machine introspection</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+    <article id="post-sandbox-transparency-in-the-wild" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    
+      <header class="article-header">
+        
+  
+    <a class="article-title" href="/2015/03/14/sandbox-transparency-in-the-wild/">続・サンドボックスの透明性</a>
+  
+
+      </header>
+    
+    <time class="article-date" datetime="2015-03-14T12:00:00.000Z" itemprop="datePublished">03-14-2015</time>
+    
+  </div>
+  <div class="article-inner">
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h1 id="耐解析機能の分類"><a href="#耐解析機能の分類" class="headerlink" title="耐解析機能の分類"></a>耐解析機能の分類</h1><p><a href="https://twitter.com/gabrielnb" target="_blank" rel="external">Gabriel N. Barbosa</a>と<a href="https://twitter.com/BSDaemon" target="_blank" rel="external">Rodrigo R. Branco</a>は，マルウェアの耐解析機能を<strong>Anti-Debugging, Anti-Disassembly, Obfuscation, Anti-VM</strong>の四種類に分類した．彼らはIntelのセキュリティ研究者であり，マルウェアに備わった耐解析機能の統計を過去二回に渡って発信してきた．<br>気になるのは，サンドボックスの実装にあたって問題となるAnti-VMだ．8,103,167もの検体を用いた調査によると，その内訳は以下のようになっている．</p>
+<p><img src="/image/anti-vm.jpg" title="" prevalent="" characteristics="" in="" modern="" malware"より"=""></p>
+<p>これらはいずれもVMware社製品を検出するための手法である．残念ながら他の仮想マシンモニタについての情報は掲載されて<strong>いない</strong>．</p>
+<h1 id="仮想マシンモニタの分類"><a href="#仮想マシンモニタの分類" class="headerlink" title="仮想マシンモニタの分類"></a>仮想マシンモニタの分類</h1><p><a href="http://ntddk.github.io/2015/01/23/sandbox-transparency/">以前にも少しばかり述べた</a>，サンドボックスの透明性(transparency)に関する話を蒸し返そう．<br>サンドボックスにOut-of-the-boxなVMIを採用すれば，少なくともAnti-Debuggingについては無視できる．<br>では，サンドボックスにXenを用いれば，QEMUより検出されにくくなるだろうか．あるいは，その逆はどうだろうか．<br>多くの研究者が好き勝手なことを言っているが，仮想マシンモニタの実現手法をもってサンドボックスの透明性を語るのは些か性急だろう．なぜなら，サンドボックスの透明性はその設計ではなくマルウェアの実装によって左右されるからだ．<strong>Out-of-the-box VMIは設計の話だが，Anti-VMは実装の話だ</strong>（と思う）．<br>ところで私は，仮想マシンモニタの実現手法を「プロセッサ拡張によるもの」と「バイナリ変換によるもの」に分類していたが，別の分類方法を見つけた．</p>
+<p><img src="/image/vm-class.png" title="" a="" survey="" of="" security="" issues="" in="" hardware="" virtualization"より"=""></p>
+<p>命令セットアーキテクチャを基準に分類することで，より分かりやすくなっている．今後はこの図に準拠したい．<br>話を戻そう．<br>何が言いたいのかというと，in-the-wildなマルウェアに備わったAnti-VMの内訳が分からないことには，サンドボックスの透明性について云々することはできないということだ．</p>
+<h1 id="検体"><a href="#検体" class="headerlink" title="検体"></a>検体</h1><p>誰もやっていないようなので，調べてみることにした．<br>やや恣意的（誤用？）な選択だが，今回は<a href="http://virusshare.com/" target="_blank" rel="external">VirusShare.com</a>からCitadelのバリアント479検体や，Mandiantの<a href="http://intelreport.mandiant.com/Mandiant_APT1_Report.pdf" target="_blank" rel="external">APT1レポート</a>にて報告された中国軍総参謀部第三部第二局こと61398部隊<strong>と思しき</strong>グループ製の874検体を含む<strong>総計33,260検体</strong>を用いた．</p>
+<h1 id="Anti-VMの実態"><a href="#Anti-VMの実態" class="headerlink" title="Anti-VMの実態"></a>Anti-VMの実態</h1><p><a href="http://plusvic.github.io/yara/" target="_blank" rel="external">YARA</a>を用いてAnti-VMの実態を調べた．<br>ルールには公式の<a href="http://yararules.com/rules/antidebug.yar" target="_blank" rel="external">antidebug.yar</a>を用いた．なお，このルールにはAnti-VMのみならずAnti-Debuggerについても記載されている．</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div><div class="line">22</div><div class="line">23</div><div class="line">24</div><div class="line">25</div><div class="line">26</div></pre></td><td class="code"><pre><div class="line"># awk &apos;&#123; print $1&#125;&apos; yara.log | sort | uniq -c | sort -r</div><div class="line">  20340 DebuggerPattern__RDTSC</div><div class="line">  18966 DebuggerPattern__CPUID</div><div class="line">   9292 DebuggerTiming__Ticks</div><div class="line">   7371 DebuggerPattern__SEH_Inits</div><div class="line">   6955 DebuggerException__UnhandledFilter</div><div class="line">   5715 DebuggerTiming__PerformanceCounter</div><div class="line">   4377 DebuggerPattern__SEH_Saves</div><div class="line">   2949 DebuggerCheck__API</div><div class="line">   2631 DebuggerCheck__QueryInfo</div><div class="line">   2182 SEH__vba</div><div class="line">   1315 DebuggerOutput__String</div><div class="line">    887 ThreadControl__Context</div><div class="line">    604 vmdetect</div><div class="line">    303 DebuggerException__SetConsoleCtrl</div><div class="line">    186 SEH__vectored</div><div class="line">     83 DebuggerHiding__Thread</div><div class="line">     80 DebuggerHiding__Active</div><div class="line">     52 DebuggerException__ConsoleCtrl</div><div class="line">     10 Check_Dlls</div><div class="line">      5 DebuggerCheck__RemoteAPI</div><div class="line">      2 DebuggerCheck__GlobalFlags</div><div class="line">      1 ▒▒DebuggerPattern__RDTSC</div><div class="line">      1 Debuggeattern__SEH_Inits</div><div class="line">      1 Check_VBox_VideoDrivers</div><div class="line">      1 Check_VBox_Description</div></pre></td></tr></table></figure>
+<p>マルウェアの開発者がよりgenericな手法を好むことは，<code>RDTSC</code>命令を用いる検体が61.15%, <code>CPUID</code>命令を用いる検体が57.02%含まれていることからも明らかだ．たった2バイトを基準に検出しているため，false positiveだらけなのだろうとはいえ．<br>一方でvmdetectとして計上された検体は全体の1.18%に過ぎない．これはVMware, Virtual PC, Xen, Virtual Boxに関する文字列が含まれる検体を抽出するルールであり，コードは以下のようになっている．</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div><div class="line">22</div><div class="line">23</div><div class="line">24</div><div class="line">25</div><div class="line">26</div><div class="line">27</div><div class="line">28</div><div class="line">29</div><div class="line">30</div><div class="line">31</div><div class="line">32</div><div class="line">33</div><div class="line">34</div><div class="line">35</div><div class="line">36</div><div class="line">37</div><div class="line">38</div><div class="line">39</div><div class="line">40</div><div class="line">41</div><div class="line">42</div><div class="line">43</div><div class="line">44</div><div class="line">45</div><div class="line">46</div><div class="line">47</div><div class="line">48</div><div class="line">49</div><div class="line">50</div><div class="line">51</div><div class="line">52</div><div class="line">53</div><div class="line">54</div><div class="line">55</div><div class="line">56</div><div class="line">57</div><div class="line">58</div><div class="line">59</div><div class="line">60</div><div class="line">61</div><div class="line">62</div><div class="line">63</div><div class="line">64</div><div class="line">65</div><div class="line">66</div><div class="line">67</div><div class="line">68</div><div class="line">69</div><div class="line">70</div><div class="line">71</div><div class="line">72</div><div class="line">73</div><div class="line">74</div><div class="line">75</div><div class="line">76</div><div class="line">77</div><div class="line">78</div></pre></td><td class="code"><pre><div class="line">rule vmdetect</div><div class="line">&#123;</div><div class="line">    meta:</div><div class="line">        author = &quot;nex&quot;</div><div class="line">        description = &quot;Possibly employs anti-virtualization techniques&quot;</div><div class="line"></div><div class="line">    strings:</div><div class="line">        // Binary tricks</div><div class="line">        $vmware = &#123;56 4D 58 68&#125;</div><div class="line">        $virtualpc = &#123;0F 3F 07 0B&#125;</div><div class="line">        $ssexy = &#123;66 0F 70 ?? ?? 66 0F DB ?? ?? ?? ?? ?? 66 0F DB ?? ?? ?? ?? ?? 66 0F EF&#125;</div><div class="line">        $vmcheckdll = &#123;45 C7 00 01&#125;</div><div class="line">        $redpill = &#123;0F 01 0D 00 00 00 00 C3&#125;</div><div class="line"></div><div class="line">        // Random strings</div><div class="line">        $vmware1 = &quot;VMXh&quot;</div><div class="line">        $vmware2 = &quot;Ven_VMware_&quot; nocase</div><div class="line">        $vmware3 = &quot;Prod_VMware_Virtual_&quot; nocase</div><div class="line">        $vmware4 = &quot;hgfs.sys&quot; nocase</div><div class="line">        $vmware5 = &quot;mhgfs.sys&quot; nocase</div><div class="line">        $vmware6 = &quot;prleth.sys&quot; nocase</div><div class="line">        $vmware7 = &quot;prlfs.sys&quot; nocase</div><div class="line">        $vmware8 = &quot;prlmouse.sys&quot; nocase</div><div class="line">        $vmware9 = &quot;prlvideo.sys&quot; nocase</div><div class="line">        $vmware10 = &quot;prl_pv32.sys&quot; nocase</div><div class="line">        $vmware11 = &quot;vpc-s3.sys&quot; nocase</div><div class="line">        $vmware12 = &quot;vmsrvc.sys&quot; nocase</div><div class="line">        $vmware13 = &quot;vmx86.sys&quot; nocase</div><div class="line">        $vmware14 = &quot;vmnet.sys&quot; nocase</div><div class="line">        $vmware15 = &quot;vmicheartbeat&quot; nocase</div><div class="line">        $vmware16 = &quot;vmicvss&quot; nocase</div><div class="line">        $vmware17 = &quot;vmicshutdown&quot; nocase</div><div class="line">        $vmware18 = &quot;vmicexchange&quot; nocase</div><div class="line">        $vmware19 = &quot;vmdebug&quot; nocase</div><div class="line">        $vmware20 = &quot;vmmouse&quot; nocase</div><div class="line">        $vmware21 = &quot;vmtools&quot; nocase</div><div class="line">        $vmware22 = &quot;VMMEMCTL&quot; nocase</div><div class="line">        $vmware23 = &quot;vmx86&quot; nocase</div><div class="line">        $vmware24 = &quot;vmware&quot; nocase</div><div class="line">        $virtualpc1 = &quot;vpcbus&quot; nocase</div><div class="line">        $virtualpc2 = &quot;vpc-s3&quot; nocase</div><div class="line">        $virtualpc3 = &quot;vpcuhub&quot; nocase</div><div class="line">        $virtualpc4 = &quot;msvmmouf&quot; nocase</div><div class="line">        $xen1 = &quot;xenevtchn&quot; nocase</div><div class="line">        $xen2 = &quot;xennet&quot; nocase</div><div class="line">        $xen3 = &quot;xennet6&quot; nocase</div><div class="line">        $xen4 = &quot;xensvc&quot; nocase</div><div class="line">        $xen5 = &quot;xenvdb&quot; nocase</div><div class="line">        $xen6 = &quot;XenVMM&quot; nocase</div><div class="line">        $virtualbox1 = &quot;VBoxHook.dll&quot; nocase</div><div class="line">        $virtualbox2 = &quot;VBoxService&quot; nocase</div><div class="line">        $virtualbox3 = &quot;VBoxTray&quot; nocase</div><div class="line">        $virtualbox4 = &quot;VBoxMouse&quot; nocase</div><div class="line">        $virtualbox5 = &quot;VBoxGuest&quot; nocase</div><div class="line">        $virtualbox6 = &quot;VBoxSF&quot; nocase</div><div class="line">        $virtualbox7 = &quot;VBoxGuestAdditions&quot; nocase</div><div class="line">        $virtualbox8 = &quot;VBOX HARDDISK&quot;  nocase</div><div class="line"></div><div class="line">        // MAC addresses</div><div class="line">        $vmware_mac_1a = &quot;00-05-69&quot;</div><div class="line">        $vmware_mac_1b = &quot;00:05:69&quot;</div><div class="line">        $vmware_mac_1c = &quot;000569&quot;</div><div class="line">        $vmware_mac_2a = &quot;00-50-56&quot;</div><div class="line">        $vmware_mac_2b = &quot;00:50:56&quot;</div><div class="line">        $vmware_mac_2c = &quot;005056&quot;</div><div class="line">        $vmware_mac_3a = &quot;00-0C-29&quot; nocase</div><div class="line">        $vmware_mac_3b = &quot;00:0C:29&quot; nocase</div><div class="line">        $vmware_mac_3c = &quot;000C29&quot; nocase</div><div class="line">        $vmware_mac_4a = &quot;00-1C-14&quot; nocase</div><div class="line">        $vmware_mac_4b = &quot;00:1C:14&quot; nocase</div><div class="line">        $vmware_mac_4c = &quot;001C14&quot; nocase</div><div class="line">        $virtualbox_mac_1a = &quot;08-00-27&quot;</div><div class="line">        $virtualbox_mac_1b = &quot;08:00:27&quot;</div><div class="line">        $virtualbox_mac_1c = &quot;080027&quot;</div><div class="line"></div><div class="line">    condition:</div><div class="line">        any of them</div><div class="line">&#125;</div></pre></td></tr></table></figure>
+<p>見ての通りQEMUに関する記述が存在しない．<br>そこで，vmdetectに以下の様なコードを追加し，再度スキャンしてみた．</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div><div class="line">22</div><div class="line">23</div><div class="line">24</div><div class="line">25</div><div class="line">26</div><div class="line">27</div><div class="line">28</div><div class="line">29</div><div class="line">30</div></pre></td><td class="code"><pre><div class="line">rule vmdetect</div><div class="line">&#123;</div><div class="line">    ~ 略 ~</div><div class="line"></div><div class="line">    strings:</div><div class="line">        $QEMU1 = &quot;Bochs&quot; nocase</div><div class="line">        $QEMU3 = &quot;QEMU_AUDIO_DRV&quot; nocase</div><div class="line">        $QEMU4 = &quot;QEMU VVFAT&quot; nocase</div><div class="line">        $QEMU5 = &quot;QEMU ADB Mouse&quot; nocase</div><div class="line">        $QEMU6 = &quot;QEMU ADS7846-driven Touchscreen&quot; nocase</div><div class="line">        $QEMU7 = &quot;QEMU HARDDISK&quot; nocase</div><div class="line">        $QEMU8 = &quot;QEMU CD-ROM&quot; nocase</div><div class="line">        $QEMU9 = &quot;QEMU MICRODRIVE&quot; nocase</div><div class="line">        $QEMU10 = &quot;QEMU-MEMORY&quot; nocase</div><div class="line">        $QEMU11 = &quot;QEMU_BIOS&quot; nocase</div><div class="line">        $QEMU12 = &quot;QEMU PS/2 Mouse&quot; nocase</div><div class="line">        $QEMU13 = &quot;QEMU Sun Mouse&quot; nocase</div><div class="line">        $QEMU14 = &quot;QEMU TSC2102-driven Touchscreen&quot; nocase</div><div class="line">        $QEMU15 = &quot;QEMU USB Mouse&quot; nocase</div><div class="line">        $QEMU16 = &quot;QEMU USB Tablet&quot; nocase</div><div class="line">        $QEMU17 = &quot;QEMU_VERSION&quot; nocase</div><div class="line">        $QEMU18 = &quot;QEMU USB Keyboard&quot; nocase</div><div class="line">        $QEMU19 = &quot;QEMU USB Hub&quot; nocase</div><div class="line">        $QEMU20 = &quot;QEMU USB MSD&quot; nocase</div><div class="line">        $QEMU21 = &quot;QEMU PenPartner tablet&quot; nocase</div><div class="line">        $QEMU22 = &quot;QEMUware SVGA&quot; nocase</div><div class="line"></div><div class="line">    condition:</div><div class="line">        any of them</div><div class="line">&#125;</div></pre></td></tr></table></figure>
+<p>結果は608検体．QEMUを検出するのは4検体だけという結果になった．<br>自分がマルウェアを開発する立場だったらこうした文字列をそのまま埋め込むことはしないし，このルールは表層的なものでしかなく，例えばQEMUの動的バイナリ変換のスケジューリングに着目したAnti-VMを検出することはできない．<br>とはいえ，おかげで現状を大雑把に把握することはできた．</p>
+<h1 id="パッカーの実態"><a href="#パッカーの実態" class="headerlink" title="パッカーの実態"></a>パッカーの実態</h1><p>ついでに，<a href="http://www.softpedia.com/get/Programming/Packers-Crypters-Protectors/PEiD-updated.shtml" target="_blank" rel="external">PEiD</a>を用いてパッカーの利用状況を調べた．<br>UserDBには<a href="https://code.google.com/p/reverse-engineering-scripts/downloads/detail?name=UserDB.TXT" target="_blank" rel="external">Bob / Team PEiD signatures</a>を用いた．</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div><div class="line">22</div><div class="line">23</div><div class="line">24</div><div class="line">25</div><div class="line">26</div><div class="line">27</div><div class="line">28</div><div class="line">29</div><div class="line">30</div><div class="line">31</div><div class="line">32</div><div class="line">33</div><div class="line">34</div><div class="line">35</div><div class="line">36</div><div class="line">37</div><div class="line">38</div><div class="line">39</div><div class="line">40</div><div class="line">41</div><div class="line">42</div><div class="line">43</div><div class="line">44</div><div class="line">45</div><div class="line">46</div><div class="line">47</div><div class="line">48</div><div class="line">49</div><div class="line">50</div><div class="line">51</div><div class="line">52</div><div class="line">53</div><div class="line">54</div><div class="line">55</div><div class="line">56</div><div class="line">57</div><div class="line">58</div><div class="line">59</div><div class="line">60</div><div class="line">61</div><div class="line">62</div><div class="line">63</div><div class="line">64</div><div class="line">65</div><div class="line">66</div><div class="line">67</div><div class="line">68</div><div class="line">69</div><div class="line">70</div><div class="line">71</div><div class="line">72</div><div class="line">73</div><div class="line">74</div><div class="line">75</div><div class="line">76</div><div class="line">77</div><div class="line">78</div><div class="line">79</div><div class="line">80</div><div class="line">81</div><div class="line">82</div><div class="line">83</div><div class="line">84</div><div class="line">85</div><div class="line">86</div><div class="line">87</div><div class="line">88</div><div class="line">89</div><div class="line">90</div><div class="line">91</div><div class="line">92</div><div class="line">93</div><div class="line">94</div><div class="line">95</div><div class="line">96</div><div class="line">97</div><div class="line">98</div><div class="line">99</div><div class="line">100</div><div class="line">101</div><div class="line">102</div><div class="line">103</div><div class="line">104</div><div class="line">105</div><div class="line">106</div><div class="line">107</div><div class="line">108</div><div class="line">109</div><div class="line">110</div><div class="line">111</div><div class="line">112</div><div class="line">113</div><div class="line">114</div><div class="line">115</div><div class="line">116</div><div class="line">117</div><div class="line">118</div><div class="line">119</div><div class="line">120</div><div class="line">121</div><div class="line">122</div><div class="line">123</div><div class="line">124</div><div class="line">125</div><div class="line">126</div><div class="line">127</div><div class="line">128</div><div class="line">129</div><div class="line">130</div><div class="line">131</div><div class="line">132</div><div class="line">133</div><div class="line">134</div><div class="line">135</div><div class="line">136</div><div class="line">137</div><div class="line">138</div><div class="line">139</div><div class="line">140</div><div class="line">141</div><div class="line">142</div><div class="line">143</div><div class="line">144</div><div class="line">145</div><div class="line">146</div><div class="line">147</div><div class="line">148</div><div class="line">149</div><div class="line">150</div><div class="line">151</div><div class="line">152</div><div class="line">153</div><div class="line">154</div><div class="line">155</div><div class="line">156</div><div class="line">157</div><div class="line">158</div><div class="line">159</div><div class="line">160</div><div class="line">161</div><div class="line">162</div><div class="line">163</div><div class="line">164</div><div class="line">165</div><div class="line">166</div><div class="line">167</div><div class="line">168</div><div class="line">169</div><div class="line">170</div><div class="line">171</div><div class="line">172</div><div class="line">173</div><div class="line">174</div><div class="line">175</div><div class="line">176</div><div class="line">177</div><div class="line">178</div><div class="line">179</div><div class="line">180</div><div class="line">181</div><div class="line">182</div><div class="line">183</div><div class="line">184</div><div class="line">185</div><div class="line">186</div><div class="line">187</div><div class="line">188</div><div class="line">189</div><div class="line">190</div><div class="line">191</div><div class="line">192</div><div class="line">193</div><div class="line">194</div><div class="line">195</div><div class="line">196</div><div class="line">197</div><div class="line">198</div><div class="line">199</div><div class="line">200</div><div class="line">201</div><div class="line">202</div><div class="line">203</div><div class="line">204</div><div class="line">205</div><div class="line">206</div><div class="line">207</div><div class="line">208</div><div class="line">209</div><div class="line">210</div><div class="line">211</div><div class="line">212</div></pre></td><td class="code"><pre><div class="line"># awk &apos;&#123;&#123;for(i=3;i&lt;NF;i++)printf(&quot;%s &quot;,$i) &#125;print($NF)&#125;&apos; peid.log | sort | uniq -c | sort -r</div><div class="line">  21159 Nothing found *</div><div class="line">   3065 Nothing found [Overlay] *</div><div class="line">   1412 Microsoft Visual Basic 5.0 / 6.0</div><div class="line">    916 Microsoft Visual C++ 8.0 DLL Method2</div><div class="line">    747 Microsoft Visual C++ 6.0</div><div class="line">    685 Microsoft Visual Basic 5.0 - 6.0</div><div class="line">    405 Borland Delphi 6.0 - 7.0 [Overlay]</div><div class="line">    351 UPX 0.89.6 - 1.02 / 1.05 - 2.90 -&gt; Markus &amp; Laszlo</div><div class="line">    333 Microsoft Visual C++ 7.0 [Overlay]</div><div class="line">    320 UPX 2.93 - 3.00 [LZMA] -&gt; Markus Oberhumer, Laszlo Molnar &amp; John Reiser [Overlay] *</div><div class="line">    239 Borland Delphi 6.0 - 7.0</div><div class="line">    201 Microsoft Visual C++ 6.0 [Overlay]</div><div class="line">    185 UPX 0.89.6 - 1.02 / 1.05 - 2.90 -&gt; Markus &amp; Laszlo [Overlay]</div><div class="line">    167 Nullsoft PiMP Stub [Nullsoft PiMP SFX] *</div><div class="line">     99 Microsoft Visual C++ 6.0 DLL</div><div class="line">     83 Microsoft Visual C++ 7.0 [Debug] [Overlay]</div><div class="line">     82 Nothing found [Debug] *</div><div class="line">     79 UPX 0.89.6 - 1.02 / 1.05 - 2.90 (Delphi) stub -&gt; Markus &amp; Laszlo [Overlay]</div><div class="line">     63 Microsoft Visual C++ 7.0</div><div class="line">     62 Microsoft Visual C# / Basic .NET</div><div class="line">     61 Microsoft Visual Basic 5.0 / 6.0 [Overlay]</div><div class="line">     42 Themida 1.8.x.x - 1.9.x.x -&gt; Oreans Technologies</div><div class="line">     42 ASPack 2.12 -&gt; Alexey Solodovnikov [Overlay]</div><div class="line">     38 ASProtect 1.2x - 1.3x [Registered] -&gt; Alexey Solodovnikov</div><div class="line">     32 ASPack 2.12 -&gt; Alexey Solodovnikov</div><div class="line">     31 PE Win32 DLL (0 EntryPoint)</div><div class="line">     31 Nothing found [RAR SFX] *</div><div class="line">     31 Microsoft Visual C++ 6.0 DLL [Overlay]</div><div class="line">     28 Borland C++</div><div class="line">     26 PECompact 2.x -&gt; Jeremy Collake [Overlay]</div><div class="line">     24 Morphine 1.2 - 1.3 -&gt; rootkit</div><div class="line">     23 MinGW GCC 3.x [Overlay] *</div><div class="line">     22 UPX 0.89.6 - 1.02 / 1.05 - 2.90 (Delphi) stub -&gt; Markus &amp; Laszlo</div><div class="line">     22 Microsoft Visual C# / Basic .NET [Overlay]</div><div class="line">     19 Nothing found [ZIP SFX] *</div><div class="line">     18 PECompact 2.x -&gt; Jeremy Collake</div><div class="line">     18 Microsoft Visual C++ 7.0 [Debug]</div><div class="line">     15 Borland C++ [Overlay]</div><div class="line">     14 Borland Delphi 4.0 - 5.0</div><div class="line">     14 ASProtect 1.33 - 2.1 Registered -&gt; Alexey Solodovnikov *</div><div class="line">     13 UPX 2.93 - 3.00 [LZMA] -&gt; Markus Oberhumer, Laszlo Molnar &amp; John Reiser *</div><div class="line">     13 Microsoft Visual C++ 6.0 [Debug]</div><div class="line">     13 Microsoft Visual C++ 5.0</div><div class="line">     12 UPX 0.80 - 1.24 DLL -&gt; Markus &amp; Laszlo</div><div class="line">     12 BobSoft Mini Delphi -&gt; BoB / BobSoft [Overlay] *</div><div class="line">     11 Themida 1.8.x.x -&gt; Oreans Technologies *</div><div class="line">     11 Microsoft Visual C++ Private Version 1</div><div class="line">     11 Borland Delphi 6.0</div><div class="line">     11 Borland Delphi 2.0 [Overlay]</div><div class="line">     10 BobSoft Mini Delphi -&gt; BoB / BobSoft *</div><div class="line">      9 NsPack 2.9 -&gt; North Star *</div><div class="line">      9 Microsoft Visual C++ 5.0 [Debug]</div><div class="line">      8 Microsoft Visual C++ 7.1 DLL</div><div class="line">      8 Microsoft Visual C++ 7.0 Method2</div><div class="line">      7 Xtreme-Protector v1.05 *</div><div class="line">      7 Microsoft Visual C++ 8.0 DLL Method2 [Overlay]</div><div class="line">      6 Xtreme-Protector v1.05 [Overlay] *</div><div class="line">      6 Microsoft Visual C++ 8.0 [Debug] [Debug]</div><div class="line">      6 ASProtect 1.2x - 1.3x [Registered] -&gt; Alexey Solodovnikov [Overlay]</div><div class="line">      5 nSPack 3.7 -&gt; North Star/Liu Xing Ping</div><div class="line">      5 Wise Installer Stub [Overlay] *</div><div class="line">      5 WinZip 32-bit SFX 8.x module</div><div class="line">      5 Thinstall 2.4x - 2.5x -&gt; Jitit Software [Overlay] *</div><div class="line">      5 PureBasic 4.x -&gt; Neil Hodgson *</div><div class="line">      5 PE Win32 DLL (0 EntryPoint) [Overlay]</div><div class="line">      5 Microsoft Visual C++ 7.1 DLL [Overlay]</div><div class="line">      4 tElock 0.98b1 -&gt; tE!</div><div class="line">      4 Themida 1.8.x.x - 1.9.x.x -&gt; Oreans Technologies [Overlay]</div><div class="line">      4 PureBasic 4.x -&gt; Neil Hodgson [Overlay] *</div><div class="line">      4 PC-Guard 5.0 -&gt; Blagoje Ceklic [Overlay]</div><div class="line">      4 MoleBox v2.0 *</div><div class="line">      4 Microsoft Visual C++ 8.0 [Debug]</div><div class="line">      4 Microsoft Visual C++ 5.0 [Overlay]</div><div class="line">      4 Borland Delphi 4.0 - 5.0 [Overlay]</div><div class="line">      4 Borland C++ 1999 [Overlay]</div><div class="line">      4 Borland C++ 1999</div><div class="line">      4 Armadillo 3.78 - 4.xx -&gt; Silicon Realms Toolworks</div><div class="line">      4 Armadillo 1.xx - 2.xx -&gt; Silicon Realms Toolworks</div><div class="line">      4 ASProtect 2.1x SKE -&gt; Alexey Solodovnikov</div><div class="line">      3 nSPack 3.7 -&gt; North Star/Liu Xing Ping [Overlay]</div><div class="line">      3 Upack 0.39 beta -&gt; Dwing</div><div class="line">      3 UPX 0.80 - 1.24 DLL -&gt; Markus &amp; Laszlo [Overlay]</div><div class="line">      3 Themida 1.2.0.1 (compressed) -&gt; Oreans Technologies [Overlay]</div><div class="line">      3 Themida 1.2.0.1 (compressed) -&gt; Oreans Technologies</div><div class="line">      3 NsPack 3.4 -&gt; North Star *</div><div class="line">      3 NakedPacker 1.0 - by BigBoote *</div><div class="line">      3 MinGW GCC 3.x [ZIP SFX] *</div><div class="line">      3 Microsoft Visual C++ [Overlay]</div><div class="line">      3 Microsoft Visual C++ 6.0 SPx Method 1</div><div class="line">      3 Microsoft Visual Basic 5.0 - 6.0 [Overlay]</div><div class="line">      3 Inno Setup Module Heuristic Mode [Overlay]</div><div class="line">      3 ASProtect 2.1x SKE -&gt; Alexey Solodovnikov [Overlay]</div><div class="line">      2 tElock 0.90 -&gt; tE! [Overlay]</div><div class="line">      2 Upack 0.28 - 0.399 (relocated image base) - Delphi, .NET, DLL -&gt; Dwing</div><div class="line">      2 Upack 0.24 - 0.29 beta -&gt; Dwing</div><div class="line">      2 UltraProtect 1.x -&gt; RISCO Software Inc. [Overlay]</div><div class="line">      2 UltraProtect 1.x -&gt; RISCO Software Inc.</div><div class="line">      2 UPX 0.89.6 - 1.02 / 1.05 - 2.90 -&gt; Markus &amp; Laszlo [RAR SFX]</div><div class="line">      2 SVKP 1.3x -&gt; Pavol Cerven</div><div class="line">      2 PureBasic DLL -&gt; Neil Hodgson *</div><div class="line">      2 PEtite 2.x [Level 0] -&gt; Ian Luck</div><div class="line">      2 PE-Armor V0.7X -&gt; hying *</div><div class="line">      2 PC-Guard 5.0 -&gt; Blagoje Ceklic</div><div class="line">      2 Nullsoft Install System 2.1x [Nullsoft PiMP SFX]</div><div class="line">      2 NsPack 1.4 -&gt; Liuxingping *</div><div class="line">      2 NTKrnl Security Suite -&gt; NTKrnl Team</div><div class="line">      2 Morphine 1.4 - 2.7 -&gt; Holy_Father &amp; Ratter/29A</div><div class="line">      2 MinGW GCC 3.x *</div><div class="line">      2 Microsoft Visual C++ Private Version 1 [Overlay]</div><div class="line">      2 Microsoft Visual C++ DLL Method 1</div><div class="line">      2 Microsoft Visual C++ 7.0 Method2 [Debug] [Overlay]</div><div class="line">      2 Microsoft Visual C++ 7.0 DLL Method 3</div><div class="line">      2 Microsoft Visual C++</div><div class="line">      2 Microsoft Visual Basic 5.0 / 6.0 [Debug]</div><div class="line">      2 MASM32 / TASM32</div><div class="line">      2 EXECryptor 2.2.4 -&gt; Strongbit/SoftComplete Development (h1) *</div><div class="line">      2 EXECryptor 1.x.x -&gt; SoftComplete Developement</div><div class="line">      2 Borland Delphi DLL</div><div class="line">      2 Borland Delphi 6.0 [Overlay]</div><div class="line">      2 Borland Delphi 3.0</div><div class="line">      2 Borland C++ DLL Method 2 [Overlay]</div><div class="line">      1 yoda&apos;s Protector 1.3 -&gt; Ashkbiz Danehkar</div><div class="line">      1 yoda&apos;s Protector 1.03.3 -&gt; Ashkbiz Danehkar</div><div class="line">      1 yoda&apos;s Protector 1.03.2 -&gt; Ashkbiz Danehkar</div><div class="line">      1 tElock v0.90 [Overlay] *</div><div class="line">      1 tElock v0.90 *</div><div class="line">      1 tElock 1.0 (private) -&gt; tE!</div><div class="line">      1 tElock 0.61 -&gt; tE!</div><div class="line">      1 nSpack V2.3 -&gt; LiuXingPing *</div><div class="line">      1 eXPressor 1.3.0 -&gt; CGSoftLabs</div><div class="line">      1 Winkript 1.0 -&gt; Mr. Crimson/WKT</div><div class="line">      1 WinRAR 32-bit SFX Module [RAR SFX] *</div><div class="line">      1 WWPack32 1.x -&gt; Piotr Warezak</div><div class="line">      1 Upack 0.28 - 0.399 (relocated image base) - Delphi, .NET, DLL -&gt; Dwing [Overlay]</div><div class="line">      1 Upack 0.24 - 0.29 beta -&gt; Dwing [Overlay]</div><div class="line">      1 UPX 1.03 - 1.04 -&gt; Markus &amp; Laszlo [Overlay]</div><div class="line">      1 UPX 1.03 - 1.04 -&gt; Markus &amp; Laszlo</div><div class="line">      1 UPX 0.89.6 - 1.02 / 1.05 - 2.90 -&gt; Markus &amp; Laszlo [Nullsoft PiMP SFX]</div><div class="line">      1 Themida 1.8.x.x -&gt; Oreans Technologies [Overlay] *</div><div class="line">      1 Themida -&gt; Oreans Technologies 2004 *</div><div class="line">      1 SafeDisc 2.05.030 -&gt; Macrovision [Overlay]</div><div class="line">      1 RLPack V1.11 -&gt; ap0x [Overlay] *</div><div class="line">      1 RLPack 1.20 Basic Edition [aPLib] -&gt; Ap0x *</div><div class="line">      1 RCryptor v1.6d --&gt; Vaska *</div><div class="line">      1 Pelles C 3.00, 4.00, 4.50 EXE (X86 CRT-LIB) [Overlay]</div><div class="line">      1 PKLITE32 v1.1 *</div><div class="line">      1 PEtite 2.x [Level 1/9] -&gt; Ian Luck [Overlay]</div><div class="line">      1 PEtite 2.x [Level 1/9] -&gt; Ian Luck</div><div class="line">      1 PEncrypt 4.0 Gamma / 4.0 Phi -&gt; junkcode</div><div class="line">      1 PESpin 0.3x - 1.xx -&gt; cyberbob</div><div class="line">      1 PECompact 2.xx --&gt; BitSum Technologies [Overlay] *</div><div class="line">      1 PECompact 2.xx --&gt; BitSum Technologies *</div><div class="line">      1 PECompact 1.40 - 1.45 -&gt; Jeremy Collake [Overlay]</div><div class="line">      1 PEBundle 2.0x - 2.4x-&gt; Jeremy Collake</div><div class="line">      1 PEBundle 0.2 - 3.x -&gt; Jeremy Collake</div><div class="line">      1 PE Pack 1.0 -&gt; ANAKiN [Overlay]</div><div class="line">      1 PE Pack 1.0 -&gt; ANAKiN</div><div class="line">      1 PE Crypt 1.02 -&gt; random, killa &amp; acpizer</div><div class="line">      1 Obsidium 1.3.0.4 -&gt; Obsidium Software [Overlay]</div><div class="line">      1 Nullsoft PiMP stub [Nullsoft PiMP SFX]</div><div class="line">      1 Nullsoft Install System 2.x [Nullsoft PiMP SFX]</div><div class="line">      1 NsPack 2.9 -&gt; North Star [Overlay] *</div><div class="line">      1 Nothing found [CAB SFX] *</div><div class="line">      1 NSPack 3.x -&gt; Liu Xing Ping *</div><div class="line">      1 Morphine 1.4 - 2.7 -&gt; Holy_Father &amp; Ratter/29A [Overlay]</div><div class="line">      1 MoleBox v2.0 [Overlay] *</div><div class="line">      1 Microsoft Visual C++ 8.0 [Debug] [Overlay]</div><div class="line">      1 Microsoft Visual C++ 7.0 Method2 [Overlay]</div><div class="line">      1 Microsoft Visual C++ 7.0 DLL Method 3 [Overlay]</div><div class="line">      1 Microsoft Visual C++ 6.0 [ZIP SFX]</div><div class="line">      1 Microsoft Visual C++ 6.0 SPx Method 1 [Overlay]</div><div class="line">      1 Microsoft Visual C++ 6.0 DLL [Debug]</div><div class="line">      1 Microsoft Visual C++ 4.x [Overlay]</div><div class="line">      1 Microsoft Visual C++ 4.x [Debug]</div><div class="line">      1 Microsoft Visual Basic 6.0 DLL [Overlay]</div><div class="line">      1 Microsoft CAB SFX module</div><div class="line">      1 LCC Win32 1.x -&gt; Jacob Navia</div><div class="line">      1 KByS V0.28 -&gt; shoooo [Overlay] *</div><div class="line">      1 KByS V0.22 -&gt; shoooo *</div><div class="line">      1 InstallShield AFW [Overlay]</div><div class="line">      1 Install Stub 32-bit -&gt; InstallShield [Overlay]</div><div class="line">      1 Inno Installer 4.0.5 [Inno SFX]</div><div class="line">      1 FSG 2.0 -&gt; bart/xt</div><div class="line">      1 EZIP 1.0 -&gt; Jonathan Clark [Overlay]</div><div class="line">      1 EXECryptor 1.x.x -&gt; SoftComplete Developement [Overlay]</div><div class="line">      1 CD-Cops II -&gt; Link Data Security [Overlay]</div><div class="line">      1 Borland Delphi DLL [Overlay]</div><div class="line">      1 Borland Delphi 5.0 KOL/MCK [Overlay]</div><div class="line">      1 Borland Delphi 5.0 KOL [Overlay]</div><div class="line">      1 Borland Delphi 3.0 [Overlay]</div><div class="line">      1 Borland Delphi 2.0 [Inno SFX]</div><div class="line">      1 Borland Delphi 2.0</div><div class="line">      1 Borland Component</div><div class="line">      1 Armadillo v1.71 [Overlay] *</div><div class="line">      1 Armadillo 3.78 - 4.xx -&gt; Silicon Realms Toolworks [Overlay]</div><div class="line">      1 Armadillo 2.01 -&gt; Silicon Realms Toolworks [Overlay]</div><div class="line">      1 ASProtect SKE 2.1x (exe) -&gt; Alexey Solodovnikov [Overlay] *</div><div class="line">      1 ASProtect 2.0x Registered -&gt; Alexey Solodovnikov [Overlay]</div><div class="line">      1 ASProtect 2.0x Registered -&gt; Alexey Solodovnikov</div><div class="line">      1 ASProtect 1.33 - 2.1 Registered -&gt; Alexey Solodovnikov [Overlay] *</div><div class="line">      1 ASProtect 1.2 / 1.2c-&gt; Alexey Solodovnikov</div><div class="line">      1 ASPack 2.12b -&gt; Alexey Solodovnikov</div><div class="line">      1 ASPack 1.08.03 -&gt; Alexey Solodovnikov [Overlay]</div><div class="line">      1 ASPack 1.06b / 1.061b -&gt; Alexey Solodovnikov [Overlay]</div><div class="line">      1 AHTeam EP Protector 0.3 (fake Microsoft Visual C++ 7.0) -&gt; FEUERRADER *</div><div class="line">      1 ACProtect V2.0 -&gt; risco *</div><div class="line">      1 ACProtect 2.00 - RISCO Software Inc. [Overlay]</div><div class="line">      1 ACProtect 1.40 - 1.41 - RISCO Software Inc.</div><div class="line">      1 .BJFNT 1.1b -&gt; :MARQUiS:</div><div class="line">      1 * PseudoSigner 0.2 [Microsoft Visual Basic 5.0 - 6.0] --&gt; Anorganix [Overlay] *</div><div class="line">      1 * PseudoSigner 0.2 [Microsoft Visual Basic 5.0 - 6.0] --&gt; Anorganix *</div></pre></td></tr></table></figure>
+<p>ほとんど検出できていないのが残念．ひときわ面倒なThemidaは11検体だった．</p>
+<h1 id="サンドボックスの実態"><a href="#サンドボックスの実態" class="headerlink" title="サンドボックスの実態"></a>サンドボックスの実態</h1><p>サンドボックスの透明性が研究されている一方で，実際のマルウェアはあまり凝ったAnti-VMを備えていなかった．<br>一方で，現実のサンドボックスはどうだろうか．いくら論文で優れた手法が編み出されようが，役立てられていなければ意味がない．<br>そこで，一般に公開されているサンドボックスに対してシステム情報を取得するプログラムを挿入し，仮想マシンモニタの種類を判別できるかどうか試してみたのだが，実態はあまりにもお粗末だった．<br>詳細は言うまい．<br>だが，systeminfoコマンドとNtQuerySystemInformationだけで露見する代物ばかりだった．<br>マルウェアの解析ではなく検出を目的としたサービス，言ってしまえばVirusTotalをサンドボックスのフロントエンドとしたことが，この一因として挙げられる．<br>凝ったAnti-VMを備えたマルウェアがあまり多くないことも考えると，現状のサンドボックスで十分だということなのだろうか．</p>
+<h1 id="感想"><a href="#感想" class="headerlink" title="感想"></a>感想</h1><p>研究をしているうちに袋小路に突入してしまい，サンドボックスの透明性やAnti Anti-VMあくまでマルウェア解析の一側面に過ぎないことを私は忘れかけていた．<br>本質は別のところにある．</p>
+<h1 id="TEQUILABOOMBOOM"><a href="#TEQUILABOOMBOOM" class="headerlink" title="TEQUILABOOMBOOM"></a>TEQUILABOOMBOOM</h1><p>公開されているサンドボックスの中にTEQUILABOOMBOOMというホスト名のものがあった．<br><a href="http://www.virusradar.com/en/Win32 Kasidet.AA/description" target="_blank" rel="external">Trojan.Win32.Inject.uljv</a>や<a href="http://securitykitten.github.io/vm-checking-and-detecting/" target="_blank" rel="external">Backdoor.Win32.Agent.dkbp</a>など一部のマルウェアは，このホスト名に基づいてサンドボックスを検出することが知られている．調べてみると，<a href="http://webcache.googleusercontent.com/search?q=cache:hackforums.net/printthread.php?tid=3733605" target="_blank" rel="external">Question about keylogged PC - Printable Version</a>や<a href="http://webcache.googleusercontent.com/search?q=cache:wrb-hdtEFFkJ:www.hackforums.net/showthread.php%3Ftid%3D4522377%26page%3D16+&amp;cd=9&amp;hl=ja&amp;ct=clnk&amp;gl=jp" target="_blank" rel="external">[FUD][FREE] Agent Tesla [Keylogger] [ClipboardLogger] [On-Screen Keyboard Logger] - Page 16</a>など，2013年の時点で情報が攻撃者の間で共有されている．</p>
+<blockquote>
+<p>So I managed to crypt a keylogger and have my victim download it through dropbox (I think). I haven’t received any logs yet but it shows that I’m connected to a computer from france which is janettedoe@TEQUILABOOMBOOM. I’m not sure how this is possible, or if it’s some sort of error. Does anybody know what this is? My keylogger hasn’t been sent anywhere other than to my targets email. </p>
+</blockquote>
+<p>どうやらこれはGoogleが動かしているCuckoo Sandboxが用いるホスト名らしく，攻撃者によるサンドボックスの実態調査が進んでいることを伺わせる．<br>サンドボックスの透明性について拘りすぎる必要はないにせよ，その情報が攻撃者の手に渡ることを前提としたサービスについては検討の余地がある．</p>
+<h1 id="参考文献"><a href="#参考文献" class="headerlink" title="参考文献"></a>参考文献</h1><ul>
+<li>Gabriel Negreira Barbosa, Rodrigo Rubira Branco,<br>“<a href="https://www.blackhat.com/docs/us-14/materials/us-14-Branco-Prevalent-Characteristics-In-Modern-Malware.pdf" target="_blank" rel="external">Prevalent Characteristics in Modern Malware[PDF]</a>,”<br>Black Hat USA 2014.</li>
+<li>Gábor Pék, Levente Buttyán, Boldizsár Bencsáth,<br>“<a href="http://www.profsandhu.com/cs6393_s14/csur_hw_virt_2013.pdf" target="_blank" rel="external">A Survey of Security Issues in Hardware Virtualization[PDF]</a>,”<br>ACM Computing Surveys, vol. 45, issue. 3, 2013.</li>
+<li>“VirusShare.com,” <a href="http://virusshare.com/" target="_blank" rel="external">http://virusshare.com/</a></li>
+<li><a href="http://intelreport.mandiant.com/Mandiant_APT1_Report.pdf" target="_blank" rel="external">http://intelreport.mandiant.com/Mandiant_APT1_Report.pdf[PDF]</a></li>
+<li>“YARA - The pattern matching swiss knife for malware researchers,” <a href="http://plusvic.github.io/yara/" target="_blank" rel="external">http://plusvic.github.io/yara/</a></li>
+<li>“PEiD Download - Softpedia,” <a href="http://www.softpedia.com/get/Programming/Packers-Crypters-Protectors/PEiD-updated.shtml" target="_blank" rel="external">http://www.softpedia.com/get/Programming/Packers-Crypters-Protectors/PEiD-updated.shtml</a></li>
+<li>“Win32/Kasidet.AA | ESET Virusradar,” <a href="http://www.virusradar.com/en/Win32 Kasidet.AA/description" target="_blank" rel="external">http://www.virusradar.com/en/Win32 Kasidet.AA/description</a></li>
+<li>“VM Checking and Detecting Adventures in Security,” <a href="http://securitykitten.github.io/vm-checking-and-detecting/" target="_blank" rel="external">http://securitykitten.github.io/vm-checking-and-detecting/</a></li>
+<li>“Question about keylogged PC - Printable Version,” <a href="http://webcache.googleusercontent.com/search?q=cache:hackforums.net/printthread.php?tid=3733605" target="_blank" rel="external">http://webcache.googleusercontent.com/search?q=cache:hackforums.net/printthread.php?tid=3733605</a></li>
+<li>“[FUD][FREE] Agent Tesla [Keylogger] [ClipboardLogger] [On-Screen Keyboard Logger] - Page 16],” <a href="http://webcache.googleusercontent.com/search?q=cache:wrb-hdtEFFkJ:www.hackforums.net/showthread.php%3Ftid%3D4522377%26page%3D16+&amp;cd=9&amp;hl=ja&amp;ct=clnk&amp;gl=jp" target="_blank" rel="external">http://webcache.googleusercontent.com/search?q=cache:wrb-hdtEFFkJ:www.hackforums.net/showthread.php%3Ftid%3D4522377%26page%3D16+&amp;cd=9&amp;hl=ja&amp;ct=clnk&amp;gl=jp</a></li>
+<li>Katsunari Yoshioka, Yoshihiko Hosobuchi, Tatsunori Orii, Tsutomu Matsumoto,<br>“<a href="http://ieeexplore.ieee.org/xpl/login.jsp?tp=&amp;arnumber=5598065&amp;url=http%3A%2F%2Fieeexplore.ieee.org%2Fxpls%2Fabs_all.jsp%3Farnumber%3D5598065" target="_blank" rel="external">Vulnerability in Public Malware Sandbox Analysis Systems</a>,”<br>IEEE/IPSJ 12th International Symposium on Applications and the Internet, pp. 265-268, 2010.</li>
+</ul>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://ntddk.github.io/2015/03/14/sandbox-transparency-in-the-wild/" data-id="cj13oizhb000upcoscwxswu91" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/virtual-machine-introspection/">virtual machine introspection</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+  
+    <nav id="page-nav">
+      <a class="extend prev" rel="prev" href="/archives/">&laquo; Prev</a><a class="page-number" href="/archives/">1</a><span class="page-number current">2</span><a class="page-number" href="/archives/page/3/">3</a><a class="extend next" rel="next" href="/archives/page/3/">Next &raquo;</a>
+    </nav>
+  
+</section>
+        
+      </div>
+      <footer id="footer">
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      &copy; 2017 ntddk<br>
+      <a href="https://github.com/ntddk/hexo-theme-jathena" target="_blank">JAthena</a> by <a href="http://ntddk.github.io" target="_blank">ntddk</a> | Powered by <a href="http://hexo.io/" target="_blank">Hexo</a>
+    </div>
+  </div>
+</footer>
+    </div>
+    
+
+<script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+
+
+  <link rel="stylesheet" href="/fancybox/jquery.fancybox.css">
+  <script src="/fancybox/jquery.fancybox.pack.js"></script>
+
+
+<script src="/js/script.js"></script>
+  </div>
+
+<!-- Begin: Injected MathJax -->
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Config({"tex2jax":{"inlineMath":[["$","$"],["\\(","\\)"]],"skipTags":["script","noscript","style","textarea","pre","code"],"processEscapes":true},"TeX":{"equationNumbers":{"autoNumber":"AMS"}}});
+</script>
+
+<script type="text/x-mathjax-config">
+    MathJax.Hub.Queue(function() {
+        var all = MathJax.Hub.getAllJax(), i;
+        for(i=0; i < all.length; i += 1) {
+            all[i].SourceElement().parentNode.className += ' has-jax';
+        }
+    });
+</script>
+
+<script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.0/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
+</script>
+<!-- End: Injected MathJax -->
+</body>
+</html>

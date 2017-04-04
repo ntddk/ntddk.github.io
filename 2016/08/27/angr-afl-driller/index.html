@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+  <title>angr, AFL, Driller | 一生あとで読んでろ</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="description" content="はじめに　今年のセキュリティ・キャンプでは，うっかり「なぜマルウェア解析は自動化できないのか」という題の講義を行ってしまったが，それだけセキュリティの世界には自動化の波が来ている．本稿では，脆弱性分析の自動化をめざして開発されているangr, AFL, Drillerをざっくり紹介する． angr　angrはUCSBの研究チームにしてCTFチームShellphishを中心に開発されているバイナリ解">
+<meta name="keywords" content="exploiting,symbolic execution">
+<meta property="og:type" content="article">
+<meta property="og:title" content="angr, AFL, Driller">
+<meta property="og:url" content="http://ntddk.github.io/2016/08/27/angr-afl-driller/index.html">
+<meta property="og:site_name" content="一生あとで読んでろ">
+<meta property="og:description" content="はじめに　今年のセキュリティ・キャンプでは，うっかり「なぜマルウェア解析は自動化できないのか」という題の講義を行ってしまったが，それだけセキュリティの世界には自動化の波が来ている．本稿では，脆弱性分析の自動化をめざして開発されているangr, AFL, Drillerをざっくり紹介する． angr　angrはUCSBの研究チームにしてCTFチームShellphishを中心に開発されているバイナリ解">
+<meta property="og:image" content="http://ntddk.github.io/image/driller/driller.png">
+<meta property="og:updated_time" content="2016-09-15T08:53:36.203Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="angr, AFL, Driller">
+<meta name="twitter:description" content="はじめに　今年のセキュリティ・キャンプでは，うっかり「なぜマルウェア解析は自動化できないのか」という題の講義を行ってしまったが，それだけセキュリティの世界には自動化の波が来ている．本稿では，脆弱性分析の自動化をめざして開発されているangr, AFL, Drillerをざっくり紹介する． angr　angrはUCSBの研究チームにしてCTFチームShellphishを中心に開発されているバイナリ解">
+<meta name="twitter:image" content="http://ntddk.github.io/image/driller/driller.png">
+  
+  
+  <link href="//fonts.googleapis.com/css?family=Ubuntu" rel="stylesheet" type="text/css">
+  <link rel="stylesheet" href="/css/style.css">
+  
+</head>
+<body>
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/" id="logo">一生あとで読んでろ</a>
+      </h1>
+      
+        <h2 id="subtitle-wrap">
+          <a href="/" id="subtitle">技術ブログ</a>
+        </h2>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="sub-nav">
+        
+          <a id="nav-home-icon" class="nav-icon" href="/"></a>
+        
+          <a id="nav-about-icon" class="nav-icon" href="/about"></a>
+        
+        
+      </nav>
+    </div>
+  </div>
+</header>
+      <div class="outer">
+        <section id="main"><article id="post-angr-afl-driller" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    
+      <header class="article-header">
+        
+  
+    <h1 class="article-title" itemprop="name">
+      angr, AFL, Driller
+    </h1>
+  
+
+      </header>
+    
+    <time class="article-date" datetime="2016-08-26T18:00:00.000Z" itemprop="datePublished">08-27-2016</time>
+    
+  </div>
+  <div class="article-inner">
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h1 id="はじめに"><a href="#はじめに" class="headerlink" title="はじめに"></a>はじめに</h1><p>　今年のセキュリティ・キャンプでは，うっかり「なぜマルウェア解析は自動化できないのか」という題の講義を行ってしまったが，それだけセキュリティの世界には自動化の波が来ている．本稿では，脆弱性分析の自動化をめざして開発されているangr, AFL, Drillerをざっくり紹介する．</p>
+<h1 id="angr"><a href="#angr" class="headerlink" title="angr"></a>angr</h1><p>　<a href="http://angr.io/" target="_blank" rel="external">angr</a>はUCSBの研究チームにしてCTFチーム<a href="https://twitter.com/shellphish" target="_blank" rel="external">Shellphish</a>を中心に開発されているバイナリ解析フレームワーク．<a href="https://www.cs.ucsb.edu/~vigna/publications/2016_SP_angrSoK.pdf" target="_blank" rel="external">論文[PDF]</a>はIEEE S&amp;P 2016に採択されている．手法の新規性というよりは実装力でゴリ押しするタイプ．評価には，アメリカ国防高等研究計画局が5,500万ドル（約56億円）の資金を投じてまで開催した脆弱性分析・修正の自動化コンペ，<a href="https://www.cybergrandchallenge.com/" target="_blank" rel="external">DARPA Cyber Grand Challenge</a> (CGC) のデータセットが用いられている．CGCの決勝戦に進出したチームには75万ドル（約7,600万円），優勝したチームは200万ドル（約2億円）が与えられる．angr開発の目的のひとつが，CGCでの勝利にあることは疑いようもない——最終的な戦績は，CMUのツールMAYHEMに優勝を譲って3位だったが．<br>　さて，angrはシンボリック実行やプログラムスライシングを通して，<strong>プログラムの特定位置に到達するための入力値を抽出することができる</strong>．次のコードで雰囲気をつかめるだろうか：</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div><div class="line">22</div><div class="line">23</div><div class="line">24</div><div class="line">25</div><div class="line">26</div><div class="line">27</div><div class="line">28</div><div class="line">29</div><div class="line">30</div></pre></td><td class="code"><pre><div class="line"><span class="comment">#!/usr/bin/env python</span></div><div class="line"><span class="comment">#-*- coding:utf-8 -*-</span></div><div class="line"><span class="keyword">import</span> sys</div><div class="line"><span class="keyword">import</span> angr</div><div class="line"><span class="keyword">import</span> simuvex</div><div class="line"></div><div class="line"><span class="comment"># 解析対象を指定</span></div><div class="line">p = angr.Project(sys.argv[<span class="number">1</span>]) </div><div class="line"></div><div class="line"><span class="comment"># 制御フローグラフの生成</span></div><div class="line">cfg = p.analyses.CFG()</div><div class="line"><span class="keyword">print</span> [x <span class="keyword">for</span> x <span class="keyword">in</span> cfg.functions.iteritems()]</div><div class="line"></div><div class="line"><span class="comment"># シンボルを取得</span></div><div class="line">target_addr = p.loader.main_bin.get_symbol(<span class="string">"main"</span>).addr</div><div class="line"></div><div class="line"><span class="comment"># パス分析クラスのインスタンス</span></div><div class="line">pg = p.factory.path_group()</div><div class="line"></div><div class="line"><span class="comment"># シンボルへのパスを分析</span></div><div class="line">pg.explore(find = target_addr)</div><div class="line"></div><div class="line"><span class="comment"># avoidを避け，findに到達する入力値を探索してくれる</span></div><div class="line">a = p.surveyors.Explorer(find = FIND_ADDR, avoid = AVOID_ADDR).run()</div><div class="line"></div><div class="line"><span class="comment"># フック</span></div><div class="line">p.hook_symbol(<span class="string">'strlen'</span>, simuvex.SimProcedures[<span class="string">'stubs'</span>][<span class="string">'ReturnUnconstrained'</span>])</div><div class="line"></div><div class="line"><span class="comment"># 実行結果のダンプ</span></div><div class="line">a.found[<span class="number">0</span>].state.posix.dumps(<span class="number">1</span>)</div></pre></td></tr></table></figure>
+<p>　解析対象の規模が大きい場合，エントリポイントを起点とした解析に時間を要するあるいは失敗することがあるが，プログラムの途中から解析を始めることも可能だ．</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div></pre></td><td class="code"><pre><div class="line">p = angr.Project(sys.argv[<span class="number">1</span>])</div><div class="line"></div><div class="line"><span class="comment"># 解析の起点となるアドレス</span></div><div class="line">state = p.factory.blank_state(addr = START_ADDR)</div><div class="line"><span class="comment"># その地点までプログラムを実行したときのスタックの状態</span></div><div class="line">state.regs.ebp = BASE_ADDR</div><div class="line">state.regs.esp = STACK_ADDR</div><div class="line"></div><div class="line"><span class="comment"># 入力値の設定</span></div><div class="line"><span class="keyword">for</span> i <span class="keyword">in</span> range(INPUT_LENGTH):</div><div class="line">    s = state.se.BVS(<span class="string">'Var[&#123;&#125;]'</span>.format(i), <span class="number">32</span>, explicit_name = <span class="keyword">True</span>)</div><div class="line">    state.memory.store(INPUT_ADDR + i * <span class="number">4</span>, s)</div><div class="line"></div><div class="line">path = p.factory.path(state)</div><div class="line">a = p.surveyors.Explorer(start = path, find= FIND_ADDR, avoid= AVOID_ADDR)</div><div class="line">a.found[<span class="number">0</span>].state.posix.dumps(<span class="number">1</span>)</div></pre></td></tr></table></figure>
+<p>　シンボリック実行はSSA形式の中間表現を前提とするが，angrはValgrindのVEX IRを用いている．バックエンドのSMTソルバはZ3だが，claripyという自前のラッパが噛ませてある．<br>　これ以上の説明は<a href="http://docs.angr.io/" target="_blank" rel="external">公式ドキュメント</a>に譲ろう．</p>
+<h1 id="AFL"><a href="#AFL" class="headerlink" title="AFL"></a>AFL</h1><p>　<a href="http://lcamtuf.coredump.cx/afl/" target="_blank" rel="external">AFL</a> (American Fuzzy Lop) はGoogleのエンジニア<a href="https://twitter.com/lcamtuf" target="_blank" rel="external">lcamtuf</a>を中心に開発されているファジングツール．遺伝的アルゴリズムによって正常な入力を次々と変異させていき，<strong>自動的にプログラムのバグを検出する</strong>．AFLにはbashやtcpdump, OpenSSHといったさまざまなソフトウェアのバグを検出した実績があり，いまや脆弱性分析の研究になくてはならない存在だ．一般的なファジングはプログラムの浅い箇所にしか到達できない．AFLは，大量の正常な入力をトリミングしてシードとするコーパス蒸留 (corpus distillation) と，遺伝的アルゴリズムを用いてシードを変異させる<a href="http://ieeexplore.ieee.org/document/4682289/" target="_blank" rel="external">GAFuzzing</a>のいいとこ取りを図ったものだ．その実行フローは次のようになる：</p>
+<ol>
+<li>ユーザーから与えられた初期テストケースをキューに入れる</li>
+<li>キューから次の入力テストケースをひとつ取り出し，</li>
+<li>プログラムの振る舞いに影響を与えない最小サイズにトリミングする</li>
+<li>バランスのよい探索となるよう，さまざまな変異戦略を用いて入力を繰り返し変異させる</li>
+<li>新たな状態遷移が計測されたら，出力をキューに入れる</li>
+<li>2に戻る</li>
+</ol>
+<p>　ここでAFLはカバレッジ計測のため，解析対象のプログラムに計測用のコードを埋め込む．これには，解析対象のソースコードが手元にある場合gccやclangの独自フロントエンドが，解析対象のソースコードが手元にない場合QEMUが用いられる．<br>　ファジング機能の中核は，<code>afl-fuzz.c</code>の<code>main()</code>から呼び出される<code>fuzz_one()</code>にある．実装されている変異戦略は次の通り：</p>
+<ul>
+<li>SIMPLE BITFLIP</li>
+<li>ARITHMETIC INC/DEC</li>
+<li>INTERESTING VALUES</li>
+<li>DICTIONARY STUFF</li>
+<li>RANDOM HAVOC</li>
+<li>SPLICING</li>
+</ul>
+<p>　CGCで優勝したCMUのMAYHEMは，<a href="https://twitter.com/thedavidbrumley/status/762107471771021313" target="_blank" rel="external">このAFLにシンボリック実行機能を追加していたようだ</a>．MAYHEMといえば同名のシンボリック実行エンジンの<a href="https://users.ece.cmu.edu/~arebert/papers/mayhem-oakland-12.pdf" target="_blank" rel="external">論文[PDF]</a>がIEEE S&amp;P 2012で発表されているが，当時からの変更点がどれほどなのかはわからない．<br>　また，AFLの拡張に，解析対象のパスを枝刈りすることで高速化を図った<a href="https://github.com/mboehme/aflfast" target="_blank" rel="external">AFLFast</a>がある．これもCGC決勝進出チームによるもので，<a href="https://comp.nus.edu.sg/~mboehme/paper/CCS16.pdf" target="_blank" rel="external">論文[PDF]</a>はACM CCS 2016に採択されている．600行程度のパッチでトップカンファレンス．ちょっと妬ましい．</p>
+<h1 id="Driller"><a href="#Driller" class="headerlink" title="Driller"></a>Driller</h1><p>　<a href="https://github.com/shellphish/driller" target="_blank" rel="external">Driller</a>はangrの開発陣によるAFLの拡張．<a href="https://www.internetsociety.org/sites/default/files/blogs-media/driller-augmenting-fuzzing-through-selective-symbolic-execution.pdf" target="_blank" rel="external">論文[PDF]</a>はNDSS 2016に採択されている．AFLのREADMEには次のようにある：</p>
+<blockquote>
+<p>Other, more sophisticated research has focused on techniques such as program flow analysis (“concolic execution”), symbolic execution, or static analysis. All these methods are extremely promising in experimental settings, but tend to suffer from reliability and performance problems in practical uses - and currently do not offer a viable alternative to “dumb” fuzzing techniques.</p>
+</blockquote>
+<p>　シンボリック（コンコリック）実行は実用的ではないと切って捨てている．DrillerはangrとAFLを組み合わせることで，この批判を克服し，ファジングとシンボリック実行のいいとこ取りを図ったものだ：</p>
+<p><img src="/image/driller/driller.png" width="100%" height="100%"></p>
+<p>　たとえば，次のコードの解析には，ファジングよりシンボリック実行が適している：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div></pre></td><td class="code"><pre><div class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">(<span class="keyword">void</span>)</span></span></div><div class="line">&#123;</div><div class="line">    <span class="keyword">int</span> x;</div><div class="line">    read(<span class="number">0</span>, &amp;x, <span class="keyword">sizeof</span>(x));</div><div class="line">    <span class="keyword">if</span>(x == <span class="number">0x123ABCD</span>)</div><div class="line">        vulnerable();</div><div class="line">&#125;</div></pre></td></tr></table></figure>
+<p>　なぜなら，ファジングによって<code>0x123ABCD</code>という値を生成するには大量の試行を必要とするからだ．一方で，次のコードの解析には，シンボリック実行よりファジングが適している：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div></pre></td><td class="code"><pre><div class="line"><span class="function"><span class="keyword">int</span> <span class="title">check</span><span class="params">(<span class="keyword">char</span> *x, <span class="keyword">int</span> depth)</span></span></div><div class="line">&#123;</div><div class="line">    <span class="keyword">if</span>(depth &gt;= <span class="number">100</span>)&#123;</div><div class="line">        <span class="keyword">return</span> <span class="number">0</span>;</div><div class="line">    &#125;<span class="keyword">else</span>&#123;</div><div class="line">        <span class="keyword">int</span> count = (*x == <span class="string">'B'</span>) ? <span class="number">1</span> : <span class="number">0</span>;</div><div class="line">        count += check(x+<span class="number">1</span>, depth+<span class="number">1</span>);</div><div class="line">        <span class="keyword">return</span> count;</div><div class="line">    &#125;</div><div class="line">&#125;</div><div class="line"></div><div class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">(<span class="keyword">void</span>)</span></span></div><div class="line">&#123;</div><div class="line">    <span class="keyword">char</span> x[<span class="number">100</span>];</div><div class="line">    read(<span class="number">0</span>, x, <span class="number">100</span>);</div><div class="line"></div><div class="line">    <span class="keyword">if</span>(check(x, <span class="number">0</span>) == <span class="number">25</span>)</div><div class="line">        vulnerable();</div><div class="line">&#125;</div></pre></td></tr></table></figure>
+<p>　なぜなら，単純なシンボリック実行ではパス爆発を解決できないからだ．<br>　Drillerは両手法の長所と短所を踏まえた上で，それらを堅実に組み合わせている．やはりハッシュ関数の充足はDrillerをもってしても難しいようだが，現行MAYHEMもAFLとシンボリック実行を併用しているようだし，このアプローチが現在の着地点なのだろう．</p>
+<h1 id="おわりに"><a href="#おわりに" class="headerlink" title="おわりに"></a>おわりに</h1><p>　CGCとそれにともなう研究によって，脆弱性分析の自動化手法は大きな進歩を遂げつつあることが伝わっただろうか．学会のOSS重視傾向も相まって，さまざまなツールを手元で試せるようになってきている．大変ありがたいことだ．</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://ntddk.github.io/2016/08/27/angr-afl-driller/" data-id="cj13oizg00003pcosg1iso6dt" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/exploiting/">exploiting</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/symbolic-execution/">symbolic execution</a></li></ul>
+
+    </footer>
+  </div>
+  
+    
+<nav id="article-nav">
+  
+    <a href="/2016/07/09/unicorn-internals-python/" id="article-nav-newer" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Newer</strong>
+      <div class="article-nav-title">
+        
+          Unicornのソースコードを読む (Python編)
+        
+      </div>
+    </a>
+  
+  
+    <a href="/2016/11/06/suppress-switching-ime-on-xming/" id="article-nav-older" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Older</strong>
+      <div class="article-nav-title">Xmingによる入力言語の切り替えを防ぐ</div>
+    </a>
+  
+</nav>
+
+  
+</article>
+
+</section>
+        
+      </div>
+      <footer id="footer">
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      &copy; 2017 ntddk<br>
+      <a href="https://github.com/ntddk/hexo-theme-jathena" target="_blank">JAthena</a> by <a href="http://ntddk.github.io" target="_blank">ntddk</a> | Powered by <a href="http://hexo.io/" target="_blank">Hexo</a>
+    </div>
+  </div>
+</footer>
+    </div>
+    
+
+<script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+
+
+  <link rel="stylesheet" href="/fancybox/jquery.fancybox.css">
+  <script src="/fancybox/jquery.fancybox.pack.js"></script>
+
+
+<script src="/js/script.js"></script>
+  </div>
+</body>
+</html>
