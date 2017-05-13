@@ -1379,9 +1379,9 @@
     </summary>
     
     
-      <category term="symbolic execution" scheme="http://ntddk.github.io/tags/symbolic-execution/"/>
-    
       <category term="taint analysis" scheme="http://ntddk.github.io/tags/taint-analysis/"/>
+    
+      <category term="symbolic execution" scheme="http://ntddk.github.io/tags/symbolic-execution/"/>
     
   </entry>
   
@@ -1542,9 +1542,9 @@
     </summary>
     
     
-      <category term="symbolic execution" scheme="http://ntddk.github.io/tags/symbolic-execution/"/>
-    
       <category term="taint analysis" scheme="http://ntddk.github.io/tags/taint-analysis/"/>
+    
+      <category term="symbolic execution" scheme="http://ntddk.github.io/tags/symbolic-execution/"/>
     
       <category term="virtual machine introspection" scheme="http://ntddk.github.io/tags/virtual-machine-introspection/"/>
     
