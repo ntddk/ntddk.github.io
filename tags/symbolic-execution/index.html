@@ -47,6 +47,129 @@
       <div class="outer">
         <section id="main">
   
+    <article id="post-z3py-link-collection" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    
+      <header class="article-header">
+        
+  
+    <a class="article-title" href="/2017/08/24/z3py-link-collection/">z3pyリンク集</a>
+  
+
+      </header>
+    
+    <time class="article-date" datetime="2017-08-24T14:59:59.000Z" itemprop="datePublished">08-24-2017</time>
+    
+  </div>
+  <div class="article-inner">
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p>　なにもかも忘れかけている．</p>
+<h1 id="はじめに"><a href="#はじめに" class="headerlink" title="はじめに"></a>はじめに</h1><p>　z3pyはSMTソルバ<a href="https://github.com/Z3Prover/z3" target="_blank" rel="external">z3</a>のPythonバインディング．たとえば</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div></pre></td><td class="code"><pre><div class="line">...</div><div class="line">    <span class="keyword">if</span>(x * <span class="number">2</span> + <span class="number">3</span> * y == <span class="number">4</span></div><div class="line">        &amp;&amp; x * <span class="number">3</span> + y == <span class="number">-1</span>)&#123;</div><div class="line">        <span class="built_in">puts</span>(<span class="string">"congrats!"</span>);</div><div class="line">    &#125;</div></pre></td></tr></table></figure>
+<p>のようなプログラムに対して</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div></pre></td><td class="code"><pre><div class="line"><span class="keyword">from</span> z3 <span class="keyword">import</span> *</div><div class="line"></div><div class="line">x = Int(<span class="string">'x'</span>)</div><div class="line">y = Int(<span class="string">'y'</span>)</div><div class="line"></div><div class="line">s = Solver()</div><div class="line">s.add(x * <span class="number">2</span> + <span class="number">3</span> * y == <span class="number">4</span>)</div><div class="line">s.add(x * <span class="number">3</span> + y == <span class="number">-1</span>)</div><div class="line"></div><div class="line">print(s.check())</div><div class="line">print(s.model())</div></pre></td></tr></table></figure>
+<p>としてやれば期待される入力値<code>[x = -1, y = 2]</code>を算出できる．これだけではだからなに？ という感じだが．シンボリック実行は各命令とメモリの状態からこの割当を自動生成するものだと思えばよい．これが<a href="https://github.com/angr/angr" target="_blank" rel="external">angr</a>やら<a href="https://github.com/JonathanSalwan/Triton" target="_blank" rel="external">Triton</a>やら<a href="https://github.com/cea-sec/miasm" target="_blank" rel="external">miasm</a>やら<a href="https://github.com/trailofbits/manticore" target="_blank" rel="external">manticore</a>やら，その他いまどきのバイナリ解析ツール群の基盤となっているというわけです．</p>
+<h1 id="参考になったサイト"><a href="#参考になったサイト" class="headerlink" title="参考になったサイト"></a>参考になったサイト</h1><p>　で，メモっとかないと忘れるので．SAT/SMTソルバのしくみやシンボリック実行全般まで広げると膨大になるということで，z3pyに限っています．前者については<a href="http://www-erato.ist.hokudai.ac.jp/docs/seminar/nabeshima.pdf" target="_blank" rel="external">高速SATソルバーの原理 - 基盤(S)離散構造処理系プロジェクト[PDF]</a>や<a href="https://www.slideshare.net/sakai/satsmt" target="_blank" rel="external">SAT/SMTソルバの仕組み - SlideShare</a>を読むとよいでしょう．いまどきのSAT/SMTソルバにはVSIDSやらLubyリスタートやらいろいろな工夫が盛り込まれているが，とりあえずユーザとしてはDPLLとCDCLさえ抑えておけば問題ないはず．後者，シンボリック実行全般に関するおすすめの文献は秘密．Pythonバインディング以外の記事，angrやTritonなどサードパーティのツール群に関する記事も省いてある．</p>
+<table>
+<thead>
+<tr>
+<th>ウェブサイト</th>
+<th>概要</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="https://wiki.mma.club.uec.ac.jp/CTF/Toolkit/z3py" target="_blank" rel="external">CTF/Toolkit/z3py - 電気通信大学MMA</a></td>
+<td>日本語で書かれた入門資料．これには書かれてないが<code>BitVecSort</code>も便利．</td>
+</tr>
+<tr>
+<td><a href="https://doar-e.github.io/presentations/securityday2015/SecDay-Lille-2015-Axel-0vercl0k-Souchet.html#/" target="_blank" rel="external">Theorem prover, symbolic execution and practical reverse-engineering</a></td>
+<td>z3pyのチュートリアル．まずはこの通りに手を動かす．</td>
+</tr>
+<tr>
+<td><a href="http://doar-e.github.io/blog/2013/09/16/breaking-kryptonites-obfuscation-with-symbolic-execution/" target="_blank" rel="external">Breaking Kryptonite’s Obfuscation: A Static Analysis Approach Relying on Symbolic Execution</a></td>
+<td>シンボリック実行の最小構成の実装．</td>
+</tr>
+<tr>
+<td><a href="https://github.com/0vercl0k/z3-playground/" target="_blank" rel="external">0vercl0k/z3-playground</a></td>
+<td>上2つの資料で参照されているソースコード群．</td>
+</tr>
+<tr>
+<td><a href="https://anee.me/solving-a-simple-crackme-using-z3-68c55af7f7b1" target="_blank" rel="external">Solving a simple crackme using Z3 – Aneesh Dogra’s Blog</a></td>
+<td>簡単なcrackmeのwriteup.</td>
+</tr>
+<tr>
+<td><a href="https://rolandsako.wordpress.com/2016/02/17/playing-with-z3-hacking-the-serial-check/" target="_blank" rel="external">Playing with Z3, hacking the serial check. – rosako’s blog</a></td>
+<td>簡単なcrackmeのwriteup.</td>
+</tr>
+<tr>
+<td><a href="https://blog.lse.epita.fr/articles/24-using-sat-and-smt-to-defeat-simple-hashing-algorit.html" target="_blank" rel="external">Using SAT and SMT to defeat simple hashing algorithms - LSE Blog</a></td>
+<td>オレオレハッシュ関数の解析．</td>
+</tr>
+<tr>
+<td><a href="https://0xec.blogspot.jp/2016/04/reversing-petya-ransomware-with.html" target="_blank" rel="external">Reversing the petya ransomware with constraint solvers</a></td>
+<td>ランサムウェアPetyaのSalsa実装の不備を突くdecryptor.</td>
+</tr>
+<tr>
+<td><a href="https://github.com/thomasjball/PyExZ3" target="_blank" rel="external">thomasjball/PyExZ3</a></td>
+<td>シンボリック実行の実装例．z3公式からリンクが貼られている．<code>symbolic/</code>以下，<code>z3_wrap.py</code>, <code>loader.py</code>が参考になる．</td>
+</tr>
+<tr>
+<td><a href="https://yurichev.com/writings/SAT_SMT_draft-EN.pdf" target="_blank" rel="external">Quick introduction into SAT/SMT solvers and symbolic execution (DRAFT)</a></td>
+<td>いろいろリンク貼ったけどこれだけ読めばいい．SMTソルバの紹介．数独の解き方．マインスイーパの自動化．デコンパイラ．難読化解除．シンボリック実行．ハッシュ関数の解析．全部載っている．Dennis Yurichev氏，<a href="https://beginners.re/" target="_blank" rel="external">Reverse Engineering for Beginners</a>も書いていて，慈善事業家か？</td>
+</tr>
+</tbody>
+</table>
+<p>　はてなブックマークを使っていればよかったのではという気がしてきた．</p>
+<h1 id="おわりに"><a href="#おわりに" class="headerlink" title="おわりに"></a>おわりに</h1><p>　z3py便利最高ですね．みなさんは便利最高ですか？<br>　これで次のようなCTFの問題を解くことができます：</p>
+<table>
+<thead>
+<tr>
+<th>問題</th>
+<th>大会</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Unbreakable Enterprise Product Activation</td>
+<td>Google CTF 2016</td>
+</tr>
+<tr>
+<td>Ropsynth</td>
+<td>SECON 2016 Online CTF</td>
+</tr>
+<tr>
+<td>baby-re</td>
+<td>DEF CON CTF Qualifier 2016</td>
+</tr>
+<tr>
+<td>amandhj</td>
+<td>DEF CON CTF Qualifier 2016</td>
+</tr>
+<tr>
+<td>Pepperidge Farm</td>
+<td>DEF CON CTF Qualifier 2017</td>
+</tr>
+</tbody>
+</table>
+<p>　まあ明らかにangr使ったほうが楽．とりあえずいくつかやってみただけで，ほかにもたくさんあると思う．<br>　Bareflank Hypervisorを読むのはいつになるかわかりません．</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://ntddk.github.io/2017/08/24/z3py-link-collection/" data-id="cj6qhpkko001qwgosiac67m56" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/algorithm/">algorithm</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/symbolic-execution/">symbolic execution</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
     <article id="post-angr-afl-driller" class="article article-type-post" itemscope itemprop="blogPost">
   <div class="article-meta">
     
@@ -105,7 +228,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://ntddk.github.io/2016/08/27/angr-afl-driller/" data-id="cj2mtsjl600068wos60sdxkke" class="article-share-link">Share</a>
+      <a data-url="http://ntddk.github.io/2016/08/27/angr-afl-driller/" data-id="cj6qhpkii0000wgosdhqluq7j" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/exploiting/">exploiting</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/symbolic-execution/">symbolic execution</a></li></ul>
@@ -197,7 +320,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://ntddk.github.io/2015/12/11/autoprobe/" data-id="cj2mtsjl600058wos0hwo0pey" class="article-share-link">Share</a>
+      <a data-url="http://ntddk.github.io/2015/12/11/autoprobe/" data-id="cj6qhpkiy0006wgosw7aw5o9f" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/symbolic-execution/">symbolic execution</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/taint-analysis/">taint analysis</a></li></ul>
@@ -264,7 +387,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://ntddk.github.io/2015/11/09/is-linear-obfuscation-a-threat/" data-id="cj2mtsjll000h8wos0yajvkm8" class="article-share-link">Share</a>
+      <a data-url="http://ntddk.github.io/2015/11/09/is-linear-obfuscation-a-threat/" data-id="cj6qhpkjd000ewgosp92i9f2f" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/symbolic-execution/">symbolic execution</a></li></ul>
@@ -317,7 +440,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://ntddk.github.io/2015/08/16/automated-malware-analysis-using-decaf-in-seccamp15/" data-id="cj2mtsjkq00028wos0oayb0ai" class="article-share-link">Share</a>
+      <a data-url="http://ntddk.github.io/2015/08/16/automated-malware-analysis-using-decaf-in-seccamp15/" data-id="cj6qhpkiy0005wgoszpkdznb1" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/dynamic-binary-translation/">dynamic binary translation</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/symbolic-execution/">symbolic execution</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/taint-analysis/">taint analysis</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/virtual-machine-introspection/">virtual machine introspection</a></li></ul>
@@ -371,7 +494,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://ntddk.github.io/2014/12/09/v2e/" data-id="cj2mtsjmh001c8wosr9dkpxib" class="article-share-link">Share</a>
+      <a data-url="http://ntddk.github.io/2014/12/09/v2e/" data-id="cj6qhpkko001ewgoszpw0f5q4" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/dynamic-binary-translation/">dynamic binary translation</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/symbolic-execution/">symbolic execution</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/taint-analysis/">taint analysis</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/virtual-machine-introspection/">virtual machine introspection</a></li></ul>
@@ -435,7 +558,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://ntddk.github.io/2014/12/03/symexec-s2e/" data-id="cj2mtsjm100178wosg5znadub" class="article-share-link">Share</a>
+      <a data-url="http://ntddk.github.io/2014/12/03/symexec-s2e/" data-id="cj6qhpkk90016wgosy8p374pr" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/dynamic-binary-translation/">dynamic binary translation</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/symbolic-execution/">symbolic execution</a></li></ul>
@@ -493,7 +616,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://ntddk.github.io/2014/09/28/vine-howto/" data-id="cj2mtsjmh001h8wosjy0h7rsq" class="article-share-link">Share</a>
+      <a data-url="http://ntddk.github.io/2014/09/28/vine-howto/" data-id="cj6qhpkko001jwgosrjcsiwqx" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/dynamic-binary-translation/">dynamic binary translation</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/symbolic-execution/">symbolic execution</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/taint-analysis/">taint analysis</a></li></ul>
@@ -568,7 +691,7 @@ mov esi, 0x2014
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://ntddk.github.io/2014/09/12/symexec-intro/" data-id="cj2mtsjm100158wosji4bl23n" class="article-share-link">Share</a>
+      <a data-url="http://ntddk.github.io/2014/09/12/symexec-intro/" data-id="cj6qhpkjt0011wgosjwidx7c9" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/dynamic-binary-translation/">dynamic binary translation</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/symbolic-execution/">symbolic execution</a></li></ul>
