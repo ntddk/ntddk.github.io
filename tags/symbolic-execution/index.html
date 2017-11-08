@@ -47,6 +47,108 @@
       <div class="outer">
         <section id="main">
   
+    <article id="post-a-complemental-guide-to-migrate-pySide-code-to-pyqt5-within-your-idapython-script" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    
+      <header class="article-header">
+        
+  
+    <a class="article-title" href="/2017/11/08/a-complemental-guide-to-migrate-pySide-code-to-pyqt5-within-your-idapython-script/">A Complemental Guide to Migrate PySide Code to PyQt5 Within Your IDAPython Script</a>
+  
+
+      </header>
+    
+    <time class="article-date" datetime="2017-11-08T12:00:00.000Z" itemprop="datePublished">11-08-2017</time>
+    
+  </div>
+  <div class="article-inner">
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h1 id="Introduction"><a href="#Introduction" class="headerlink" title="Introduction"></a>Introduction</h1><p>IDAPython is powerful feature of IDA Pro, and there are many open-sourced IDAPython projects. However, we cannot use every GUI-based IDAPython script due to some Qt-related breaking changes between IDA Pro 6.8 and 6.9 or later. The main problem is about migrating no longer supported PySide code to PyQt5.</p>
+<p>Recently I ported PySide code within <a href="https://github.com/RobinDavid/idasec" target="_blank" rel="external">idasec</a> – one of the most sophisticated deobfuscation frameworks, which tackles opaque predicates and call stack tampering in terms of infeasibility questions, by utilizing Backward-Bounded Dynamic Symbolic Execution proposed in the remarkably well written paper <a href="https://www.ieee-security.org/TC/SP2017/papers/220.pdf" target="_blank" rel="external">S. Bardin et al. IEEE S&amp;P’17</a> – to PyQt5.</p>
+<p>That’s why I decided to write this blog post for a note to self and for someone trying to do similar thing.</p>
+<h1 id="Related-Work"><a href="#Related-Work" class="headerlink" title="Related Work"></a>Related Work</h1><p>There are 2 guidances to migrate PySide code to PyQt5:</p>
+<ul>
+<li><a href="http://www.hexblog.com/?p=975" target="_blank" rel="external">IDAPython: migrating PySide code to PyQt5 – Hex Blog</a></li>
+<li><a href="https://github.com/tmr232/Cute" target="_blank" rel="external">idacute</a></li>
+</ul>
+<p>Please read them before. I only give supplemental information in addition to predecessors.</p>
+<h1 id="How-to-Migrate"><a href="#How-to-Migrate" class="headerlink" title="How to Migrate"></a>How to Migrate</h1><p>Now let’s get started.</p>
+<h2 id="Change-QtGui-methods-to-QtWidgets"><a href="#Change-QtGui-methods-to-QtWidgets" class="headerlink" title="Change QtGui methods to QtWidgets"></a>Change <code>QtGui</code> methods to <code>QtWidgets</code></h2><p>Most methods in <code>QtGui</code> migrated to <code>QtWidgets</code>. Therefore,</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><div class="line">1</div></pre></td><td class="code"><pre><div class="line"><span class="keyword">from</span> PySide <span class="keyword">import</span> QtGui, QtCore</div></pre></td></tr></table></figure>
+<p>becomes:</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><div class="line">1</div></pre></td><td class="code"><pre><div class="line"><span class="keyword">from</span> PyQt5 <span class="keyword">import</span> QtCore, QtGui, QtWidgets</div></pre></td></tr></table></figure>
+<p>As an example, <code>QTextEdit</code> described in Hex Blog. In additions, the methods to be rewritten are as follows:</p>
+<ul>
+<li><code>QtWidgets.QLayout</code></li>
+<li><code>QtWidgets.QVBoxLayout</code></li>
+<li><code>QtWidgets.QHBoxLayout</code></li>
+<li><code>QtWidgets.QWidget</code></li>
+<li><code>QtWidgets.QTableWidget</code></li>
+<li><code>QtWidgets.QListWidget</code></li>
+<li><code>QtWidgets.QTabWidget</code></li>
+<li><code>QtWidgets.QDockWidget</code></li>
+<li><code>QtWidgets.QTreeWidget</code></li>
+<li><code>QtWidgets.QTreeWidgetItem</code></li>
+<li><code>QtWidgets.QPushButton</code></li>
+<li><code>QtWidgets.QRadioButton</code></li>
+<li><code>QtWidgets.QToolButton</code></li>
+<li><code>QtWidgets.QButtonGroup</code></li>
+<li><code>QtWidgets.QGroupBox</code></li>
+<li><code>QtWidgets.QSpinBox</code></li>
+<li><code>QtWidgets.QCheckBox</code></li>
+<li><code>QtWidgets.QComboBox</code></li>
+<li><code>QtWidgets.QTextEdit</code></li>
+<li><code>QtWidgets.QLineEdit</code></li>
+<li><code>QtWidgets.QApplication</code></li>
+<li><code>QtWidgets.QLabel</code></li>
+<li><code>QtWidgets.QSizePolicy</code></li>
+<li><code>QtWidgets.QMenu</code></li>
+<li><code>QtWidgets.QFrame</code></li>
+<li><code>QtWidgets.QProgressBar</code></li>
+<li><code>QtWidgets.QStyle</code></li>
+<li><code>QtWidgets.QSpacerItem</code></li>
+<li><code>QtWidgets.QScrollArea</code></li>
+<li><code>QtWidgets.QSplitter</code></li>
+<li>There might be more …</li>
+</ul>
+<p>My experience says that other than the following 3 methods may be rewritten:</p>
+<ul>
+<li><code>QtGui.QPixmap</code></li>
+<li><code>QtGui.QIcon</code></li>
+<li><code>QtGui.QFont</code></li>
+</ul>
+<p>idacute may overwrite all of <code>QtGui</code> methods, so I think there still needs to be manual works.</p>
+<h2 id="Overwrite-fromUtf8"><a href="#Overwrite-fromUtf8" class="headerlink" title="Overwrite _fromUtf8"></a>Overwrite <code>_fromUtf8</code></h2><p>We also need to overwrite <code>_fromUtf8</code>.</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div></pre></td><td class="code"><pre><div class="line"><span class="keyword">try</span>:</div><div class="line">    _fromUtf8 = QtCore.QString.fromUtf8</div><div class="line"><span class="keyword">except</span> AttributeError:</div><div class="line">　　　　_fromUtf8 = <span class="keyword">lambda</span> s: s</div></pre></td></tr></table></figure>
+<h2 id="Others"><a href="#Others" class="headerlink" title="Others"></a>Others</h2><p>These issues are described by predecessors:</p>
+<ul>
+<li>Handling SIGNAL</li>
+<li>Change <code>FormToPySideWidget</code> to <code>FormToPyQtWidget</code></li>
+<li>Change <code>setResizeMode</code> to <code>setSectionResizeMode</code></li>
+</ul>
+<h1 id="Conclusion"><a href="#Conclusion" class="headerlink" title="Conclusion"></a>Conclusion</h1><p>This time, I was able to run idasec on IDA Pro 7.0 with <a href="https://github.com/RobinDavid/idasec/pull/2" target="_blank" rel="external">some bug fixes and dirty patches</a> – like this cool video:</p>
+<center><iframe width="560" height="315" src="https://www.youtube.com/embed/Z14ab_rzjfA" frameborder="0" allowfullscreen></iframe></center>
+
+<p>If you are an IDA Pro 7.0 user, note that other backward-compatibility issue described in <a href="https://www.hex-rays.com/products/ida/7.0/docs/idapython_backward_compat_695.shtml" target="_blank" rel="external">IDA: IDAPython backward-compatibility with 6.95 APIs</a> will occur.</p>
+<p>Enjoy!</p>
+<p>HAI DOMO VIRTUAL YOUTUBER KIZUNA AI DESU. I’m still working on my English.</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://ntddk.github.io/2017/11/08/a-complemental-guide-to-migrate-pySide-code-to-pyqt5-within-your-idapython-script/" data-id="cj9qzc72y0000eu7tvqsaewwx" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/reversing/">reversing</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/symbolic-execution/">symbolic execution</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
     <article id="post-z3py-link-collection" class="article article-type-post" itemscope itemprop="blogPost">
   <div class="article-meta">
     
@@ -158,7 +260,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://ntddk.github.io/2017/08/24/z3py-link-collection/" data-id="cj7e7cv4d001pswossft4bagk" class="article-share-link">Share</a>
+      <a data-url="http://ntddk.github.io/2017/08/24/z3py-link-collection/" data-id="cj9qzc7410031eu7t6kzqk689" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/algorithm/">algorithm</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/symbolic-execution/">symbolic execution</a></li></ul>
@@ -228,10 +330,10 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://ntddk.github.io/2016/08/27/angr-afl-driller/" data-id="cj7e7cv2q0004swosfedp9rn8" class="article-share-link">Share</a>
+      <a data-url="http://ntddk.github.io/2016/08/27/angr-afl-driller/" data-id="cj9qzc7340004eu7t9rctdnlo" class="article-share-link">Share</a>
       
       
-  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/exploiting/">exploiting</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/symbolic-execution/">symbolic execution</a></li></ul>
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/exploitation/">exploitation</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/symbolic-execution/">symbolic execution</a></li></ul>
 
     </footer>
   </div>
@@ -320,7 +422,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://ntddk.github.io/2015/12/11/autoprobe/" data-id="cj7e7cv310007swosjmj1v27m" class="article-share-link">Share</a>
+      <a data-url="http://ntddk.github.io/2015/12/11/autoprobe/" data-id="cj9qzc737000beu7turuvukfq" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/symbolic-execution/">symbolic execution</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/taint-analysis/">taint analysis</a></li></ul>
@@ -387,7 +489,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://ntddk.github.io/2015/11/09/is-linear-obfuscation-a-threat/" data-id="cj7e7cv3g000jswostyj1gvaw" class="article-share-link">Share</a>
+      <a data-url="http://ntddk.github.io/2015/11/09/is-linear-obfuscation-a-threat/" data-id="cj9qzc738000deu7t16kbc0b0" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/symbolic-execution/">symbolic execution</a></li></ul>
@@ -440,7 +542,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://ntddk.github.io/2015/08/16/automated-malware-analysis-using-decaf-in-seccamp15/" data-id="cj7e7cv2n0002swoszoapn2nk" class="article-share-link">Share</a>
+      <a data-url="http://ntddk.github.io/2015/08/16/automated-malware-analysis-using-decaf-in-seccamp15/" data-id="cj9qzc7350005eu7t9p7v9kuf" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/dynamic-binary-translation/">dynamic binary translation</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/symbolic-execution/">symbolic execution</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/taint-analysis/">taint analysis</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/virtual-machine-introspection/">virtual machine introspection</a></li></ul>
@@ -494,7 +596,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://ntddk.github.io/2014/12/09/v2e/" data-id="cj7e7cv44001fswosdwoknwtr" class="article-share-link">Share</a>
+      <a data-url="http://ntddk.github.io/2014/12/09/v2e/" data-id="cj9qzc73l001geu7tdqboybsr" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/dynamic-binary-translation/">dynamic binary translation</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/symbolic-execution/">symbolic execution</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/taint-analysis/">taint analysis</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/virtual-machine-introspection/">virtual machine introspection</a></li></ul>
@@ -558,7 +660,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://ntddk.github.io/2014/12/03/symexec-s2e/" data-id="cj7e7cv3v0017swostj03i6eg" class="article-share-link">Share</a>
+      <a data-url="http://ntddk.github.io/2014/12/03/symexec-s2e/" data-id="cj9qzc73h0013eu7tpxz9ka7q" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/dynamic-binary-translation/">dynamic binary translation</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/symbolic-execution/">symbolic execution</a></li></ul>
@@ -616,7 +718,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://ntddk.github.io/2014/09/28/vine-howto/" data-id="cj7e7cv49001mswoscp59xos4" class="article-share-link">Share</a>
+      <a data-url="http://ntddk.github.io/2014/09/28/vine-howto/" data-id="cj9qzc73k001deu7t3tu7bvkc" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/dynamic-binary-translation/">dynamic binary translation</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/symbolic-execution/">symbolic execution</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/taint-analysis/">taint analysis</a></li></ul>
@@ -691,7 +793,7 @@ mov esi, 0x2014
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://ntddk.github.io/2014/09/12/symexec-intro/" data-id="cj7e7cv3y001aswosc4njdhx6" class="article-share-link">Share</a>
+      <a data-url="http://ntddk.github.io/2014/09/12/symexec-intro/" data-id="cj9qzc73i0016eu7tt25qagtg" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/dynamic-binary-translation/">dynamic binary translation</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/symbolic-execution/">symbolic execution</a></li></ul>

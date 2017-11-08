@@ -47,6 +47,139 @@
       <div class="outer">
         <section id="main">
   
+    <article id="post-semiotics-of-programming" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    
+      <header class="article-header">
+        
+  
+    <a class="article-title" href="/2015/04/04/semiotics-of-programming/">そろそろ『記号と再帰』について一言言っておくか</a>
+  
+
+      </header>
+    
+    <time class="article-date" datetime="2015-04-04T13:34:16.000Z" itemprop="datePublished">04-04-2015</time>
+    
+  </div>
+  <div class="article-inner">
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h1 id="はじめに"><a href="#はじめに" class="headerlink" title="はじめに"></a>はじめに</h1><p>田中久美子『記号と再帰: 記号論の形式・プログラムの必然』(“Semiotics of Programming,” Cambridge University Press, 2010.)は，プログラミング言語の記号論についての記念碑的な書籍である．かねてよりPeter B. Andersenらによってコンピュータ記号論(computional semiotics)は語られていたものの，プログラミング言語については議論が追い付いていなかった．<br>本書はまず，対応関係が不明瞭であったソシュールの記号論とパースのそれとを，関数型パラダイムとオブジェクト指向パラダイムとの対比をもって整理する．その上で，記号の本質は再帰にある(p.1)として，絵画，プログラミング言語，哲学を横断した考察が展開される．とまあ随分と衒学的な書籍なのだが，それゆえ危うさを孕んでいるようにも思う．ここではあえて，本書の批判とはいかないまでも，いくつかの不満点を提示したい．</p>
+<h1 id="汎記号主義"><a href="#汎記号主義" class="headerlink" title="汎記号主義"></a>汎記号主義</h1><p>本書は「記号を媒介することなく対象を人間が認識できない」(p.27)とされ，「記号の解釈を記号系の中だけで捉える」(p.26)という汎記号主義を前提としている．この妥当性について考えても埒が明かないので，ひとまずはそういうことにしておこう．</p>
+<h1 id="HaskellとJavaによるプログラム例"><a href="#HaskellとJavaによるプログラム例" class="headerlink" title="HaskellとJavaによるプログラム例"></a>HaskellとJavaによるプログラム例</h1><p>本書で用いられるプログラミング言語は，HaskellとJavaである．<br>以下はHaskellによる平面上の長方形，楕円，円の面積を計算するプログラムである(p.15)．</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div></pre></td><td class="code"><pre><div class="line">data Shape = Rectangle  Double Double</div><div class="line">            | Ellipse   Double Double</div><div class="line">            | Circle    Double</div><div class="line"></div><div class="line">area (Rectangle width height) = width * height</div><div class="line">area (Ellipse   width height) = pi * width * height / 4.0</div><div class="line">area (Circle  radius)       = area (Ellipse (radius * 2.0)(radius *2.0))</div><div class="line"></div><div class="line">main = let</div><div class="line">        r = Rectangle 5.0 8.0</div><div class="line">        u = Ellipse   3.0 4.0</div><div class="line">        v = Circle    3.0</div><div class="line">        ss = [r, u, v]</div><div class="line">    in</div><div class="line">        for (\s -&gt; putStr(&quot;area: &quot;++show (area s)++&quot;\n&quot;)) ss</div><div class="line"></div><div class="line">for f [] = do return ()</div><div class="line">for f (s:ss) = do &#123; (f s); for f ss&#125;</div></pre></td></tr></table></figure>
+<p>いきなり不安になってくる．Haskellについてはずぶの素人の私だが，それでもこのような場面では<code>forM</code>や<code>mapM</code>を用いるべきだと知っている．「このfor関数は，次の図2.2のJavaプログラムとの整合性をふまえて定義されている」(p.17)とあるが，首を傾げざるを得ない．なお<code>map</code>はp.141に至るまで登場しない．<br>続いて，同様にJavaによるプログラムが示される(p.18)．</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div><div class="line">22</div><div class="line">23</div><div class="line">24</div><div class="line">25</div><div class="line">26</div><div class="line">27</div></pre></td><td class="code"><pre><div class="line">class Shape&#123;</div><div class="line">    double width, height;</div><div class="line">    Shape (double w, double h)&#123; width = w; height = h; &#125;</div><div class="line">    public double area () &#123; return width * height; &#125;</div><div class="line">&#125;</div><div class="line"></div><div class="line">class Rectangle extends Shape&#123;</div><div class="line">    Rectangle (double w, double h)&#123; super(w, h); &#125;</div><div class="line">&#125;</div><div class="line"></div><div class="line">class Ellipse extends Shape&#123; </div><div class="line">    Ellipse (double w, double h)&#123; super(w, h); &#125;</div><div class="line">    public double area()&#123; return Math.PI*width*height/4.0; &#125;</div><div class="line">&#125;</div><div class="line"></div><div class="line">class Circle extends Ellipse&#123;</div><div class="line">    Circle(double r)&#123; super(r*2.0, r*2.0); &#125;</div><div class="line">&#125;</div><div class="line"></div><div class="line">void run()&#123;</div><div class="line">    Rectangle r = new Rectangle(5.0, 8.0);</div><div class="line">    Ellipse   u = new Ellipse(3.0, 4.0);</div><div class="line">    Circle    v = new Circle(3.0);</div><div class="line"></div><div class="line">    Shape [] ss = new Shape[]&#123;r, u, v&#125;;</div><div class="line">    for (Shape s : ss)&#123; putStr(&quot;area: &quot; + s.area() + &quot;\n&quot;); &#125;</div><div class="line">&#125;</div></pre></td></tr></table></figure>
+<p>これらのプログラムは異なるパラダイム，異なる記法によって書かれているが，しかし同じ出力を得ることができる．ここに本書は，ソシュール二元論とパース三元論を託つける．</p>
+<h1 id="ソシュール二元論とパース三元論"><a href="#ソシュール二元論とパース三元論" class="headerlink" title="ソシュール二元論とパース三元論"></a>ソシュール二元論とパース三元論</h1><p>ソシュールとパースはそれぞれ記号について以下のように整理した．</p>
+<ul>
+<li>ソシュール二元論</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th style="text-align:center">シニフィアン</th>
+<th style="text-align:center">シニフィエ</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:center">“tree”</td>
+<td style="text-align:center">木</td>
+</tr>
+<tr>
+<td style="text-align:center">ラベル</td>
+<td style="text-align:center">内容</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li>パース三元論</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th style="text-align:center">表意体</th>
+<th style="text-align:center">解釈項</th>
+<th style="text-align:center">対象</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:center">“tree”</td>
+<td style="text-align:center">木の解釈</td>
+<td style="text-align:center">木</td>
+</tr>
+<tr>
+<td style="text-align:center">ラベル</td>
+<td style="text-align:center">イデア</td>
+<td style="text-align:center">対象</td>
+</tr>
+</tbody>
+</table>
+<p>この対応について，本書は，パース「記号は人に働きかけ，人の心の中に等価な記号を作り出し，あるいはより発展した記号を作り出す．もとの記号が作り出すこの記号のことを私は解釈項と呼ぶ」を根拠に(p.40)，「解釈項は記号の解釈を呼び，記号過程を生成するもので」あり「これに対応するものがソシュールの記号モデルの中にあるならば，それはシニフィエ以外にありえない」(p.41)と導く．<br>続いて，「記号の差異は他の記号と対比されてはじめて立ち現れるものである．とすると，記号の解釈にまつわる記号の使用はソシュールの記号モデルの構成要素には含まれてはいなが，全体論的価値として位置付けられていると考えることができる」(p.41)ことから，「ソシュールのシニフィエはパースの直接対象に対応し，そしてパースの解釈項はソシュールの記号モデルに外在する全体論的価値に内包される」(pp.41-42)という仮説を提示する．</p>
+<h1 id="全体論的価値"><a href="#全体論的価値" class="headerlink" title="全体論的価値"></a>全体論的価値</h1><p>関数型パラダイムとオブジェクト指向パラダイムの比較を通じて仮説を検証する前に，この「全体論的価値」とは何を意味するのだろうか．おそらくは意図的なのだろうが，本書にはパロールやラング，レフェランといった語が一切登場しない．これによって混乱してしまったのは私だけだろうか．記号論についてもずぶの素人である私の苦し紛れの解釈では「全体論的価値」はラングに相当するが，詳細は述べられていない．ソシュールの「言語記号は恣意的です」という原理も後に登場する(p.57)が，社会的慣習と全体論的価値が絡められることはなかった．</p>
+<h1 id="ソシュール二元論とパース三元論の接続"><a href="#ソシュール二元論とパース三元論の接続" class="headerlink" title="ソシュール二元論とパース三元論の接続"></a>ソシュール二元論とパース三元論の接続</h1><p>さて，ソシュールとパースの関係は，先に挙げたプログラム例の<code>area</code>関数のあり方によって整理される．</p>
+<table>
+<thead>
+<tr>
+<th style="text-align:center">プログラミング言語</th>
+<th style="text-align:center">Haskell</th>
+<th style="text-align:center">Java</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:center">記号論</td>
+<td style="text-align:center">二元論</td>
+<td style="text-align:center">三元論</td>
+</tr>
+<tr>
+<td style="text-align:center">area関数</td>
+<td style="text-align:center">外在的</td>
+<td style="text-align:center">内在的</td>
+</tr>
+</tbody>
+</table>
+<p>Haskellのプログラム例では，<code>area</code>は他のデータ構造に<strong>外在する</strong>が，Javaのプログラム例では<strong>内在する</strong>(p.42)．言い換えれば，Haskellにおいては記号がその使用によって意味付けられるが，Javaにおいては記号の定義がその使用を内在する．つまり，次のような対応関係になる(p.49)．</p>
+<ul>
+<li>ソシュールのシニフィアンはパースの表意体に対応する．</li>
+<li>ソシュールのシニフィエはパースの直接対象に相当する（心的な対象）．</li>
+<li>パースの解釈項は識別子の使用に相当する．パースの記号モデルでは，記号の使用は解釈項として記号モデルの中に埋め込まれ，記号過程は解釈項を次々と呼ぶことによって生成される．ソシュールにおいては，記号過程は記号が別の記号に呼ばれ，それがまた別の記号に呼ばれることにより生成される．ある記号の使用によって記号に付される価値は記号モデルに外在し，それは記号を併置した際の差異として現れる．</li>
+</ul>
+<p>こうして，ソシュールとパースの論が接続された．なるほど綺麗にまとまったかのように思える．</p>
+<h1 id="プログラミングパラダイム"><a href="#プログラミングパラダイム" class="headerlink" title="プログラミングパラダイム"></a>プログラミングパラダイム</h1><p>しかし，これはプログラミングパラダイムから見て妥当だろうか．HaskellやJavaに固有の特徴と，パラダイムの特徴を同一視していないだろうか．本書において，HaskellやJavaを選択した基準は最後まで明確に示されない（私はJavaScriptが良いのではないかと思った）．<br>CTMCPこと『コンピュータプログラミングの概念・技法・モデル』(“Concepts, Techniques, and Models of Computer Programming, “ The MIT Press, 2004.)のPeter Van-Royによると，オブジェクト指向パラダイムとは関数型パラダイムに状態(state)を追加したものである．私はこの考えに沿った展開に期待していたのだが，しかし状態の概念はp.190に至るまでほとんどといって触れられず，HaskellとJavaの比較に絡められることはなかった．<br>オブジェクト指向すなわちカプセル化という前提に立っているところ，プロトタイプベースのオブジェクト指向について触れていないところも勿体無い．</p>
+<h1 id="モナドと状態"><a href="#モナドと状態" class="headerlink" title="モナドと状態"></a>モナドと状態</h1><p>状態の概念は，「インタラクションを参照透明に記述しようと思うと，」「莫大な量の記号を使い捨てなければならない」(pp.198-199)からこそモナドが考案されたという流れで援用される．すなわち，参照透明性を保ちつつ状態を記述するためにモナドがある(p.196)．失敗系モナドが無視されているにせよ，このあたりの説明が明快なだけに，HaskellとJavaの比較において状態の概念が持ち出されなかったことが残念に思われる．</p>
+<h1 id="参照の値渡し"><a href="#参照の値渡し" class="headerlink" title="参照の値渡し"></a>参照の値渡し</h1><p>本書はJavaを「関数に値とアドレスのどちらかを渡すのかは，再び文脈により実用論的に決まり，」「プログラマが定義して導入する複合型」は「アドレスを渡す」ものとして紹介している(p.117)．これは端的に誤りである．なぜなら，Javaはあらゆる場面において値渡しであり，参照は参照の値(reference values)として扱われるためである．</p>
+<h1 id="おわりに"><a href="#おわりに" class="headerlink" title="おわりに"></a>おわりに</h1><p>主にプログラミングの観点から，『記号と再帰』に見られる不満点を述べた．要約すると次のようになる．</p>
+<ul>
+<li>Haskellのコードが微妙</li>
+<li>全体論的価値の定義が不明瞭</li>
+<li>HaskellとJavaを題材に選んだ根拠が不明瞭</li>
+<li>Javaの参照の値渡しについての説明が不適切</li>
+</ul>
+<p>だからといって私は本書が駄本であると切り捨てたいわけではない．<br>シニフィアンを持たない状態で分節されたλ項にシニフィアンが付与されていく簡約の過程は大変面白かったし，再帰から是態（交換不可能性？）が立ち上るという考えも論証不足ながら興味深かった．<br>汎記号主義という極端な見地から，記号が投機的に記号系に導入されるからこそ再帰が成立すると言い切ることで，ここまで手際よく語ることができるのかという興奮があった．<br>だからこそ，（今後本書が重版されることがあればの話だが）今回述べたような不満点が解消されることを望む．<br>終盤に本書は，「何ら形式的な制約なく自然に作られた」自然言語の構造的な系と，「停止性が保証される最小の記号群からはじめ，停止性の制約下でボトムアップに構築される」プログラミング言語の構成的な系とを対比している(p.183)．再帰による是態の獲得．構造的な系．次に語られるのはニューラルネットの記号論だろうか．</p>
+<h1 id="参考文献"><a href="#参考文献" class="headerlink" title="参考文献"></a>参考文献</h1><ul>
+<li>“Classification of the principal programming paradigms,” <a href="https://www.info.ucl.ac.be/~pvr/paradigms" target="_blank" rel="external">https://www.info.ucl.ac.be/~pvr/paradigms</a></li>
+<li>“幻想再帰のアリュージョニスト,” <a href="http://ncode.syosetu.com/n9073ca/" target="_blank" rel="external">http://ncode.syosetu.com/n9073ca/</a></li>
+<li>“EnJoe140で短編中さんはTwitterを使っています: 【記号と再帰―記号論の形式・プログラムの必然】止めて差し上げた方が良いのではないか。 <a href="http://book.akahoshitakuya.com/cmt/8818094" target="_blank" rel="external">http://book.akahoshitakuya.com/cmt/8818094</a> #bookmeter,” <a href="https://twitter.com/EnJoeToh/status/13886544494460928" target="_blank" rel="external">https://twitter.com/EnJoeToh/status/13886544494460928</a></li>
+</ul>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://ntddk.github.io/2015/04/04/semiotics-of-programming/" data-id="cj9qzc73f000zeu7ts4amg3f4" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/computational-semiotics/">computational semiotics</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
     <article id="post-pin-to-pemu" class="article article-type-post" itemscope itemprop="blogPost">
   <div class="article-meta">
     
@@ -121,7 +254,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://ntddk.github.io/2015/04/03/pin-to-pemu/" data-id="cj7e7cv3l000oswos261xb4th" class="article-share-link">Share</a>
+      <a data-url="http://ntddk.github.io/2015/04/03/pin-to-pemu/" data-id="cj9qzc73e000veu7trv92h9oo" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/dynamic-binary-translation/">dynamic binary translation</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/taint-analysis/">taint analysis</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/virtual-machine-introspection/">virtual machine introspection</a></li></ul>
@@ -191,7 +324,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://ntddk.github.io/2015/03/14/sandbox-transparency-in-the-wild/" data-id="cj7e7cv3q000vswosiorqvpe1" class="article-share-link">Share</a>
+      <a data-url="http://ntddk.github.io/2015/03/14/sandbox-transparency-in-the-wild/" data-id="cj9qzc73h0012eu7tucmh93dg" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/virtual-machine-introspection/">virtual machine introspection</a></li></ul>
@@ -237,10 +370,10 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://ntddk.github.io/2015/02/24/before-c-constructor/" data-id="cj7e7cv350008swosyou4xdcz" class="article-share-link">Share</a>
+      <a data-url="http://ntddk.github.io/2015/02/24/before-c-constructor/" data-id="cj9qzc7350006eu7tv96mhn5o" class="article-share-link">Share</a>
       
       
-  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/exploiting/">exploiting</a></li></ul>
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/exploitation/">exploitation</a></li></ul>
 
     </footer>
   </div>
@@ -298,7 +431,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://ntddk.github.io/2015/01/31/xen-libvmi/" data-id="cj7e7cv45001hswosiw0atmcm" class="article-share-link">Share</a>
+      <a data-url="http://ntddk.github.io/2015/01/31/xen-libvmi/" data-id="cj9qzc7420033eu7tuqjoelq7" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/virtual-machine-introspection/">virtual machine introspection</a></li></ul>
@@ -342,7 +475,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://ntddk.github.io/2015/01/23/sandbox-transparency/" data-id="cj7e7cv3o000sswoslmh7jjvf" class="article-share-link">Share</a>
+      <a data-url="http://ntddk.github.io/2015/01/23/sandbox-transparency/" data-id="cj9qzc73f000yeu7t3kt2rpdl" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/dynamic-binary-translation/">dynamic binary translation</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/virtual-machine-introspection/">virtual machine introspection</a></li></ul>
@@ -394,10 +527,10 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://ntddk.github.io/2014/12/11/pintool-nx/" data-id="cj7e7cv3j000lswos2de6lqn3" class="article-share-link">Share</a>
+      <a data-url="http://ntddk.github.io/2014/12/11/pintool-nx/" data-id="cj9qzc73c000oeu7t3mgzp7cz" class="article-share-link">Share</a>
       
       
-  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/exploiting/">exploiting</a></li></ul>
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/exploitation/">exploitation</a></li></ul>
 
     </footer>
   </div>
@@ -448,7 +581,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://ntddk.github.io/2014/12/09/v2e/" data-id="cj7e7cv44001fswosdwoknwtr" class="article-share-link">Share</a>
+      <a data-url="http://ntddk.github.io/2014/12/09/v2e/" data-id="cj9qzc73l001geu7tdqboybsr" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/dynamic-binary-translation/">dynamic binary translation</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/symbolic-execution/">symbolic execution</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/taint-analysis/">taint analysis</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/virtual-machine-introspection/">virtual machine introspection</a></li></ul>
@@ -512,7 +645,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://ntddk.github.io/2014/12/03/symexec-s2e/" data-id="cj7e7cv3v0017swostj03i6eg" class="article-share-link">Share</a>
+      <a data-url="http://ntddk.github.io/2014/12/03/symexec-s2e/" data-id="cj9qzc73h0013eu7tpxz9ka7q" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/dynamic-binary-translation/">dynamic binary translation</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/symbolic-execution/">symbolic execution</a></li></ul>
@@ -570,85 +703,10 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://ntddk.github.io/2014/09/28/vine-howto/" data-id="cj7e7cv49001mswoscp59xos4" class="article-share-link">Share</a>
+      <a data-url="http://ntddk.github.io/2014/09/28/vine-howto/" data-id="cj9qzc73k001deu7t3tu7bvkc" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/dynamic-binary-translation/">dynamic binary translation</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/symbolic-execution/">symbolic execution</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/taint-analysis/">taint analysis</a></li></ul>
-
-    </footer>
-  </div>
-  
-</article>
-
-
-  
-    <article id="post-symexec-intro" class="article article-type-post" itemscope itemprop="blogPost">
-  <div class="article-meta">
-    
-      <header class="article-header">
-        
-  
-    <a class="article-title" href="/2014/09/12/symexec-intro/">シンボリック実行に入門しようとした</a>
-  
-
-      </header>
-    
-    <time class="article-date" datetime="2014-09-11T17:50:52.000Z" itemprop="datePublished">09-12-2014</time>
-    
-  </div>
-  <div class="article-inner">
-    <div class="article-entry" itemprop="articleBody">
-      
-        <h1 id="はじめに"><a href="#はじめに" class="headerlink" title="はじめに"></a>はじめに</h1><p>シンボリック実行(symbolic execution)という用語をセキュリティ系の論文でよく見かけるようになった．ここでは，シンボリック実行の基礎となる理論を辿る．筆者はソフトウェアテストの研究には疎く，おそらく本稿には若干以上の誤謬と誤解が含まれているだろう．ぜひ識者の教示を乞いたい．</p>
-<h1 id="発祥"><a href="#発祥" class="headerlink" title="発祥"></a>発祥</h1><p>シンボリック実行は主にソフトウェアテストの領域で古くから研究されてきたトピックである．シンボリック実行という用語の初出は遡ること38年前，James C. Kingらによる<a href="https://courses.engr.illinois.edu/cs477/sp2011/king76symbolicexecution.pdf" target="_blank" rel="external">Symbolic Execution and Program Testing [PDF]</a>という論文だ．Dijkstraがgoto文の濫用による大域脱出を批判したのが1968年であり，Guarded Command Languageを提案したのが1975年のことである．この論文が発表された1976年当時はまさに構造化プログラミングというパラダイムがコンピュータサイエンスの世界を席捲していた時代であった．私が生まれる20年以上前のことで，当時の問題意識を肌身で感じることができないのが少し残念に思える．感覚としては白亜紀のようなもので，主要な登場人物もDijkstraやらKnuthやら，恐竜かよ．<br>さて，シンボリック実行とはどのような提案だったか．まず，シンボリック実行の目的は「どの入力値でどの実行経路を通るか特定する」ことである．そのためにはどうすればよいだろうか？シンボリック実行はその名の通り，プログラムの変数をシンボル(記号)として表現する．論文中のスニペットはあまりにも古めかしいので，<a href="http://en.wikipedia.org/wiki/Symbolic_execution" target="_blank" rel="external">Symbolic execution - Wikipedia, the free encyclopedia</a>を例に考えよう．残念ながら日本語記事はないものの，原理は単純明快．</p>
-<pre><code>y = read()
-y = 2 * y
-if (y == 12)
-    fail()
-print(&quot;OK&quot;)
-</code></pre><p>シンボリック実行では入力に具体値を与えない．例えば，変数yに割り当てられる入力値をsというシンボルで表現する．見ての通り，このルーチンはif文で2つの実行経路に分岐するが，この分岐の条件を制約と呼ぶ．ここでの制約は<code>2 * s == 12</code>となる．実行経路を分岐させる条件となる入力値は，式を解けば分かる．言うまでもなく<code>6</code>だ．おっと，これは充足可能性問題というやつじゃないか？その通り，シンボリック実行では制約を解くにあたって制約充足ソルバ(constraint solver)を用いる．ここでは，<code>2 * s == 12</code>という制約が<code>¬s1 ∧ ¬s2 ∧ ¬s3 ∧ ¬s4 ∧ s5 ∧ s6 ∧ ¬s7 ∧ ¬0</code>という連言標準形で表される．<code>2 * s</code>は<code>s1s2s3s4s5s6s70</code>に，<code>12</code>は<code>00001100</code>となる．<br>このように，具体値を与えないまま，必ず1つの実行経路を通る制約(path constraints)を求め，条件分岐に影響する入力値の制約を特定する手法がシンボリック実行である．シンボリック「実行」と銘打っていても，実際にプログラムを実行しているわけではない．飽くまでシンボルの操作を通して，擬似的にプログラムを実行しているのだ．</p>
-<h1 id="Concolic-Testing-Dynamic-Symbolic-Execution"><a href="#Concolic-Testing-Dynamic-Symbolic-Execution" class="headerlink" title="Concolic Testing/Dynamic Symbolic Execution"></a>Concolic Testing/Dynamic Symbolic Execution</h1><p>では，シンボリック実行は銀の弾丸たりえるか？そんなわけがない．真っ先に以下の課題に直面してしまう．</p>
-<ul>
-<li>計算爆発</li>
-<li>制約充足ソルバで解くことができない制約</li>
-<li>入力値が一意に定まらない</li>
-</ul>
-<p>そこで，<a href="http://mir.cs.illinois.edu/marinov/publications/SenETAL05CUTE.pdf" target="_blank" rel="external">CUTE: A Concolic Unit Testing Engine for C [PDF]</a>において，concolic testingという手法が提案された．concolicとは耳慣れない言葉だが，どういった意味だろうか？これは，symbolic(シンボル)とconcrete(具体値)からなる造語で，concolic testingとはシンボリック実行に具体値(concrete value)を持ち込んだ手法である．またの名を動的シンボリック実行．<br>具体値を持ち込むとはどういうことか？動的シンボリック実行では，制約充足ソルバが不得手とする非線形な制約に到達した場合，その箇所だけ実際に実行(concrete execution)することで，具体値を代入する．これによって，コードカバレッジを拡大するというのが狙いである．現在「シンボリック実行」と呼ばれているのは概ね動的シンボリック実行である．</p>
-<h1 id="KLEE"><a href="#KLEE" class="headerlink" title="KLEE"></a>KLEE</h1><p><a href="http://klee.github.io/klee/" target="_blank" rel="external">KLEE</a>はシンボリック実行にLLVM bitcodeを導入したプロジェクトである．チュートリアルは<a href="http://feliam.wordpress.com/2010/10/07/the-symbolic-maze/" target="_blank" rel="external">The Symbolic Maze! - Feliam’s Blog</a>が秀逸．<br>使い方は簡単で，解析対象のソースコードに<code>#include &lt;klee/klee.h&gt;</code>と<code>klee_make_symbolic()</code>とを追加するだけで準備は完了する．<code>klee_make_symbolic()</code>にはシンボリック実行を適用したい変数のアドレスとサイズ，名前を引数として与える．</p>
-<pre><code>llvm-gcc --emit-llvm -c -g [file].c
-klee [file].o
-</code></pre><p>LLVM bitcodeとしてコンパイルし，KLEEに与えて実行すると，ktestという形式のテストケースが生成される．</p>
-<pre><code>ktest-tool --write-ints klee-last/[file].ktest 
-</code></pre><p>ktest-toolを実行すると，入力値が出力される．</p>
-<pre><code>ktest file : ‘klee-last/test000001.ktest’
-args : [&apos;[file].o&apos;]
-num objects: 1
-object 0: name: ‘hoge’
-object 0: size: 4
-object 0: data: ‘fuga′
-</code></pre><p>これによって，KLEEは90%以上のコードカバレッジを実現する．論文の評価実験では，Coreutilsについて，15年に渡って作成されてきたテストスイートよりも高いカバレッジをたったの89時間で達成している．<br>KLEEは多くの研究者に利用されており，シンボリック実行に関する研究のstate-of-the-artはKLEEを分散化した<a href="https://code.comsys.rwth-aachen.de/redmine/projects/kleenet-public" target="_blank" rel="external">KleeNet</a>だと聞いている．<br>しかし，もちろんKLEEは万能ではない．特にループ文の解釈がうまくいかないことが多く，これはシンボリック実行が抱える永年の課題である．</p>
-<h1 id="STP"><a href="#STP" class="headerlink" title="STP"></a>STP</h1><p>KLEEは<a href="https://sites.google.com/site/stpfastprover/" target="_blank" rel="external">STP Constraint Solver</a>という制約充足ソルバを用いている．STPは制約充足ソルバの中でもSMT(Satisfiable Modulo Theories)ソルバと呼ばれるものに相当する．SAT(SATisfiability problem)ソルバはブール式のみを扱うが，SMTソルバはこれに加えて配列やビットベクトル，加減算大小比較など様々な背景理論を用いることができる．STPではAND，OR，NOT，XORといった演算についてもサポートされ，式の最適化についても工夫されているようだ．</p>
-<h1 id="S2E"><a href="#S2E" class="headerlink" title="S2E"></a>S2E</h1><p>少しばかり，リバースエンジニアリングにも目を向けてみよう．解析対象のソースコードが存在しない場合，どうやってシンボリック実行を適用すればよいだろうか？解決策のひとつとして挙げられるのが<a href="https://github.com/dslab-epfl/s2e" target="_blank" rel="external">S2E</a>である．<br>S2EはQEMUの動的バイナリ変換(dynamic binary translation)を用いる．QEMUの動的バイナリ変換機能をTCG(Tiny Code Generator)といい，これによって例えばARM向けにビルドされたバイナリをx86の計算機で動かすといった機能が実現される．<br>まず，QEMUは対象のバイナリを逆アセンブルし，複数のブロックに分割する．このブロックをTB(translation block)といい，定義は<code>translate-all.h</code>に記述されている．TBは分岐命令やページの境界によって区切られる．そして，ブロック単位で逆アセンブルしたコードを<code>gen_intermediate_code()</code>という関数で中間コードに変換し，<code>tcg_gen_code()</code>という関数で他のアーキテクチャの命令とマッピングする．これらは<code>target-[arch]/translate.c</code>および<code>tcg/tgc.c</code>に記述されている．こうして変換されたコードは，TB単位でキャッシュされる．実行にあたっては，変換されたTBをchainとして繋いでいく．この処理は，<code>main()</code>から<code>cpu_exec()</code>を経由して呼ばれる<code>tb_find_fast()</code>や<code>tb_find_slow()</code>に記述されている．こうして，QEMUは異なるアーキテクチャ向けバイナリの実行を可能にしている．<br>S2Eは，QEMUのTCGを用いてPEファイルをLLVM bitcodeに変換し，KLEEに受け渡す．TCGは，中間コードを変換するにあたって，変換先のアーキテクチャの命令が記述された辞書を参照する．S2Eはこの辞書にLLVM bitcodeを登録することで，実行ファイルをLLVM bitcodeに「逆アセンブル」するのだ．<br>このようにして，S2Eはシンボリック実行を実現しているが，そもそもLLVM bitcodeに変換する必要はあるのだろうか？KLEEは確かに優れたツールだが，バイナリに直接シンボリック実行を適用すれば良いのではないか？<br>これには理由がある．QEMUの中間コードも，LLVM bitcodeもレジスタが無限個存在するSSA(Static Single Assignment form，静的単一代入)形式をとっている．一方で，x86アーキテクチャはSSA形式ではない．x86における逆アセンブルコードにシンボリック実行を適用する例を考えよう．</p>
-<pre><code>mov esi, 0x09
-mov edx, 0x2014
-</code></pre><p>この場合，制約は<code>(esi == 0x09) and (edx == 0x2014)</code>となる．これなら問題はないが，以下の例はどうだろう．</p>
-<pre><code>mov esi, 0x09
-...
-mov esi, 0x2014
-</code></pre><p>同じレジスタに違う値が代入されている．この場合，制約は<code>(esi == 0x09) and (esi == 0x2014)</code>となってしまう．こうした理由から，シンボリック実行にはSSA形式への変換が必要となるようだ．</p>
-<h1 id="おわりに"><a href="#おわりに" class="headerlink" title="おわりに"></a>おわりに</h1><p>シンボリック実行の基礎を学んだつもりになった．この技術が情報セキュリティの分野でどう活きてくるのかについては，また改めて．進捗だめです．</p>
-<h1 id="参考文献"><a href="#参考文献" class="headerlink" title="参考文献"></a>参考文献</h1><ul>
-<li><a href="http://debugeng.com/concolic%20testing.pdf" target="_blank" rel="external">Concolic testingと背景技術 ~テスト技法の新動向~ [PDF]</a></li>
-<li><a href="http://blog.livedoor.jp/prjmng/archives/52297951.html" target="_blank" rel="external">テスト入力値の自動生成と、concolic testing - ソフトウェアの品質を学びまくる</a></li>
-</ul>
-
-      
-    </div>
-    <footer class="article-footer">
-      <a data-url="http://ntddk.github.io/2014/09/12/symexec-intro/" data-id="cj7e7cv3y001aswosc4njdhx6" class="article-share-link">Share</a>
-      
-      
-  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/dynamic-binary-translation/">dynamic binary translation</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/symbolic-execution/">symbolic execution</a></li></ul>
 
     </footer>
   </div>

@@ -5,7 +5,7 @@
   <link href="/atom.xml" rel="self"/>
   
   <link href="http://ntddk.github.io/"/>
-  <updated>2017-09-10T08:11:39.922Z</updated>
+  <updated>2017-11-08T07:32:38.165Z</updated>
   <id>http://ntddk.github.io/</id>
   
   <author>
@@ -16,16 +16,107 @@
   <generator uri="http://hexo.io/">Hexo</generator>
   
   <entry>
+    <title>A Complemental Guide to Migrate PySide Code to PyQt5 Within Your IDAPython Script</title>
+    <link href="http://ntddk.github.io/2017/11/08/a-complemental-guide-to-migrate-pySide-code-to-pyqt5-within-your-idapython-script/"/>
+    <id>http://ntddk.github.io/2017/11/08/a-complemental-guide-to-migrate-pySide-code-to-pyqt5-within-your-idapython-script/</id>
+    <published>2017-11-08T12:00:00.000Z</published>
+    <updated>2017-11-08T07:32:38.165Z</updated>
+    
+    <content type="html"><![CDATA[<h1 id="Introduction"><a href="#Introduction" class="headerlink" title="Introduction"></a>Introduction</h1><p>IDAPython is powerful feature of IDA Pro, and there are many open-sourced IDAPython projects. However, we cannot use every GUI-based IDAPython script due to some Qt-related breaking changes between IDA Pro 6.8 and 6.9 or later. The main problem is about migrating no longer supported PySide code to PyQt5.</p>
+<p>Recently I ported PySide code within <a href="https://github.com/RobinDavid/idasec" target="_blank" rel="external">idasec</a> – one of the most sophisticated deobfuscation frameworks, which tackles opaque predicates and call stack tampering in terms of infeasibility questions, by utilizing Backward-Bounded Dynamic Symbolic Execution proposed in the remarkably well written paper <a href="https://www.ieee-security.org/TC/SP2017/papers/220.pdf" target="_blank" rel="external">S. Bardin et al. IEEE S&amp;P’17</a> – to PyQt5.</p>
+<p>That’s why I decided to write this blog post for a note to self and for someone trying to do similar thing.</p>
+<h1 id="Related-Work"><a href="#Related-Work" class="headerlink" title="Related Work"></a>Related Work</h1><p>There are 2 guidances to migrate PySide code to PyQt5:</p>
+<ul>
+<li><a href="http://www.hexblog.com/?p=975" target="_blank" rel="external">IDAPython: migrating PySide code to PyQt5 – Hex Blog</a></li>
+<li><a href="https://github.com/tmr232/Cute" target="_blank" rel="external">idacute</a></li>
+</ul>
+<p>Please read them before. I only give supplemental information in addition to predecessors.</p>
+<h1 id="How-to-Migrate"><a href="#How-to-Migrate" class="headerlink" title="How to Migrate"></a>How to Migrate</h1><p>Now let’s get started.</p>
+<h2 id="Change-QtGui-methods-to-QtWidgets"><a href="#Change-QtGui-methods-to-QtWidgets" class="headerlink" title="Change QtGui methods to QtWidgets"></a>Change <code>QtGui</code> methods to <code>QtWidgets</code></h2><p>Most methods in <code>QtGui</code> migrated to <code>QtWidgets</code>. Therefore,</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><div class="line">1</div></pre></td><td class="code"><pre><div class="line"><span class="keyword">from</span> PySide <span class="keyword">import</span> QtGui, QtCore</div></pre></td></tr></table></figure>
+<p>becomes:</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><div class="line">1</div></pre></td><td class="code"><pre><div class="line"><span class="keyword">from</span> PyQt5 <span class="keyword">import</span> QtCore, QtGui, QtWidgets</div></pre></td></tr></table></figure>
+<p>As an example, <code>QTextEdit</code> described in Hex Blog. In additions, the methods to be rewritten are as follows:</p>
+<ul>
+<li><code>QtWidgets.QLayout</code></li>
+<li><code>QtWidgets.QVBoxLayout</code></li>
+<li><code>QtWidgets.QHBoxLayout</code></li>
+<li><code>QtWidgets.QWidget</code></li>
+<li><code>QtWidgets.QTableWidget</code></li>
+<li><code>QtWidgets.QListWidget</code></li>
+<li><code>QtWidgets.QTabWidget</code></li>
+<li><code>QtWidgets.QDockWidget</code></li>
+<li><code>QtWidgets.QTreeWidget</code></li>
+<li><code>QtWidgets.QTreeWidgetItem</code></li>
+<li><code>QtWidgets.QPushButton</code></li>
+<li><code>QtWidgets.QRadioButton</code></li>
+<li><code>QtWidgets.QToolButton</code></li>
+<li><code>QtWidgets.QButtonGroup</code></li>
+<li><code>QtWidgets.QGroupBox</code></li>
+<li><code>QtWidgets.QSpinBox</code></li>
+<li><code>QtWidgets.QCheckBox</code></li>
+<li><code>QtWidgets.QComboBox</code></li>
+<li><code>QtWidgets.QTextEdit</code></li>
+<li><code>QtWidgets.QLineEdit</code></li>
+<li><code>QtWidgets.QApplication</code></li>
+<li><code>QtWidgets.QLabel</code></li>
+<li><code>QtWidgets.QSizePolicy</code></li>
+<li><code>QtWidgets.QMenu</code></li>
+<li><code>QtWidgets.QFrame</code></li>
+<li><code>QtWidgets.QProgressBar</code></li>
+<li><code>QtWidgets.QStyle</code></li>
+<li><code>QtWidgets.QSpacerItem</code></li>
+<li><code>QtWidgets.QScrollArea</code></li>
+<li><code>QtWidgets.QSplitter</code></li>
+<li>There might be more …</li>
+</ul>
+<p>My experience says that other than the following 3 methods may be rewritten:</p>
+<ul>
+<li><code>QtGui.QPixmap</code></li>
+<li><code>QtGui.QIcon</code></li>
+<li><code>QtGui.QFont</code></li>
+</ul>
+<p>idacute may overwrite all of <code>QtGui</code> methods, so I think there still needs to be manual works.</p>
+<h2 id="Overwrite-fromUtf8"><a href="#Overwrite-fromUtf8" class="headerlink" title="Overwrite _fromUtf8"></a>Overwrite <code>_fromUtf8</code></h2><p>We also need to overwrite <code>_fromUtf8</code>.</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div></pre></td><td class="code"><pre><div class="line"><span class="keyword">try</span>:</div><div class="line">    _fromUtf8 = QtCore.QString.fromUtf8</div><div class="line"><span class="keyword">except</span> AttributeError:</div><div class="line">　　　　_fromUtf8 = <span class="keyword">lambda</span> s: s</div></pre></td></tr></table></figure>
+<h2 id="Others"><a href="#Others" class="headerlink" title="Others"></a>Others</h2><p>These issues are described by predecessors:</p>
+<ul>
+<li>Handling SIGNAL</li>
+<li>Change <code>FormToPySideWidget</code> to <code>FormToPyQtWidget</code></li>
+<li>Change <code>setResizeMode</code> to <code>setSectionResizeMode</code></li>
+</ul>
+<h1 id="Conclusion"><a href="#Conclusion" class="headerlink" title="Conclusion"></a>Conclusion</h1><p>This time, I was able to run idasec on IDA Pro 7.0 with <a href="https://github.com/RobinDavid/idasec/pull/2" target="_blank" rel="external">some bug fixes and dirty patches</a> – like this cool video:</p>
+<center><iframe width="560" height="315" src="https://www.youtube.com/embed/Z14ab_rzjfA" frameborder="0" allowfullscreen></iframe></center>
+
+<p>If you are an IDA Pro 7.0 user, note that other backward-compatibility issue described in <a href="https://www.hex-rays.com/products/ida/7.0/docs/idapython_backward_compat_695.shtml" target="_blank" rel="external">IDA: IDAPython backward-compatibility with 6.95 APIs</a> will occur.</p>
+<p>Enjoy!</p>
+<p>HAI DOMO VIRTUAL YOUTUBER KIZUNA AI DESU. I’m still working on my English.</p>
+]]></content>
+    
+    <summary type="html">
+    
+      &lt;h1 id=&quot;Introduction&quot;&gt;&lt;a href=&quot;#Introduction&quot; class=&quot;headerlink&quot; title=&quot;Introduction&quot;&gt;&lt;/a&gt;Introduction&lt;/h1&gt;&lt;p&gt;IDAPython is powerful feature 
+    
+    </summary>
+    
+    
+      <category term="reversing" scheme="http://ntddk.github.io/tags/reversing/"/>
+    
+      <category term="symbolic execution" scheme="http://ntddk.github.io/tags/symbolic-execution/"/>
+    
+  </entry>
+  
+  <entry>
     <title>死にゆくアンチウイルスへの祈り</title>
     <link href="http://ntddk.github.io/2017/09/10/a-prayer-for-the-dying-antivirus/"/>
     <id>http://ntddk.github.io/2017/09/10/a-prayer-for-the-dying-antivirus/</id>
     <published>2017-09-10T08:15:00.000Z</published>
-    <updated>2017-09-10T08:11:39.922Z</updated>
+    <updated>2017-11-08T03:13:34.079Z</updated>
     
     <content type="html"><![CDATA[<p>　<a href="https://connpass.com/event/62844/" target="_blank" rel="external">Security meets Machine Learning</a>という勉強会にて，上記のタイトルで発表した．資料はこちら：</p>
 <script async class="speakerdeck-embed" data-id="5c63dce1d2494dfc9f068fe1c58eab41" data-ratio="1.33333333333333" src="//speakerdeck.com/assets/embed.js"></script>
 
-<p>　謎の力が働いて会社からの発表になっておりますが，機械学習の研究をしているわけではありません．既存研究の再現実装を試みているとこれ中国語の部屋じゃんという気持ちになる．<br>　ともあれ，これまで各種資料はただSpeakerDeckに載せるだけだったが，今後はブログから一元的に参照できるようにします．</p>
+<p>　謎の力が働いて会社からの発表になっておりますが，機械学習の研究をしているわけではありません．既存研究の再現実装を試みているとこれ中国語の部屋じゃんという気持ちになる．<br>　ともあれ，これまで各種資料はただSpeakerDeckに載せるだけだったのを今後はブログから一元的に参照できるようにします．</p>
 ]]></content>
     
     <summary type="html">
@@ -44,7 +135,7 @@
     <link href="http://ntddk.github.io/2017/08/24/z3py-link-collection/"/>
     <id>http://ntddk.github.io/2017/08/24/z3py-link-collection/</id>
     <published>2017-08-24T14:59:59.000Z</published>
-    <updated>2017-08-27T06:54:55.738Z</updated>
+    <updated>2017-08-27T06:54:55.000Z</updated>
     
     <content type="html"><![CDATA[<p>　なにもかも忘れかけている．</p>
 <h1 id="はじめに"><a href="#はじめに" class="headerlink" title="はじめに"></a>はじめに</h1><p>　z3pyはSMTソルバ<a href="https://github.com/Z3Prover/z3" target="_blank" rel="external">z3</a>のPythonバインディング．たとえば</p>
@@ -157,7 +248,7 @@
     <link href="http://ntddk.github.io/2017/03/04/thin-hypervisor-2017/"/>
     <id>http://ntddk.github.io/2017/03/04/thin-hypervisor-2017/</id>
     <published>2017-03-04T09:45:00.000Z</published>
-    <updated>2017-03-17T04:31:41.773Z</updated>
+    <updated>2017-03-17T04:31:41.000Z</updated>
     
     <content type="html"><![CDATA[<p>　いまさらながら，<a href="http://www.adventar.org/calendars/1401" target="_blank" rel="external">情報セキュリティ系論文紹介 Advent Calendar 2016</a>あるいは<a href="http://qiita.com/advent-calendar/2016/bitvisor" target="_blank" rel="external">BitVisor Advent Calendar 2016</a>に投稿されるはずだった文章を供養する．</p>
 <h1 id="はじめに"><a href="#はじめに" class="headerlink" title="はじめに"></a>はじめに</h1><p>　本稿では，シン，すなわち薄いハイパーバイザ (thin hypervisor) の動向を紹介する．<br>　薄いハイパーバイザとは，小規模であることを志向したハイパーバイザだ——ということにしておこう．小規模というのは，一部のイベントのみトラップするということだ．メリットとしては，実装・学習コストやオーバーヘッド，TCB (trusted computing base) を削減できる点が挙げられる．<br>　用語の初出はBitVisorの論文<a href="https://www.os.ecc.u-tokyo.ac.jp/papers/vee2009-shina.pdf" target="_blank" rel="external">[T. Shinagawa, et al. VEE’09]</a>だが，多くはWindows向けルートキットとして開発されたBlue Pillという手法<a href="http://www.blackhat.com/presentations/bh-usa-06/BH-US-06-Rutkowska.pdf" target="_blank" rel="external">[J. Rutkowska. Black Hat USA’06]</a>の流れを汲んでいる．そのため，ブート時からゲストを掌握するのではなく，のちほど——あえてchain of trustの構築を放棄して——カーネルドライバとしてロードされるものが一般的である．そのほか，単一のゲストのみ対象とする，セキュリティを意識しているといった傾向が見られる．<br>　前編となる今回は，3種類の薄いハイパーバイザを見ていく．</p>
@@ -833,7 +924,7 @@
     <link href="http://ntddk.github.io/2016/11/23/kdd-cup-99-data/"/>
     <id>http://ntddk.github.io/2016/11/23/kdd-cup-99-data/</id>
     <published>2016-11-22T21:50:00.000Z</published>
-    <updated>2016-11-22T21:45:16.424Z</updated>
+    <updated>2016-11-22T21:45:16.000Z</updated>
     
     <content type="html"><![CDATA[<h1 id="はじめに"><a href="#はじめに" class="headerlink" title="はじめに"></a>はじめに</h1><p>　サイバーセキュリティに携わる者なら一度くらいはKDD Cup 99 Dataなるデータセットの名を耳にしたことがあるのではないだろうか．KDD Cupは国際会議SIGKDDによるデータマイニングのコンペで，KDD Cup 99 Dataはそのためのネットワーク侵入検知にまつわるデータ．正常通信と攻撃を分類するタスクが与えられた．<br>　見てみよう．</p>
 <h1 id="データセットの構成"><a href="#データセットの構成" class="headerlink" title="データセットの構成"></a>データセットの構成</h1><p>　データは現在，カリフォルニア大学アーバイン校によって<a href="http://archive.ics.uci.edu/ml/databases/kddcup99/kddcup99.html" target="_blank" rel="external">配布</a>されている．<br>　それぞれのファイル内容は下記の通り：</p>
@@ -954,7 +1045,7 @@
     <link href="http://ntddk.github.io/2016/11/06/suppress-switching-ime-on-xming/"/>
     <id>http://ntddk.github.io/2016/11/06/suppress-switching-ime-on-xming/</id>
     <published>2016-11-06T09:40:00.000Z</published>
-    <updated>2016-11-07T09:13:52.811Z</updated>
+    <updated>2016-11-07T09:13:52.000Z</updated>
     
     <content type="html"><![CDATA[<h1 id="Xming"><a href="#Xming" class="headerlink" title="Xming"></a>Xming</h1><p>　<a href="http://www.straightrunning.com/XmingNotes/" target="_blank" rel="external">Xming</a>はWindows向けX Window System実装で，WindowsでX11 Forwardingをする場合のデファクトスタンダード．さて，日本語版のWindowsでXmingを利用していると，時折勝手に入力言語が英語に変わってしまうことがある．でまあOSSなのでソースコードを書き換えればいいんだけど，バイナリを読んだほうが早そう，ということでそのようにした．</p>
 <h1 id="原因"><a href="#原因" class="headerlink" title="原因"></a>原因</h1><p>　IDA Proでキーボード関連のAPIの呼び出し元を眺めると，LoadKeyboardLayoutのロケールID引数を英語 (0x0409) に設定していることがわかる．これを日本語 (0x0411) にすればよい．</p>
@@ -985,7 +1076,7 @@
     <link href="http://ntddk.github.io/2016/08/27/angr-afl-driller/"/>
     <id>http://ntddk.github.io/2016/08/27/angr-afl-driller/</id>
     <published>2016-08-26T18:00:00.000Z</published>
-    <updated>2016-09-15T08:53:36.203Z</updated>
+    <updated>2017-11-08T06:27:30.365Z</updated>
     
     <content type="html"><![CDATA[<h1 id="はじめに"><a href="#はじめに" class="headerlink" title="はじめに"></a>はじめに</h1><p>　今年のセキュリティ・キャンプでは，うっかり「なぜマルウェア解析は自動化できないのか」という題の講義を行ってしまったが，それだけセキュリティの世界には自動化の波が来ている．本稿では，脆弱性分析の自動化をめざして開発されているangr, AFL, Drillerをざっくり紹介する．</p>
 <h1 id="angr"><a href="#angr" class="headerlink" title="angr"></a>angr</h1><p>　<a href="http://angr.io/" target="_blank" rel="external">angr</a>はUCSBの研究チームにしてCTFチーム<a href="https://twitter.com/shellphish" target="_blank" rel="external">Shellphish</a>を中心に開発されているバイナリ解析フレームワーク．<a href="https://www.cs.ucsb.edu/~vigna/publications/2016_SP_angrSoK.pdf" target="_blank" rel="external">論文[PDF]</a>はIEEE S&amp;P 2016に採択されている．手法の新規性というよりは実装力でゴリ押しするタイプ．評価には，アメリカ国防高等研究計画局が5,500万ドル（約56億円）の資金を投じてまで開催した脆弱性分析・修正の自動化コンペ，<a href="https://www.cybergrandchallenge.com/" target="_blank" rel="external">DARPA Cyber Grand Challenge</a> (CGC) のデータセットが用いられている．CGCの決勝戦に進出したチームには75万ドル（約7,600万円），優勝したチームは200万ドル（約2億円）が与えられる．angr開発の目的のひとつが，CGCでの勝利にあることは疑いようもない——最終的な戦績は，CMUのツールMAYHEMに優勝を譲って3位だったが．<br>　さて，angrはシンボリック実行やプログラムスライシングを通して，<strong>プログラムの特定位置に到達するための入力値を抽出することができる</strong>．次のコードで雰囲気をつかめるだろうか：</p>
@@ -1035,7 +1126,7 @@
     
       <category term="symbolic execution" scheme="http://ntddk.github.io/tags/symbolic-execution/"/>
     
-      <category term="exploiting" scheme="http://ntddk.github.io/tags/exploiting/"/>
+      <category term="exploitation" scheme="http://ntddk.github.io/tags/exploitation/"/>
     
   </entry>
   
@@ -1044,7 +1135,7 @@
     <link href="http://ntddk.github.io/2016/07/09/unicorn-internals-python/"/>
     <id>http://ntddk.github.io/2016/07/09/unicorn-internals-python/</id>
     <published>2016-07-09T06:20:00.000Z</published>
-    <updated>2017-03-04T07:39:41.800Z</updated>
+    <updated>2017-03-04T07:39:41.000Z</updated>
     
     <content type="html"><![CDATA[<p>　※Rackサーバの方のUnicornではない．</p>
 <h1 id="はじめに"><a href="#はじめに" class="headerlink" title="はじめに"></a>はじめに</h1><p>　<a href="http://www.unicorn-engine.org/" target="_blank" rel="external">Unicorn</a>は<a href="http://www.qemu.org/" target="_blank" rel="external">QEMU</a>ベースの軽量，マルチプラットフォーム・マルチアーキテクチャ・JIT対応のCPUエミュレータ．周辺機器をエミュレーションしないため用途は限られるが，GoやPythonなど<a href="https://github.com/unicorn-engine/unicorn/tree/master/bindings" target="_blank" rel="external">複数言語のバインディング</a>を備えている．現在システムセキュリティ分野で最も注目されているOSSのひとつと言っても過言ではなく，<a href="https://github.com/vrtadmin/ROPMEMU" target="_blank" rel="external">AsiaCCS 2016で発表されたROPチェーン解析ツールROPMEMU</a>や，<a href="https://github.com/oblivia-simplex/roper" target="_blank" rel="external">遺伝的アルゴリズムによってROPチェーンを自動生成するツールroper</a>のバックエンドとして用いられたり，Unicornと同じように注目を集めているバイナリ解析ツール<a href="https://github.com/angr/simuvex/issues/29" target="_blank" rel="external">angrとの連携</a>が進められたりと，一大コミュニティを形成しつつある．<br>　コンセプトの説明は<a href="http://www.unicorn-engine.org/BHUSA2015-unicorn.pdf" target="_blank" rel="external">Black Hat USA 2015の発表スライド</a>に譲るとして，ここではその利用方法と内部実装にふれる．</p>
@@ -1089,7 +1180,7 @@
     <link href="http://ntddk.github.io/2016/06/29/cyber-security-in-israel/"/>
     <id>http://ntddk.github.io/2016/06/29/cyber-security-in-israel/</id>
     <published>2016-06-29T13:30:00.000Z</published>
-    <updated>2016-06-30T00:46:12.703Z</updated>
+    <updated>2016-06-30T00:46:12.000Z</updated>
     
     <content type="html"><![CDATA[<p>　これはマルウェアに感染した端末の基板で構成されたトロイの木馬．国際会議<a href="http://cyberweek.tau.ac.il" target="_blank" rel="external">Cyber Week</a>の展示の一環．</p>
 <p><img src="/image/israel/cyberhorse.jpg" width="100%" height="100%"></p>
@@ -1163,7 +1254,7 @@
     <link href="http://ntddk.github.io/2016/03/26/neural-image-caption-generator-twitter-bot/"/>
     <id>http://ntddk.github.io/2016/03/26/neural-image-caption-generator-twitter-bot/</id>
     <published>2016-03-25T15:30:00.000Z</published>
-    <updated>2016-07-08T08:51:14.827Z</updated>
+    <updated>2016-07-08T08:51:14.000Z</updated>
     
     <content type="html"><![CDATA[<p><center><br><a class="twitter-timeline" href="https://twitter.com/img2cap" data-widget-id="713361832895860739" target="_blank" rel="external">@img2capさんのツイート</a></center></p>
 <script>!function(d,s,id){var js,fjs=d.getElementsByTagName(s)[0],p=/^http:/.test(d.location)?'http':'https';if(!d.getElementById(id)){js=d.createElement(s);js.id=id;js.src=p+"://platform.twitter.com/widgets.js";fjs.parentNode.insertBefore(js,fjs);}}(document,"script","twitter-wjs");</script>
@@ -1207,7 +1298,7 @@
     <link href="http://ntddk.github.io/2016/03/21/book-guide-for-computational-neuroscience/"/>
     <id>http://ntddk.github.io/2016/03/21/book-guide-for-computational-neuroscience/</id>
     <published>2016-03-20T15:30:00.000Z</published>
-    <updated>2016-07-08T08:51:43.733Z</updated>
+    <updated>2016-07-08T08:51:43.000Z</updated>
     
     <content type="html"><![CDATA[<p>　読書メモ．</p>
 <h1 id="はじめに"><a href="#はじめに" class="headerlink" title="はじめに"></a>はじめに</h1><p>　人間の脳を模したニューラルネットの手法，<ruby>深層学習<rt>ディープラーニング</rt></ruby>がめざましい成果を挙げている–といった謳い文句をよく目にする．だが機械学習の専門書を紐解いても出てくるのはロジスティック回帰のお化けばかり．<br>　われらがPRMLのニューラルネットを扱う章にはこうある．</p>
@@ -1285,7 +1376,7 @@
     <link href="http://ntddk.github.io/2016/03/02/sushi-and-memorized-recursion/"/>
     <id>http://ntddk.github.io/2016/03/02/sushi-and-memorized-recursion/</id>
     <published>2016-03-02T06:30:00.000Z</published>
-    <updated>2016-03-02T07:24:52.782Z</updated>
+    <updated>2016-03-02T07:24:52.000Z</updated>
     
     <content type="html"><![CDATA[<p>　わざわざブログに書くほどでもないことから書いていかないとなまるので書く．</p>
 <h1 id="はじめに"><a href="#はじめに" class="headerlink" title="はじめに"></a>はじめに</h1><p>　寿司 虚空編[1]第2話で登場したアッカーマン関数というかS変換を実装する．</p>
@@ -1335,7 +1426,7 @@
     <link href="http://ntddk.github.io/2016/01/08/controlling-rolling-spider-with-leap-motion-cylon-js/"/>
     <id>http://ntddk.github.io/2016/01/08/controlling-rolling-spider-with-leap-motion-cylon-js/</id>
     <published>2016-01-08T09:00:00.000Z</published>
-    <updated>2016-04-02T00:51:25.553Z</updated>
+    <updated>2016-04-02T00:51:25.000Z</updated>
     
     <content type="html"><![CDATA[<p>　凧揚げの様子．</p>
 <center><iframe src="https://vine.co/v/ihdD7VVeeYz/embed/simple" width="300" height="300" frameborder="0"></iframe><script src="https://platform.vine.co/static/scripts/embed.js"></script></center>
@@ -1386,7 +1477,7 @@
     <link href="http://ntddk.github.io/2015/12/19/generating-thesis-titles-with-rnnlm/"/>
     <id>http://ntddk.github.io/2015/12/19/generating-thesis-titles-with-rnnlm/</id>
     <published>2015-12-19T14:45:00.000Z</published>
-    <updated>2016-07-08T08:52:28.589Z</updated>
+    <updated>2016-07-08T08:52:28.000Z</updated>
     
     <content type="html"><![CDATA[<p>　本稿は<a href="http://www.adventar.org/calendars/1053" target="_blank" rel="external">慶應義塾大学SFC村井&amp;徳田研 Advent Calendar 2015</a>の19日目である．</p>
 <h1 id="TL-DR"><a href="#TL-DR" class="headerlink" title="TL;DR:"></a>TL;DR:</h1><p>　村井研・徳田研の卒論・修論・博論アーカイブから過去の論文タイトルを収集し，RNNLM（Recurrent Neural Network Language Model, 再帰型ニューラルネット言語モデル）[1]を用いて論文タイトルを自動生成する．</p>
@@ -1445,7 +1536,7 @@
     <link href="http://ntddk.github.io/2015/12/11/autoprobe/"/>
     <id>http://ntddk.github.io/2015/12/11/autoprobe/</id>
     <published>2015-12-11T03:00:00.000Z</published>
-    <updated>2016-01-03T16:34:08.944Z</updated>
+    <updated>2016-01-03T16:34:08.000Z</updated>
     
     <content type="html"><![CDATA[<p>　本稿は<a href="http://www.adventar.org/calendars/784" target="_blank" rel="external">情報セキュリティ系論文紹介 Advent Calendar 2015</a>の11日目である．</p>
 <h1 id="TL-DR"><a href="#TL-DR" class="headerlink" title="TL;DR:"></a>TL;DR:</h1><p>　テイント解析（taint analysis）やプログラムスライシング（program slicing），記号的実行（symbolic execution）やファジング（fuzzing）といったバイナリ解析技術を総動員して，マルウェアが通信するC&amp;Cサーバのフィンガープリントを<strong>C&amp;Cサーバと通信せずとも</strong>生成する手法–AUTOPROBE[1]を紹介する．</p>
@@ -1516,9 +1607,9 @@
     </summary>
     
     
-      <category term="taint analysis" scheme="http://ntddk.github.io/tags/taint-analysis/"/>
-    
       <category term="symbolic execution" scheme="http://ntddk.github.io/tags/symbolic-execution/"/>
+    
+      <category term="taint analysis" scheme="http://ntddk.github.io/tags/taint-analysis/"/>
     
   </entry>
   
@@ -1527,7 +1618,7 @@
     <link href="http://ntddk.github.io/2015/11/09/is-linear-obfuscation-a-threat/"/>
     <id>http://ntddk.github.io/2015/11/09/is-linear-obfuscation-a-threat/</id>
     <published>2015-11-09T08:30:00.000Z</published>
-    <updated>2015-11-09T08:27:51.226Z</updated>
+    <updated>2015-11-09T08:27:51.000Z</updated>
     
     <content type="html"><![CDATA[<h1 id="TL-DR"><a href="#TL-DR" class="headerlink" title="TL;DR:"></a>TL;DR:</h1><p>　ソフトウェアの多くは外部からの入力に依存する実行パス（trigger-based code）をもつ．<br>　これを記号的実行（symbolic execution, シンボリック実行）などの解析手法から隠蔽する手法として，コラッツの問題を用いた線型難読化（linear obfuscation）がある[1]．<br>　本稿ではしかし，線型難読化されたコードはコンパイラ最適化によってある程度除去できることを示す．</p>
 <h1 id="コラッツの問題"><a href="#コラッツの問題" class="headerlink" title="コラッツの問題"></a>コラッツの問題</h1><p>　コラッツの問題は数論の未解決問題のひとつである．<br>　任意の1でない自然数nに対して，nが偶数ならば2で割り，nが奇数ならば3倍して1を足す．この操作を繰り返していくと，どのような自然数nから出発しても，有限回の操作のうちに必ず1に到達する．<br>　この定理は経験則的に正しいと考えられているが，いまだ証明はなされていない．</p>
@@ -1581,7 +1672,7 @@
     <link href="http://ntddk.github.io/2015/09/14/xen-add-hypercall/"/>
     <id>http://ntddk.github.io/2015/09/14/xen-add-hypercall/</id>
     <published>2015-09-14T13:00:00.000Z</published>
-    <updated>2016-07-08T08:52:59.377Z</updated>
+    <updated>2016-07-08T08:52:59.000Z</updated>
     
     <content type="html"><![CDATA[<h1 id="はじめに"><a href="#はじめに" class="headerlink" title="はじめに"></a>はじめに</h1><p>いわゆるVM床抜きをXenで試す．</p>
 <h1 id="Xenのインストール"><a href="#Xenのインストール" class="headerlink" title="Xenのインストール"></a>Xenのインストール</h1><p>いつかインストールしたXen 4.4.1を用いた．</p>
@@ -1648,7 +1739,7 @@
     <link href="http://ntddk.github.io/2015/08/16/automated-malware-analysis-using-decaf-in-seccamp15/"/>
     <id>http://ntddk.github.io/2015/08/16/automated-malware-analysis-using-decaf-in-seccamp15/</id>
     <published>2015-08-16T09:00:00.000Z</published>
-    <updated>2016-07-08T08:53:12.907Z</updated>
+    <updated>2016-07-08T08:53:12.000Z</updated>
     
     <content type="html"><![CDATA[<h1 id="はじめに"><a href="#はじめに" class="headerlink" title="はじめに"></a>はじめに</h1><p>2015.08.11~15にわたって開催された<a href="https://www.ipa.go.jp/jinzai/camp/2015/zenkoku2015.html" target="_blank" rel="external">セキュリティ・キャンプ全国大会 2015</a>に解析トラックの講師として参加した．講義では「仮想化技術を用いてマルウェア解析」と題して，QEMUをベースに開発が行われている<a href="https://github.com/sycurelab/DECAF" target="_blank" rel="external">DECAF</a>という解析プラットフォームを用いて演習を行った．</p>
 <h1 id="講義資料"><a href="#講義資料" class="headerlink" title="講義資料"></a>講義資料</h1><script async class="speakerdeck-embed" data-id="11c7632b9b844e199ac966e4494a1dd2" data-ratio="1.77777777777778" src="//speakerdeck.com/assets/embed.js"></script>
@@ -1679,9 +1770,9 @@
     </summary>
     
     
-      <category term="taint analysis" scheme="http://ntddk.github.io/tags/taint-analysis/"/>
-    
       <category term="symbolic execution" scheme="http://ntddk.github.io/tags/symbolic-execution/"/>
+    
+      <category term="taint analysis" scheme="http://ntddk.github.io/tags/taint-analysis/"/>
     
       <category term="virtual machine introspection" scheme="http://ntddk.github.io/tags/virtual-machine-introspection/"/>
     
@@ -1694,7 +1785,7 @@
     <link href="http://ntddk.github.io/2015/07/13/qemu-dbt-bottleneck/"/>
     <id>http://ntddk.github.io/2015/07/13/qemu-dbt-bottleneck/</id>
     <published>2015-07-13T06:00:00.000Z</published>
-    <updated>2015-09-15T08:45:05.094Z</updated>
+    <updated>2015-09-15T08:45:05.000Z</updated>
     
     <content type="html"><![CDATA[<h1 id="はじめに"><a href="#はじめに" class="headerlink" title="はじめに"></a>はじめに</h1><p>QEMUは動的バイナリ変換を用いた完全仮想化式のハイパーバイザである．<br>QEMUは実行対象の命令列を逆アセンブルし，いちど中間表現に変換したうえで，ホストのアーキテクチャの命令列に変換して実行する．これによりQEMUは異なるアーキテクチャのバイナリを実行することができる．<br>しかしQEMUは遅かったため，アクセラレータとしてkqemuが開発された．<br>kqemuはユーザーモードのコードをホストのCPUに実行させる準仮想化ドライバであり，やがてKVMへと変貌を遂げた．さらにKVMはハードウェアによる仮想化支援機能を用いることで，さらなる高速化を実現した．もはやKVMにおいてQEMUはハードウェアのエミュレーションにしか用いられていない．<br>かわいそうなQEMU！<br>しかしQEMUの活躍する場面はいまだ多く残されている．たとえばマルウェア解析で．<br>それでも遅いのは困りものだ．QEMUはどこが遅いのだろうか．<br>ここでは<code>perf</code>を用いてQEMUのボトルネックを<strong>雑に</strong>特定する．</p>
 <h1 id="実験"><a href="#実験" class="headerlink" title="実験"></a>実験</h1><p>今回はARMエミュレーションについて調査した．ホスト・ゲストともOSにはUbuntu 12.04(3.2.0-23-generic)を用いた．<code>perf</code>でQEMUのプロファイリングを行っている間，ゲストではgccを用いてコンパイルを実行した．</p>
@@ -1733,126 +1824,6 @@
     
     
       <category term="dynamic binary translation" scheme="http://ntddk.github.io/tags/dynamic-binary-translation/"/>
-    
-  </entry>
-  
-  <entry>
-    <title>そろそろ『記号と再帰』について一言言っておくか</title>
-    <link href="http://ntddk.github.io/2015/04/04/semiotics-of-programming/"/>
-    <id>http://ntddk.github.io/2015/04/04/semiotics-of-programming/</id>
-    <published>2015-04-04T13:34:16.000Z</published>
-    <updated>2015-04-10T13:01:50.000Z</updated>
-    
-    <content type="html"><![CDATA[<h1 id="はじめに"><a href="#はじめに" class="headerlink" title="はじめに"></a>はじめに</h1><p>田中久美子『記号と再帰: 記号論の形式・プログラムの必然』(“Semiotics of Programming,” Cambridge University Press, 2010.)は，プログラミング言語の記号論についての記念碑的な書籍である．かねてよりPeter B. Andersenらによってコンピュータ記号論(computional semiotics)は語られていたものの，プログラミング言語については議論が追い付いていなかった．<br>本書はまず，対応関係が不明瞭であったソシュールの記号論とパースのそれとを，関数型パラダイムとオブジェクト指向パラダイムとの対比をもって整理する．その上で，記号の本質は再帰にある(p.1)として，絵画，プログラミング言語，哲学を横断した考察が展開される．とまあ随分と衒学的な書籍なのだが，それゆえ危うさを孕んでいるようにも思う．ここではあえて，本書の批判とはいかないまでも，いくつかの不満点を提示したい．</p>
-<h1 id="汎記号主義"><a href="#汎記号主義" class="headerlink" title="汎記号主義"></a>汎記号主義</h1><p>本書は「記号を媒介することなく対象を人間が認識できない」(p.27)とされ，「記号の解釈を記号系の中だけで捉える」(p.26)という汎記号主義を前提としている．この妥当性について考えても埒が明かないので，ひとまずはそういうことにしておこう．</p>
-<h1 id="HaskellとJavaによるプログラム例"><a href="#HaskellとJavaによるプログラム例" class="headerlink" title="HaskellとJavaによるプログラム例"></a>HaskellとJavaによるプログラム例</h1><p>本書で用いられるプログラミング言語は，HaskellとJavaである．<br>以下はHaskellによる平面上の長方形，楕円，円の面積を計算するプログラムである(p.15)．</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div></pre></td><td class="code"><pre><div class="line">data Shape = Rectangle  Double Double</div><div class="line">            | Ellipse   Double Double</div><div class="line">            | Circle    Double</div><div class="line"></div><div class="line">area (Rectangle width height) = width * height</div><div class="line">area (Ellipse   width height) = pi * width * height / 4.0</div><div class="line">area (Circle  radius)       = area (Ellipse (radius * 2.0)(radius *2.0))</div><div class="line"></div><div class="line">main = let</div><div class="line">        r = Rectangle 5.0 8.0</div><div class="line">        u = Ellipse   3.0 4.0</div><div class="line">        v = Circle    3.0</div><div class="line">        ss = [r, u, v]</div><div class="line">    in</div><div class="line">        for (\s -&gt; putStr(&quot;area: &quot;++show (area s)++&quot;\n&quot;)) ss</div><div class="line"></div><div class="line">for f [] = do return ()</div><div class="line">for f (s:ss) = do &#123; (f s); for f ss&#125;</div></pre></td></tr></table></figure>
-<p>いきなり不安になってくる．Haskellについてはずぶの素人の私だが，それでもこのような場面では<code>forM</code>や<code>mapM</code>を用いるべきだと知っている．「このfor関数は，次の図2.2のJavaプログラムとの整合性をふまえて定義されている」(p.17)とあるが，首を傾げざるを得ない．なお<code>map</code>はp.141に至るまで登場しない．<br>続いて，同様にJavaによるプログラムが示される(p.18)．</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div><div class="line">22</div><div class="line">23</div><div class="line">24</div><div class="line">25</div><div class="line">26</div><div class="line">27</div></pre></td><td class="code"><pre><div class="line">class Shape&#123;</div><div class="line">    double width, height;</div><div class="line">    Shape (double w, double h)&#123; width = w; height = h; &#125;</div><div class="line">    public double area () &#123; return width * height; &#125;</div><div class="line">&#125;</div><div class="line"></div><div class="line">class Rectangle extends Shape&#123;</div><div class="line">    Rectangle (double w, double h)&#123; super(w, h); &#125;</div><div class="line">&#125;</div><div class="line"></div><div class="line">class Ellipse extends Shape&#123; </div><div class="line">    Ellipse (double w, double h)&#123; super(w, h); &#125;</div><div class="line">    public double area()&#123; return Math.PI*width*height/4.0; &#125;</div><div class="line">&#125;</div><div class="line"></div><div class="line">class Circle extends Ellipse&#123;</div><div class="line">    Circle(double r)&#123; super(r*2.0, r*2.0); &#125;</div><div class="line">&#125;</div><div class="line"></div><div class="line">void run()&#123;</div><div class="line">    Rectangle r = new Rectangle(5.0, 8.0);</div><div class="line">    Ellipse   u = new Ellipse(3.0, 4.0);</div><div class="line">    Circle    v = new Circle(3.0);</div><div class="line"></div><div class="line">    Shape [] ss = new Shape[]&#123;r, u, v&#125;;</div><div class="line">    for (Shape s : ss)&#123; putStr(&quot;area: &quot; + s.area() + &quot;\n&quot;); &#125;</div><div class="line">&#125;</div></pre></td></tr></table></figure>
-<p>これらのプログラムは異なるパラダイム，異なる記法によって書かれているが，しかし同じ出力を得ることができる．ここに本書は，ソシュール二元論とパース三元論を託つける．</p>
-<h1 id="ソシュール二元論とパース三元論"><a href="#ソシュール二元論とパース三元論" class="headerlink" title="ソシュール二元論とパース三元論"></a>ソシュール二元論とパース三元論</h1><p>ソシュールとパースはそれぞれ記号について以下のように整理した．</p>
-<ul>
-<li>ソシュール二元論</li>
-</ul>
-<table>
-<thead>
-<tr>
-<th style="text-align:center">シニフィアン</th>
-<th style="text-align:center">シニフィエ</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td style="text-align:center">“tree”</td>
-<td style="text-align:center">木</td>
-</tr>
-<tr>
-<td style="text-align:center">ラベル</td>
-<td style="text-align:center">内容</td>
-</tr>
-</tbody>
-</table>
-<ul>
-<li>パース三元論</li>
-</ul>
-<table>
-<thead>
-<tr>
-<th style="text-align:center">表意体</th>
-<th style="text-align:center">解釈項</th>
-<th style="text-align:center">対象</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td style="text-align:center">“tree”</td>
-<td style="text-align:center">木の解釈</td>
-<td style="text-align:center">木</td>
-</tr>
-<tr>
-<td style="text-align:center">ラベル</td>
-<td style="text-align:center">イデア</td>
-<td style="text-align:center">対象</td>
-</tr>
-</tbody>
-</table>
-<p>この対応について，本書は，パース「記号は人に働きかけ，人の心の中に等価な記号を作り出し，あるいはより発展した記号を作り出す．もとの記号が作り出すこの記号のことを私は解釈項と呼ぶ」を根拠に(p.40)，「解釈項は記号の解釈を呼び，記号過程を生成するもので」あり「これに対応するものがソシュールの記号モデルの中にあるならば，それはシニフィエ以外にありえない」(p.41)と導く．<br>続いて，「記号の差異は他の記号と対比されてはじめて立ち現れるものである．とすると，記号の解釈にまつわる記号の使用はソシュールの記号モデルの構成要素には含まれてはいなが，全体論的価値として位置付けられていると考えることができる」(p.41)ことから，「ソシュールのシニフィエはパースの直接対象に対応し，そしてパースの解釈項はソシュールの記号モデルに外在する全体論的価値に内包される」(pp.41-42)という仮説を提示する．</p>
-<h1 id="全体論的価値"><a href="#全体論的価値" class="headerlink" title="全体論的価値"></a>全体論的価値</h1><p>関数型パラダイムとオブジェクト指向パラダイムの比較を通じて仮説を検証する前に，この「全体論的価値」とは何を意味するのだろうか．おそらくは意図的なのだろうが，本書にはパロールやラング，レフェランといった語が一切登場しない．これによって混乱してしまったのは私だけだろうか．記号論についてもずぶの素人である私の苦し紛れの解釈では「全体論的価値」はラングに相当するが，詳細は述べられていない．ソシュールの「言語記号は恣意的です」という原理も後に登場する(p.57)が，社会的慣習と全体論的価値が絡められることはなかった．</p>
-<h1 id="ソシュール二元論とパース三元論の接続"><a href="#ソシュール二元論とパース三元論の接続" class="headerlink" title="ソシュール二元論とパース三元論の接続"></a>ソシュール二元論とパース三元論の接続</h1><p>さて，ソシュールとパースの関係は，先に挙げたプログラム例の<code>area</code>関数のあり方によって整理される．</p>
-<table>
-<thead>
-<tr>
-<th style="text-align:center">プログラミング言語</th>
-<th style="text-align:center">Haskell</th>
-<th style="text-align:center">Java</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td style="text-align:center">記号論</td>
-<td style="text-align:center">二元論</td>
-<td style="text-align:center">三元論</td>
-</tr>
-<tr>
-<td style="text-align:center">area関数</td>
-<td style="text-align:center">外在的</td>
-<td style="text-align:center">内在的</td>
-</tr>
-</tbody>
-</table>
-<p>Haskellのプログラム例では，<code>area</code>は他のデータ構造に<strong>外在する</strong>が，Javaのプログラム例では<strong>内在する</strong>(p.42)．言い換えれば，Haskellにおいては記号がその使用によって意味付けられるが，Javaにおいては記号の定義がその使用を内在する．つまり，次のような対応関係になる(p.49)．</p>
-<ul>
-<li>ソシュールのシニフィアンはパースの表意体に対応する．</li>
-<li>ソシュールのシニフィエはパースの直接対象に相当する（心的な対象）．</li>
-<li>パースの解釈項は識別子の使用に相当する．パースの記号モデルでは，記号の使用は解釈項として記号モデルの中に埋め込まれ，記号過程は解釈項を次々と呼ぶことによって生成される．ソシュールにおいては，記号過程は記号が別の記号に呼ばれ，それがまた別の記号に呼ばれることにより生成される．ある記号の使用によって記号に付される価値は記号モデルに外在し，それは記号を併置した際の差異として現れる．</li>
-</ul>
-<p>こうして，ソシュールとパースの論が接続された．なるほど綺麗にまとまったかのように思える．</p>
-<h1 id="プログラミングパラダイム"><a href="#プログラミングパラダイム" class="headerlink" title="プログラミングパラダイム"></a>プログラミングパラダイム</h1><p>しかし，これはプログラミングパラダイムから見て妥当だろうか．HaskellやJavaに固有の特徴と，パラダイムの特徴を同一視していないだろうか．本書において，HaskellやJavaを選択した基準は最後まで明確に示されない（私はJavaScriptが良いのではないかと思った）．<br>CTMCPこと『コンピュータプログラミングの概念・技法・モデル』(“Concepts, Techniques, and Models of Computer Programming, “ The MIT Press, 2004.)のPeter Van-Royによると，オブジェクト指向パラダイムとは関数型パラダイムに状態(state)を追加したものである．私はこの考えに沿った展開に期待していたのだが，しかし状態の概念はp.190に至るまでほとんどといって触れられず，HaskellとJavaの比較に絡められることはなかった．<br>オブジェクト指向すなわちカプセル化という前提に立っているところ，プロトタイプベースのオブジェクト指向について触れていないところも勿体無い．</p>
-<h1 id="モナドと状態"><a href="#モナドと状態" class="headerlink" title="モナドと状態"></a>モナドと状態</h1><p>状態の概念は，「インタラクションを参照透明に記述しようと思うと，」「莫大な量の記号を使い捨てなければならない」(pp.198-199)からこそモナドが考案されたという流れで援用される．すなわち，参照透明性を保ちつつ状態を記述するためにモナドがある(p.196)．失敗系モナドが無視されているにせよ，このあたりの説明が明快なだけに，HaskellとJavaの比較において状態の概念が持ち出されなかったことが残念に思われる．</p>
-<h1 id="参照の値渡し"><a href="#参照の値渡し" class="headerlink" title="参照の値渡し"></a>参照の値渡し</h1><p>本書はJavaを「関数に値とアドレスのどちらかを渡すのかは，再び文脈により実用論的に決まり，」「プログラマが定義して導入する複合型」は「アドレスを渡す」ものとして紹介している(p.117)．これは端的に誤りである．なぜなら，Javaはあらゆる場面において値渡しであり，参照は参照の値(reference values)として扱われるためである．</p>
-<h1 id="おわりに"><a href="#おわりに" class="headerlink" title="おわりに"></a>おわりに</h1><p>主にプログラミングの観点から，『記号と再帰』に見られる不満点を述べた．要約すると次のようになる．</p>
-<ul>
-<li>Haskellのコードが微妙</li>
-<li>全体論的価値の定義が不明瞭</li>
-<li>HaskellとJavaを題材に選んだ根拠が不明瞭</li>
-<li>Javaの参照の値渡しについての説明が不適切</li>
-</ul>
-<p>だからといって私は本書が駄本であると切り捨てたいわけではない．<br>シニフィアンを持たない状態で分節されたλ項にシニフィアンが付与されていく簡約の過程は大変面白かったし，再帰から是態（交換不可能性？）が立ち上るという考えも論証不足ながら興味深かった．<br>汎記号主義という極端な見地から，記号が投機的に記号系に導入されるからこそ再帰が成立すると言い切ることで，ここまで手際よく語ることができるのかという興奮があった．<br>だからこそ，（今後本書が重版されることがあればの話だが）今回述べたような不満点が解消されることを望む．<br>終盤に本書は，「何ら形式的な制約なく自然に作られた」自然言語の構造的な系と，「停止性が保証される最小の記号群からはじめ，停止性の制約下でボトムアップに構築される」プログラミング言語の構成的な系とを対比している(p.183)．再帰による是態の獲得．構造的な系．次に語られるのはニューラルネットの記号論だろうか．</p>
-<h1 id="参考文献"><a href="#参考文献" class="headerlink" title="参考文献"></a>参考文献</h1><ul>
-<li>“Classification of the principal programming paradigms,” <a href="https://www.info.ucl.ac.be/~pvr/paradigms" target="_blank" rel="external">https://www.info.ucl.ac.be/~pvr/paradigms</a></li>
-<li>“幻想再帰のアリュージョニスト,” <a href="http://ncode.syosetu.com/n9073ca/" target="_blank" rel="external">http://ncode.syosetu.com/n9073ca/</a></li>
-<li>“EnJoe140で短編中さんはTwitterを使っています: 【記号と再帰―記号論の形式・プログラムの必然】止めて差し上げた方が良いのではないか。 <a href="http://book.akahoshitakuya.com/cmt/8818094" target="_blank" rel="external">http://book.akahoshitakuya.com/cmt/8818094</a> #bookmeter,” <a href="https://twitter.com/EnJoeToh/status/13886544494460928" target="_blank" rel="external">https://twitter.com/EnJoeToh/status/13886544494460928</a></li>
-</ul>
-]]></content>
-    
-    <summary type="html">
-    
-      &lt;h1 id=&quot;はじめに&quot;&gt;&lt;a href=&quot;#はじめに&quot; class=&quot;headerlink&quot; title=&quot;はじめに&quot;&gt;&lt;/a&gt;はじめに&lt;/h1&gt;&lt;p&gt;田中久美子『記号と再帰: 記号論の形式・プログラムの必然』(“Semiotics of Programming,” Camb
-    
-    </summary>
-    
-    
-      <category term="computational semiotics" scheme="http://ntddk.github.io/tags/computational-semiotics/"/>
     
   </entry>
   

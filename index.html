@@ -47,6 +47,108 @@
       <div class="outer">
         <section id="main">
   
+    <article id="post-a-complemental-guide-to-migrate-pySide-code-to-pyqt5-within-your-idapython-script" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    
+      <header class="article-header">
+        
+  
+    <a class="article-title" href="/2017/11/08/a-complemental-guide-to-migrate-pySide-code-to-pyqt5-within-your-idapython-script/">A Complemental Guide to Migrate PySide Code to PyQt5 Within Your IDAPython Script</a>
+  
+
+      </header>
+    
+    <time class="article-date" datetime="2017-11-08T12:00:00.000Z" itemprop="datePublished">11-08-2017</time>
+    
+  </div>
+  <div class="article-inner">
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h1 id="Introduction"><a href="#Introduction" class="headerlink" title="Introduction"></a>Introduction</h1><p>IDAPython is powerful feature of IDA Pro, and there are many open-sourced IDAPython projects. However, we cannot use every GUI-based IDAPython script due to some Qt-related breaking changes between IDA Pro 6.8 and 6.9 or later. The main problem is about migrating no longer supported PySide code to PyQt5.</p>
+<p>Recently I ported PySide code within <a href="https://github.com/RobinDavid/idasec" target="_blank" rel="external">idasec</a> – one of the most sophisticated deobfuscation frameworks, which tackles opaque predicates and call stack tampering in terms of infeasibility questions, by utilizing Backward-Bounded Dynamic Symbolic Execution proposed in the remarkably well written paper <a href="https://www.ieee-security.org/TC/SP2017/papers/220.pdf" target="_blank" rel="external">S. Bardin et al. IEEE S&amp;P’17</a> – to PyQt5.</p>
+<p>That’s why I decided to write this blog post for a note to self and for someone trying to do similar thing.</p>
+<h1 id="Related-Work"><a href="#Related-Work" class="headerlink" title="Related Work"></a>Related Work</h1><p>There are 2 guidances to migrate PySide code to PyQt5:</p>
+<ul>
+<li><a href="http://www.hexblog.com/?p=975" target="_blank" rel="external">IDAPython: migrating PySide code to PyQt5 – Hex Blog</a></li>
+<li><a href="https://github.com/tmr232/Cute" target="_blank" rel="external">idacute</a></li>
+</ul>
+<p>Please read them before. I only give supplemental information in addition to predecessors.</p>
+<h1 id="How-to-Migrate"><a href="#How-to-Migrate" class="headerlink" title="How to Migrate"></a>How to Migrate</h1><p>Now let’s get started.</p>
+<h2 id="Change-QtGui-methods-to-QtWidgets"><a href="#Change-QtGui-methods-to-QtWidgets" class="headerlink" title="Change QtGui methods to QtWidgets"></a>Change <code>QtGui</code> methods to <code>QtWidgets</code></h2><p>Most methods in <code>QtGui</code> migrated to <code>QtWidgets</code>. Therefore,</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><div class="line">1</div></pre></td><td class="code"><pre><div class="line"><span class="keyword">from</span> PySide <span class="keyword">import</span> QtGui, QtCore</div></pre></td></tr></table></figure>
+<p>becomes:</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><div class="line">1</div></pre></td><td class="code"><pre><div class="line"><span class="keyword">from</span> PyQt5 <span class="keyword">import</span> QtCore, QtGui, QtWidgets</div></pre></td></tr></table></figure>
+<p>As an example, <code>QTextEdit</code> described in Hex Blog. In additions, the methods to be rewritten are as follows:</p>
+<ul>
+<li><code>QtWidgets.QLayout</code></li>
+<li><code>QtWidgets.QVBoxLayout</code></li>
+<li><code>QtWidgets.QHBoxLayout</code></li>
+<li><code>QtWidgets.QWidget</code></li>
+<li><code>QtWidgets.QTableWidget</code></li>
+<li><code>QtWidgets.QListWidget</code></li>
+<li><code>QtWidgets.QTabWidget</code></li>
+<li><code>QtWidgets.QDockWidget</code></li>
+<li><code>QtWidgets.QTreeWidget</code></li>
+<li><code>QtWidgets.QTreeWidgetItem</code></li>
+<li><code>QtWidgets.QPushButton</code></li>
+<li><code>QtWidgets.QRadioButton</code></li>
+<li><code>QtWidgets.QToolButton</code></li>
+<li><code>QtWidgets.QButtonGroup</code></li>
+<li><code>QtWidgets.QGroupBox</code></li>
+<li><code>QtWidgets.QSpinBox</code></li>
+<li><code>QtWidgets.QCheckBox</code></li>
+<li><code>QtWidgets.QComboBox</code></li>
+<li><code>QtWidgets.QTextEdit</code></li>
+<li><code>QtWidgets.QLineEdit</code></li>
+<li><code>QtWidgets.QApplication</code></li>
+<li><code>QtWidgets.QLabel</code></li>
+<li><code>QtWidgets.QSizePolicy</code></li>
+<li><code>QtWidgets.QMenu</code></li>
+<li><code>QtWidgets.QFrame</code></li>
+<li><code>QtWidgets.QProgressBar</code></li>
+<li><code>QtWidgets.QStyle</code></li>
+<li><code>QtWidgets.QSpacerItem</code></li>
+<li><code>QtWidgets.QScrollArea</code></li>
+<li><code>QtWidgets.QSplitter</code></li>
+<li>There might be more …</li>
+</ul>
+<p>My experience says that other than the following 3 methods may be rewritten:</p>
+<ul>
+<li><code>QtGui.QPixmap</code></li>
+<li><code>QtGui.QIcon</code></li>
+<li><code>QtGui.QFont</code></li>
+</ul>
+<p>idacute may overwrite all of <code>QtGui</code> methods, so I think there still needs to be manual works.</p>
+<h2 id="Overwrite-fromUtf8"><a href="#Overwrite-fromUtf8" class="headerlink" title="Overwrite _fromUtf8"></a>Overwrite <code>_fromUtf8</code></h2><p>We also need to overwrite <code>_fromUtf8</code>.</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div></pre></td><td class="code"><pre><div class="line"><span class="keyword">try</span>:</div><div class="line">    _fromUtf8 = QtCore.QString.fromUtf8</div><div class="line"><span class="keyword">except</span> AttributeError:</div><div class="line">　　　　_fromUtf8 = <span class="keyword">lambda</span> s: s</div></pre></td></tr></table></figure>
+<h2 id="Others"><a href="#Others" class="headerlink" title="Others"></a>Others</h2><p>These issues are described by predecessors:</p>
+<ul>
+<li>Handling SIGNAL</li>
+<li>Change <code>FormToPySideWidget</code> to <code>FormToPyQtWidget</code></li>
+<li>Change <code>setResizeMode</code> to <code>setSectionResizeMode</code></li>
+</ul>
+<h1 id="Conclusion"><a href="#Conclusion" class="headerlink" title="Conclusion"></a>Conclusion</h1><p>This time, I was able to run idasec on IDA Pro 7.0 with <a href="https://github.com/RobinDavid/idasec/pull/2" target="_blank" rel="external">some bug fixes and dirty patches</a> – like this cool video:</p>
+<center><iframe width="560" height="315" src="https://www.youtube.com/embed/Z14ab_rzjfA" frameborder="0" allowfullscreen></iframe></center>
+
+<p>If you are an IDA Pro 7.0 user, note that other backward-compatibility issue described in <a href="https://www.hex-rays.com/products/ida/7.0/docs/idapython_backward_compat_695.shtml" target="_blank" rel="external">IDA: IDAPython backward-compatibility with 6.95 APIs</a> will occur.</p>
+<p>Enjoy!</p>
+<p>HAI DOMO VIRTUAL YOUTUBER KIZUNA AI DESU. I’m still working on my English.</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://ntddk.github.io/2017/11/08/a-complemental-guide-to-migrate-pySide-code-to-pyqt5-within-your-idapython-script/" data-id="cj9qzc72y0000eu7tvqsaewwx" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/reversing/">reversing</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/symbolic-execution/">symbolic execution</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
     <article id="post-a-prayer-for-the-dying-antivirus" class="article article-type-post" itemscope itemprop="blogPost">
   <div class="article-meta">
     
@@ -67,12 +169,12 @@
         <p>　<a href="https://connpass.com/event/62844/" target="_blank" rel="external">Security meets Machine Learning</a>という勉強会にて，上記のタイトルで発表した．資料はこちら：</p>
 <script async class="speakerdeck-embed" data-id="5c63dce1d2494dfc9f068fe1c58eab41" data-ratio="1.33333333333333" src="//speakerdeck.com/assets/embed.js"></script>
 
-<p>　謎の力が働いて会社からの発表になっておりますが，機械学習の研究をしているわけではありません．既存研究の再現実装を試みているとこれ中国語の部屋じゃんという気持ちになる．<br>　ともあれ，これまで各種資料はただSpeakerDeckに載せるだけだったが，今後はブログから一元的に参照できるようにします．</p>
+<p>　謎の力が働いて会社からの発表になっておりますが，機械学習の研究をしているわけではありません．既存研究の再現実装を試みているとこれ中国語の部屋じゃんという気持ちになる．<br>　ともあれ，これまで各種資料はただSpeakerDeckに載せるだけだったのを今後はブログから一元的に参照できるようにします．</p>
 
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://ntddk.github.io/2017/09/10/a-prayer-for-the-dying-antivirus/" data-id="cj7e7cv2i0000swosiyzgds1j" class="article-share-link">Share</a>
+      <a data-url="http://ntddk.github.io/2017/09/10/a-prayer-for-the-dying-antivirus/" data-id="cj9qzc740002xeu7tn6jr1kbv" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/machine-learning/">machine learning</a></li></ul>
@@ -195,7 +297,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://ntddk.github.io/2017/08/24/z3py-link-collection/" data-id="cj7e7cv4d001pswossft4bagk" class="article-share-link">Share</a>
+      <a data-url="http://ntddk.github.io/2017/08/24/z3py-link-collection/" data-id="cj9qzc7410031eu7t6kzqk689" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/algorithm/">algorithm</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/symbolic-execution/">symbolic execution</a></li></ul>
@@ -553,7 +655,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://ntddk.github.io/2017/03/04/thin-hypervisor-2017/" data-id="cj7e7cv42001cswostuwfnpj9" class="article-share-link">Share</a>
+      <a data-url="http://ntddk.github.io/2017/03/04/thin-hypervisor-2017/" data-id="cj9qzc73i0018eu7tspobw9nw" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/virtual-machine-introspection/">virtual machine introspection</a></li></ul>
@@ -894,7 +996,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://ntddk.github.io/2016/12/04/yakiniku-optimization/" data-id="cj7e7cv4e001rswoszo55xnt8" class="article-share-link">Share</a>
+      <a data-url="http://ntddk.github.io/2016/12/04/yakiniku-optimization/" data-id="cj9qzc740002zeu7tgddy4bn4" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/machine-learning/">machine learning</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/optimization/">optimization</a></li></ul>
@@ -1026,7 +1128,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://ntddk.github.io/2016/11/23/kdd-cup-99-data/" data-id="cj7e7cv3f000hswosk103nd5l" class="article-share-link">Share</a>
+      <a data-url="http://ntddk.github.io/2016/11/23/kdd-cup-99-data/" data-id="cj9qzc739000geu7t2vjm4xdy" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/machine-learning/">machine learning</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/network/">network</a></li></ul>
@@ -1070,7 +1172,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://ntddk.github.io/2016/11/06/suppress-switching-ime-on-xming/" data-id="cj7e7cv3t0010swoswsbeqn0p" class="article-share-link">Share</a>
+      <a data-url="http://ntddk.github.io/2016/11/06/suppress-switching-ime-on-xming/" data-id="cj9qzc73e000teu7teiyi9u0w" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/reversing/">reversing</a></li></ul>
@@ -1140,10 +1242,10 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://ntddk.github.io/2016/08/27/angr-afl-driller/" data-id="cj7e7cv2q0004swosfedp9rn8" class="article-share-link">Share</a>
+      <a data-url="http://ntddk.github.io/2016/08/27/angr-afl-driller/" data-id="cj9qzc7340004eu7t9rctdnlo" class="article-share-link">Share</a>
       
       
-  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/exploiting/">exploiting</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/symbolic-execution/">symbolic execution</a></li></ul>
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/exploitation/">exploitation</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/symbolic-execution/">symbolic execution</a></li></ul>
 
     </footer>
   </div>
@@ -1197,7 +1299,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://ntddk.github.io/2016/07/09/unicorn-internals-python/" data-id="cj7e7cv3v0015swos6g9xu0sz" class="article-share-link">Share</a>
+      <a data-url="http://ntddk.github.io/2016/07/09/unicorn-internals-python/" data-id="cj9qzc73j001beu7tdm92c4i6" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/dynamic-binary-translation/">dynamic binary translation</a></li></ul>
@@ -1283,65 +1385,10 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://ntddk.github.io/2016/06/29/cyber-security-in-israel/" data-id="cj7e7cv3a000dswosqtcouefy" class="article-share-link">Share</a>
+      <a data-url="http://ntddk.github.io/2016/06/29/cyber-security-in-israel/" data-id="cj9qzc73b000leu7tutld5c5n" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/intelligence/">intelligence</a></li></ul>
-
-    </footer>
-  </div>
-  
-</article>
-
-
-  
-    <article id="post-neural-image-caption-generator-twitter-bot" class="article article-type-post" itemscope itemprop="blogPost">
-  <div class="article-meta">
-    
-      <header class="article-header">
-        
-  
-    <a class="article-title" href="/2016/03/26/neural-image-caption-generator-twitter-bot/">写真から説明文を自動生成するbotを作った</a>
-  
-
-      </header>
-    
-    <time class="article-date" datetime="2016-03-25T15:30:00.000Z" itemprop="datePublished">03-26-2016</time>
-    
-  </div>
-  <div class="article-inner">
-    <div class="article-entry" itemprop="articleBody">
-      
-        <p><center><br><a class="twitter-timeline" href="https://twitter.com/img2cap" data-widget-id="713361832895860739" target="_blank" rel="external">@img2capさんのツイート</a></center></p>
-<script>!function(d,s,id){var js,fjs=d.getElementsByTagName(s)[0],p=/^http:/.test(d.location)?'http':'https';if(!d.getElementById(id)){js=d.createElement(s);js.id=id;js.src=p+"://platform.twitter.com/widgets.js";fjs.parentNode.insertBefore(js,fjs);}}(document,"script","twitter-wjs");</script>
-
-<h1 id="これはなに"><a href="#これはなに" class="headerlink" title="これはなに"></a>これはなに</h1><p>　<code>@img2cap file</code>という形式で画像を投げつけると説明文をつけ加えて返信するだけのTwitter bot.</p>
-<h1 id="しくみ"><a href="#しくみ" class="headerlink" title="しくみ"></a>しくみ</h1><p>　CNN + LSTM.<br>　以下の論文や実装を参考にした．裏ではChainerが動いている．</p>
-<ul>
-<li>論文<ul>
-<li><a href="http://arxiv.org/abs/1411.4555" target="_blank" rel="external">[1411.4555] Show and Tell: A Neural Image Caption Generator</a></li>
-</ul>
-</li>
-<li>実装<ul>
-<li><a href="https://github.com/apple2373/chainer_caption_generation" target="_blank" rel="external">apple2373/chainer_caption_generation: Caption generation from images using deep neural net</a></li>
-<li><a href="https://github.com/dsanno/chainer-image-caption" target="_blank" rel="external">dsanno/chainer-image-caption</a></li>
-</ul>
-</li>
-<li>データセット<ul>
-<li><a href="http://mscoco.org" target="_blank" rel="external">Microsoft COCO</a>を<a href="https://gist.github.com/ksimonyan/3785162f95cd2d5fee77#file-readme-md" target="_blank" rel="external">VGG_ILSVRC_19_layers</a>で<a href="http://cs.stanford.edu/people/karpathy/deepimagesent/coco.zip" target="_blank" rel="external">学習したもの</a></li>
-</ul>
-</li>
-</ul>
-<p>　はじめは論文通りの活性化関数と勾配法を試してみたが，dsanno氏のいうようにSGDよりAdamの方が高速．MomentumSGDと比べてもみたが即Adam最高！　という気分にさせられた．AdamがそもそもAdaGradとRMSPropのいいとこどりらしいので，その両者は試していない．なおネットワーク構成は論文のまま．<br>　データセットに含まれているのは<strong>写真</strong>8万枚とその説明文だけ．よってTwitterの各位がいくらイラストを投げつけようと無駄な話で，その手のニーズに対応するには<a href="https://nico-opendata.jp/ja/index.html" target="_blank" rel="external">ニコニコ静画のデータセット</a>あたりを使う必要がありそう．これには画像とそのタグ，コメントを学習したモデルが含まれているそうだが，説明文の生成というタスクに向けてどう転移学習させるか目処は立っていない．<br>　当然ながら学習データと実際に各位が投げつけてくるデータの分布は全く異なるし，困ったものだ．</p>
-<h1 id="謝辞"><a href="#謝辞" class="headerlink" title="謝辞"></a>謝辞</h1><p>　お遊びにGPU環境を貸してくれた<a href="https://twitter.com/georgioush" target="_blank" rel="external">@georgioush</a>, <a href="https://twitter.com/dasoran" target="_blank" rel="external">@dasoran</a>両氏に感謝．</p>
-
-      
-    </div>
-    <footer class="article-footer">
-      <a data-url="http://ntddk.github.io/2016/03/26/neural-image-caption-generator-twitter-bot/" data-id="cj7e7cv3d000gswostmiky1y8" class="article-share-link">Share</a>
-      
-      
-  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/machine-learning/">machine learning</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/neural-network/">neural network</a></li></ul>
 
     </footer>
   </div>
