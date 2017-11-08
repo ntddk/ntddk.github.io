@@ -5,17 +5,17 @@
   
   <title>A Complemental Guide to Migrate PySide Code to PyQt5 Within Your IDAPython Script | 一生あとで読んでろ</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-  <meta name="description" content="IntroductionIDAPython is powerful feature of IDA Pro, and there are many open-sourced IDAPython projects. However, we cannot use every GUI-based IDAPython script due to some Qt-related breaking change">
+  <meta name="description" content="IntroductionIDAPython is a powerful feature of IDA Pro, and there are many open-sourced IDAPython projects. However, we cannot use every GUI-based IDAPython script due to some Qt-related breaking chan">
 <meta name="keywords" content="reversing,symbolic execution">
 <meta property="og:type" content="article">
 <meta property="og:title" content="A Complemental Guide to Migrate PySide Code to PyQt5 Within Your IDAPython Script">
 <meta property="og:url" content="http://ntddk.github.io/2017/11/08/a-complemental-guide-to-migrate-pySide-code-to-pyqt5-within-your-idapython-script/index.html">
 <meta property="og:site_name" content="一生あとで読んでろ">
-<meta property="og:description" content="IntroductionIDAPython is powerful feature of IDA Pro, and there are many open-sourced IDAPython projects. However, we cannot use every GUI-based IDAPython script due to some Qt-related breaking change">
-<meta property="og:updated_time" content="2017-11-08T07:32:38.165Z">
+<meta property="og:description" content="IntroductionIDAPython is a powerful feature of IDA Pro, and there are many open-sourced IDAPython projects. However, we cannot use every GUI-based IDAPython script due to some Qt-related breaking chan">
+<meta property="og:updated_time" content="2017-11-08T12:28:20.429Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="A Complemental Guide to Migrate PySide Code to PyQt5 Within Your IDAPython Script">
-<meta name="twitter:description" content="IntroductionIDAPython is powerful feature of IDA Pro, and there are many open-sourced IDAPython projects. However, we cannot use every GUI-based IDAPython script due to some Qt-related breaking change">
+<meta name="twitter:description" content="IntroductionIDAPython is a powerful feature of IDA Pro, and there are many open-sourced IDAPython projects. However, we cannot use every GUI-based IDAPython script due to some Qt-related breaking chan">
   
   
   <link href="//fonts.googleapis.com/css?family=Ubuntu" rel="stylesheet" type="text/css">
@@ -69,7 +69,7 @@
   <div class="article-inner">
     <div class="article-entry" itemprop="articleBody">
       
-        <h1 id="Introduction"><a href="#Introduction" class="headerlink" title="Introduction"></a>Introduction</h1><p>IDAPython is powerful feature of IDA Pro, and there are many open-sourced IDAPython projects. However, we cannot use every GUI-based IDAPython script due to some Qt-related breaking changes between IDA Pro 6.8 and 6.9 or later. The main problem is about migrating no longer supported PySide code to PyQt5.</p>
+        <h1 id="Introduction"><a href="#Introduction" class="headerlink" title="Introduction"></a>Introduction</h1><p>IDAPython is a powerful feature of IDA Pro, and there are many open-sourced IDAPython projects. However, we cannot use every GUI-based IDAPython script due to some Qt-related breaking changes between IDA Pro 6.8 and 6.9 or later. The main problem is about migrating no longer supported PySide code to PyQt5.</p>
 <p>Recently I ported PySide code within <a href="https://github.com/RobinDavid/idasec" target="_blank" rel="external">idasec</a> – one of the most sophisticated deobfuscation frameworks, which tackles opaque predicates and call stack tampering in terms of infeasibility questions, by utilizing Backward-Bounded Dynamic Symbolic Execution proposed in the remarkably well written paper <a href="https://www.ieee-security.org/TC/SP2017/papers/220.pdf" target="_blank" rel="external">S. Bardin et al. IEEE S&amp;P’17</a> – to PyQt5.</p>
 <p>That’s why I decided to write this blog post for a note to self and for someone trying to do similar thing.</p>
 <h1 id="Related-Work"><a href="#Related-Work" class="headerlink" title="Related Work"></a>Related Work</h1><p>There are 2 guidances to migrate PySide code to PyQt5:</p>
