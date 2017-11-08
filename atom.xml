@@ -5,7 +5,7 @@
   <link href="/atom.xml" rel="self"/>
   
   <link href="http://ntddk.github.io/"/>
-  <updated>2017-11-08T12:28:20.429Z</updated>
+  <updated>2017-11-08T14:30:14.842Z</updated>
   <id>http://ntddk.github.io/</id>
   
   <author>
@@ -16,11 +16,11 @@
   <generator uri="http://hexo.io/">Hexo</generator>
   
   <entry>
-    <title>A Complemental Guide to Migrate PySide Code to PyQt5 Within Your IDAPython Script</title>
-    <link href="http://ntddk.github.io/2017/11/08/a-complemental-guide-to-migrate-pySide-code-to-pyqt5-within-your-idapython-script/"/>
-    <id>http://ntddk.github.io/2017/11/08/a-complemental-guide-to-migrate-pySide-code-to-pyqt5-within-your-idapython-script/</id>
+    <title>A Supplemental Guide to Migrate PySide Code to PyQt5 Within Your IDAPython Script</title>
+    <link href="http://ntddk.github.io/2017/11/08/a-supplemental-guide-to-migrate-pySide-code-to-pyqt5-within-your-idapython-script/"/>
+    <id>http://ntddk.github.io/2017/11/08/a-supplemental-guide-to-migrate-pySide-code-to-pyqt5-within-your-idapython-script/</id>
     <published>2017-11-08T12:00:00.000Z</published>
-    <updated>2017-11-08T12:28:20.429Z</updated>
+    <updated>2017-11-08T14:30:14.842Z</updated>
     
     <content type="html"><![CDATA[<h1 id="Introduction"><a href="#Introduction" class="headerlink" title="Introduction"></a>Introduction</h1><p>IDAPython is a powerful feature of IDA Pro, and there are many open-sourced IDAPython projects. However, we cannot use every GUI-based IDAPython script due to some Qt-related breaking changes between IDA Pro 6.8 and 6.9 or later. The main problem is about migrating no longer supported PySide code to PyQt5.</p>
 <p>Recently I ported PySide code within <a href="https://github.com/RobinDavid/idasec" target="_blank" rel="external">idasec</a> – one of the most sophisticated deobfuscation frameworks, which tackles opaque predicates and call stack tampering in terms of infeasibility questions, by utilizing Backward-Bounded Dynamic Symbolic Execution proposed in the remarkably well written paper <a href="https://www.ieee-security.org/TC/SP2017/papers/220.pdf" target="_blank" rel="external">S. Bardin et al. IEEE S&amp;P’17</a> – to PyQt5.</p>
