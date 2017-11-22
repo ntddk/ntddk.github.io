@@ -5,12 +5,15 @@
   
   <title>Archives: 2017 | 一生あとで読んでろ</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-  <meta property="og:type" content="website">
+  <meta name="description" content="技術ブログ">
+<meta property="og:type" content="website">
 <meta property="og:title" content="一生あとで読んでろ">
 <meta property="og:url" content="http://ntddk.github.io/archives/2017/index.html">
 <meta property="og:site_name" content="一生あとで読んでろ">
+<meta property="og:description" content="技術ブログ">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="一生あとで読んでろ">
+<meta name="twitter:description" content="技術ブログ">
   
   
   <link href="//fonts.googleapis.com/css?family=Ubuntu" rel="stylesheet" type="text/css">
@@ -47,6 +50,56 @@
       <div class="outer">
         <section id="main">
   
+    <article id="post-backward-program-slicing-with-idapython-and-triton" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    
+      <header class="article-header">
+        
+  
+    <a class="article-title" href="/2017/11/23/backward-program-slicing-with-idapython-and-triton/">Backward Program Slicing With IDAPython and Triton</a>
+  
+
+      </header>
+    
+    <time class="article-date" datetime="2017-11-22T16:30:00.000Z" itemprop="datePublished">11-23-2017</time>
+    
+  </div>
+  <div class="article-inner">
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h1 id="Introduction"><a href="#Introduction" class="headerlink" title="Introduction"></a>Introduction</h1><p>As you know, IDAPython is quite useful. And <a href="https://github.com/JonathanSalwan/Triton" target="_blank" rel="external">Triton</a> concolic execution engine has python binding. Then… why not integrate them? I tried to stand on the shoulders of giants.</p>
+<h1 id="Backward-Program-Slicing"><a href="#Backward-Program-Slicing" class="headerlink" title="Backward Program Slicing"></a>Backward Program Slicing</h1><p>Roughly speaking, program slicing is a method to extract subset of program which is relevant to given statement. Here is an excerpt from [<a href="https://dl.acm.org/citation.cfm?id=802557" target="_blank" rel="external">M. Weiser. ICSE’81</a>]:</p>
+<blockquote>
+<p>Starting from a subset of a program’s behavior, slicing reduces that program to a minimal form which still produces that behavior. The reduced program, called a “slice”, is an independent program guaranteed to faithfully represent the original program within the domain of the specified subset of behavior.</p>
+</blockquote>
+<p>Kudos to Jonathan Salwan, we can easily apply backward program slicing to binary analysis process with minor modification of <a href="https://github.com/JonathanSalwan/Triton/blob/master/src/examples/python/backward_slicing.py" target="_blank" rel="external"><code>backward_slicing.py</code></a> and <a href="https://github.com/JonathanSalwan/Triton/blob/master/src/examples/python/proving_opaque_predicates.py" target="_blank" rel="external"><code>proving_opaque_predicates.py</code></a>. I wrote a simple, tiny glue between Triton and IDA Pro:</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div><div class="line">22</div><div class="line">23</div><div class="line">24</div><div class="line">25</div><div class="line">26</div><div class="line">27</div><div class="line">28</div><div class="line">29</div><div class="line">30</div><div class="line">31</div><div class="line">32</div><div class="line">33</div><div class="line">34</div><div class="line">35</div><div class="line">36</div><div class="line">37</div><div class="line">38</div><div class="line">39</div><div class="line">40</div><div class="line">41</div><div class="line">42</div><div class="line">43</div><div class="line">44</div><div class="line">45</div><div class="line">46</div><div class="line">47</div><div class="line">48</div><div class="line">49</div><div class="line">50</div><div class="line">51</div><div class="line">52</div><div class="line">53</div><div class="line">54</div><div class="line">55</div><div class="line">56</div><div class="line">57</div><div class="line">58</div><div class="line">59</div><div class="line">60</div><div class="line">61</div><div class="line">62</div><div class="line">63</div><div class="line">64</div><div class="line">65</div><div class="line">66</div></pre></td><td class="code"><pre><div class="line"><span class="comment">#!/usr/bin/env python</span></div><div class="line"><span class="comment">#coding: utf-8</span></div><div class="line"></div><div class="line"><span class="keyword">from</span> idc <span class="keyword">import</span> *</div><div class="line"><span class="keyword">from</span> idaapi <span class="keyword">import</span> *</div><div class="line"><span class="keyword">from</span> triton <span class="keyword">import</span> *</div><div class="line"></div><div class="line">ctx = TritonContext()</div><div class="line">regs = &#123;</div><div class="line">        <span class="string">'eax'</span>: REG.X86.EAX,</div><div class="line">        <span class="string">'ebx'</span>: REG.X86.EBX,</div><div class="line">        <span class="string">'ecx'</span>: REG.X86.ECX,</div><div class="line">        <span class="string">'edx'</span>: REG.X86.EDX,</div><div class="line">        &#125;</div><div class="line"></div><div class="line"><span class="function"><span class="keyword">def</span> <span class="title">symbolization_init</span><span class="params">()</span>:</span></div><div class="line">    Triton.convertRegisterToSymbolicVariable(Triton.registers.eax)</div><div class="line">    Triton.convertRegisterToSymbolicVariable(Triton.registers.ebx)</div><div class="line">    Triton.convertRegisterToSymbolicVariable(Triton.registers.ecx)</div><div class="line">    Triton.convertRegisterToSymbolicVariable(Triton.registers.edx)</div><div class="line">    <span class="keyword">return</span></div><div class="line"></div><div class="line"><span class="function"><span class="keyword">def</span> <span class="title">opaque_predicate_detection</span><span class="params">(pc)</span>:</span></div><div class="line">    ctx.setArchitecture(ARCH.X86)</div><div class="line">    ctx.setAstRepresentationMode(AST_REPRESENTATION.PYTHON)</div><div class="line">    symbolization_init()</div><div class="line">    ast_ctx = ctx.getAstContext()</div><div class="line"></div><div class="line">    <span class="keyword">while</span> <span class="keyword">True</span>:</div><div class="line">        instruction = Instruction()</div><div class="line">        instruction.setAddress(pc)</div><div class="line">        opcode = GetManyBytes(pc, ItemSize(pc)) <span class="comment"># Disassemble with IDA Pro</span></div><div class="line">        instruction.setOpcode(opcode)</div><div class="line"></div><div class="line">        ctx.processing(instruction) <span class="comment"># Emulate instruction without Pintool</span></div><div class="line"></div><div class="line">        <span class="keyword">for</span> se <span class="keyword">in</span> instruction.getSymbolicExpressions():</div><div class="line">            se.setComment(str(instruction))</div><div class="line"></div><div class="line">        <span class="keyword">if</span> str(instruction.getDisassembly()).split()[<span class="number">0</span>] == <span class="string">'cmp'</span>: <span class="comment"># if instruction.isCompare():</span></div><div class="line">            reg = str(instruction.getOperands()[<span class="number">0</span>]).split(<span class="string">':'</span>)[<span class="number">0</span>] <span class="comment"># Get first operand</span></div><div class="line">            <span class="keyword">if</span> reg <span class="keyword">in</span> regs:</div><div class="line">                Expr = ctx.getSymbolicRegisters()[regs[reg]]</div><div class="line">                slicing = ctx.sliceExpressions(Expr)</div><div class="line">                <span class="keyword">for</span> k, v <span class="keyword">in</span> sorted(slicing.items()):</div><div class="line">                    <span class="keyword">print</span> v.getComment()</div><div class="line">                <span class="keyword">print</span> instruction</div><div class="line">        <span class="keyword">elif</span> instruction.isBranch():</div><div class="line">            <span class="keyword">print</span> instruction</div><div class="line">            <span class="keyword">if</span> instruction.isConditionTaken():</div><div class="line">                <span class="keyword">print</span> <span class="string">'branch will taken'</span></div><div class="line">            <span class="keyword">else</span>:</div><div class="line">                <span class="keyword">print</span> <span class="string">'branch will not taken'</span></div><div class="line"></div><div class="line">            <span class="keyword">break</span></div><div class="line"></div><div class="line">        pc = NextHead(pc)</div><div class="line"></div><div class="line">    <span class="keyword">print</span> <span class="string">'-'</span> * <span class="number">50</span></div><div class="line"></div><div class="line"><span class="function"><span class="keyword">def</span> <span class="title">main</span><span class="params">()</span>:</span></div><div class="line">    ea = ScreenEA() <span class="comment"># Get address corresponding to cursor</span></div><div class="line">    opaque_predicate_detection(ea) </div><div class="line"></div><div class="line"><span class="keyword">if</span> __name__ == <span class="string">'__main__'</span>:</div><div class="line">    view = main()</div></pre></td></tr></table></figure>
+<h1 id="Showcase"><a href="#Showcase" class="headerlink" title="Showcase"></a>Showcase</h1><p>The snippet extracts subset of program which is relevant to branch condition. We can run this from <code>File -&gt; Script file</code> in IDA Pro menu.</p>
+<h2 id="Conditional-Branch"><a href="#Conditional-Branch" class="headerlink" title="Conditional Branch"></a>Conditional Branch</h2><figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div></pre></td><td class="code"><pre><div class="line">.text:004074DD     loc_4074DD:</div><div class="line">.text:004074DD 040 mov     dword ptr [edi+18h], 0Ah</div><div class="line">.text:004074E4 040 mov     dword ptr [edi+14h], 0</div><div class="line">.text:004074EB 040 mov     word ptr [edi+8], 8235h</div><div class="line">.text:004074F1 040 mov     dword ptr [edi+0Ch], 3E8h</div><div class="line">.text:004074F8 040 mov     dword ptr [edi+10h], 0BB8h</div><div class="line">.text:004074FF 040 sub     esp, 4</div><div class="line">.text:00407502 044 mov     [esp+40h+Memory], 0B8h ; Size        ; cursor</div><div class="line">.text:00407509 044 call    ??2@YAPAXI@Z    ; operator new(uint)</div><div class="line">.text:0040750E 044 add     esp, 4</div><div class="line">.text:00407511 040 mov     [esi+18h], eax</div><div class="line">.text:00407514 040 mov     eax, dword_591EE4</div><div class="line">.text:00407519 040 mov     ecx, dword_591EE0</div><div class="line">.text:0040751F 040 imul    eax, eax</div><div class="line">.text:00407522 040 imul    edx, eax, 7</div><div class="line">.text:00407525 040 dec     edx</div><div class="line">.text:00407526 040 mov     eax, ecx</div><div class="line">.text:00407528 040 imul    eax, eax</div><div class="line">.text:0040752B 040 cmp     edx, eax</div><div class="line">.text:0040752D 040 jz      short loc_407538</div></pre></td></tr></table></figure>
+<p>becomes:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div></pre></td><td class="code"><pre><div class="line">0x407514: mov eax, dword ptr [0x591ee4]</div><div class="line">0x40751f: imul eax, eax</div><div class="line">0x407522: imul edx, eax, 7</div><div class="line">0x407525: dec edx</div><div class="line">0x40752b: cmp edx, eax</div><div class="line">0x40752d: je 0x407538</div><div class="line">branch will not taken</div></pre></td></tr></table></figure>
+<h2 id="Unconditional-Branch"><a href="#Unconditional-Branch" class="headerlink" title="Unconditional Branch"></a>Unconditional Branch</h2><figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div></pre></td><td class="code"><pre><div class="line">.text:004078C3     loc_4078C3:</div><div class="line">.text:004078C3 000 mov     esp, edi           ; cursor</div><div class="line">.text:004078C5 000 mov     eax, dword_591EAC</div><div class="line">.text:004078CA 000 lea     ecx, [eax+4]</div><div class="line">.text:004078CD 000 mov     edx, eax</div><div class="line">.text:004078CF 000 sar     edx, cl</div><div class="line">.text:004078D1 000 lea     eax, [eax+edx*2]</div><div class="line">.text:004078D4 000 mov     dword_591EAC, eax</div><div class="line">.text:004078D9 000 jmp     short loc_4</div></pre></td></tr></table></figure>
+<p>becomes:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div></pre></td><td class="code"><pre><div class="line">0x4078d9: jmp 0x40789a</div><div class="line">branch will taken</div></pre></td></tr></table></figure>
+<p>Looks nice.</p>
+<h1 id="Last-Words"><a href="#Last-Words" class="headerlink" title="Last Words"></a>Last Words</h1><p>Triton’s emulation iteration is compatible to IDAPython manner. Therefore, The combination of IDA Pro and Triton is pretty good. </p>
+<p>Cheers,</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://ntddk.github.io/2017/11/23/backward-program-slicing-with-idapython-and-triton/" data-id="cjab6b5r50007as7tnnkokgk9" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/reversing/">reversing</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/symbolic-execution/">symbolic execution</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
     <article id="post-a-supplemental-guide-to-migrate-pySide-code-to-pyqt5-within-your-idapython-script" class="article article-type-post" itemscope itemprop="blogPost">
   <div class="article-meta">
     
@@ -65,7 +118,7 @@
     <div class="article-entry" itemprop="articleBody">
       
         <h1 id="Introduction"><a href="#Introduction" class="headerlink" title="Introduction"></a>Introduction</h1><p>IDAPython is a powerful feature of IDA Pro, and there are many open-sourced IDAPython projects. However, we cannot use every GUI-based IDAPython script due to some Qt-related breaking changes between IDA Pro 6.8 and 6.9 or later. The main problem is about migrating no longer supported PySide code to PyQt5.</p>
-<p>Recently I ported PySide code within <a href="https://github.com/RobinDavid/idasec" target="_blank" rel="external">idasec</a> – one of the most sophisticated deobfuscation frameworks, which tackles opaque predicates and call stack tampering in terms of infeasibility questions, by utilizing Backward-Bounded Dynamic Symbolic Execution proposed in the remarkably well written paper <a href="https://www.ieee-security.org/TC/SP2017/papers/220.pdf" target="_blank" rel="external">S. Bardin et al. IEEE S&amp;P’17</a> – to PyQt5.</p>
+<p>Recently I ported PySide code within <a href="https://github.com/RobinDavid/idasec" target="_blank" rel="external">idasec</a>–one of the most sophisticated deobfuscation frameworks, which tackles opaque predicates and call stack tampering in terms of infeasibility questions, by utilizing Backward-Bounded Dynamic Symbolic Execution proposed in the remarkably well written paper <a href="https://www.ieee-security.org/TC/SP2017/papers/220.pdf" target="_blank" rel="external">S. Bardin et al. IEEE S&amp;P’17</a>–to PyQt5.</p>
 <p>That’s why I decided to write this blog post for a note to self and for someone trying to do similar thing.</p>
 <h1 id="Related-Work"><a href="#Related-Work" class="headerlink" title="Related Work"></a>Related Work</h1><p>There are 2 guidances to migrate PySide code to PyQt5:</p>
 <ul>
@@ -110,7 +163,7 @@
 <li><code>QtWidgets.QSpacerItem</code></li>
 <li><code>QtWidgets.QScrollArea</code></li>
 <li><code>QtWidgets.QSplitter</code></li>
-<li>There might be more …</li>
+<li>There might be more…</li>
 </ul>
 <p>My experience says that other than the following 3 methods may be rewritten:</p>
 <ul>
@@ -137,7 +190,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://ntddk.github.io/2017/11/08/a-supplemental-guide-to-migrate-pySide-code-to-pyqt5-within-your-idapython-script/" data-id="cj9r55y6r00008k7twico9tyx" class="article-share-link">Share</a>
+      <a data-url="http://ntddk.github.io/2017/11/08/a-supplemental-guide-to-migrate-pySide-code-to-pyqt5-within-your-idapython-script/" data-id="cjab6b5qx0000as7tokzmwrqd" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/reversing/">reversing</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/symbolic-execution/">symbolic execution</a></li></ul>
@@ -174,7 +227,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://ntddk.github.io/2017/09/10/a-prayer-for-the-dying-antivirus/" data-id="cj9qzc740002xeu7tn6jr1kbv" class="article-share-link">Share</a>
+      <a data-url="http://ntddk.github.io/2017/09/10/a-prayer-for-the-dying-antivirus/" data-id="cjab6b5r00001as7tybria0i6" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/machine-learning/">machine learning</a></li></ul>
@@ -204,7 +257,7 @@
     <div class="article-entry" itemprop="articleBody">
       
         <p>　なにもかも忘れかけている．</p>
-<h1 id="はじめに"><a href="#はじめに" class="headerlink" title="はじめに"></a>はじめに</h1><p>　z3pyはSMTソルバ<a href="https://github.com/Z3Prover/z3" target="_blank" rel="external">z3</a>のPythonバインディング．たとえば</p>
+<h1 id="はじめに"><a href="#はじめに" class="headerlink" title="はじめに"></a>はじめに</h1><p>　z3pyはSMTソルバ<a href="https://github.com/Z3Prover/z3" target="_blank" rel="external">Z3</a>のPythonバインディング．たとえば</p>
 <figure class="highlight c"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div></pre></td><td class="code"><pre><div class="line">...</div><div class="line">    <span class="keyword">if</span>(x * <span class="number">2</span> + <span class="number">3</span> * y == <span class="number">4</span></div><div class="line">        &amp;&amp; x * <span class="number">3</span> + y == <span class="number">-1</span>)&#123;</div><div class="line">        <span class="built_in">puts</span>(<span class="string">"congrats!"</span>);</div><div class="line">    &#125;</div></pre></td></tr></table></figure>
 <p>のようなプログラムに対して</p>
 <figure class="highlight python"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div></pre></td><td class="code"><pre><div class="line"><span class="keyword">from</span> z3 <span class="keyword">import</span> *</div><div class="line"></div><div class="line">x = Int(<span class="string">'x'</span>)</div><div class="line">y = Int(<span class="string">'y'</span>)</div><div class="line"></div><div class="line">s = Solver()</div><div class="line">s.add(x * <span class="number">2</span> + <span class="number">3</span> * y == <span class="number">4</span>)</div><div class="line">s.add(x * <span class="number">3</span> + y == <span class="number">-1</span>)</div><div class="line"></div><div class="line">print(s.check())</div><div class="line">print(s.model())</div></pre></td></tr></table></figure>
@@ -297,7 +350,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://ntddk.github.io/2017/08/24/z3py-link-collection/" data-id="cj9qzc7410031eu7t6kzqk689" class="article-share-link">Share</a>
+      <a data-url="http://ntddk.github.io/2017/08/24/z3py-link-collection/" data-id="cjab6b5s80029as7tku7pemkv" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/algorithm/">algorithm</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/symbolic-execution/">symbolic execution</a></li></ul>
@@ -655,7 +708,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://ntddk.github.io/2017/03/04/thin-hypervisor-2017/" data-id="cj9qzc73i0018eu7tspobw9nw" class="article-share-link">Share</a>
+      <a data-url="http://ntddk.github.io/2017/03/04/thin-hypervisor-2017/" data-id="cjab6b5ry001uas7tljpb30mm" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/virtual-machine-introspection/">virtual machine introspection</a></li></ul>

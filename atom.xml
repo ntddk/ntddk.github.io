@@ -5,7 +5,7 @@
   <link href="/atom.xml" rel="self"/>
   
   <link href="http://ntddk.github.io/"/>
-  <updated>2017-11-08T14:30:14.842Z</updated>
+  <updated>2017-11-22T16:28:00.469Z</updated>
   <id>http://ntddk.github.io/</id>
   
   <author>
@@ -16,14 +16,53 @@
   <generator uri="http://hexo.io/">Hexo</generator>
   
   <entry>
+    <title>Backward Program Slicing With IDAPython and Triton</title>
+    <link href="http://ntddk.github.io/2017/11/23/backward-program-slicing-with-idapython-and-triton/"/>
+    <id>http://ntddk.github.io/2017/11/23/backward-program-slicing-with-idapython-and-triton/</id>
+    <published>2017-11-22T16:30:00.000Z</published>
+    <updated>2017-11-22T16:28:00.469Z</updated>
+    
+    <content type="html"><![CDATA[<h1 id="Introduction"><a href="#Introduction" class="headerlink" title="Introduction"></a>Introduction</h1><p>As you know, IDAPython is quite useful. And <a href="https://github.com/JonathanSalwan/Triton" target="_blank" rel="external">Triton</a> concolic execution engine has python binding. Then… why not integrate them? I tried to stand on the shoulders of giants.</p>
+<h1 id="Backward-Program-Slicing"><a href="#Backward-Program-Slicing" class="headerlink" title="Backward Program Slicing"></a>Backward Program Slicing</h1><p>Roughly speaking, program slicing is a method to extract subset of program which is relevant to given statement. Here is an excerpt from [<a href="https://dl.acm.org/citation.cfm?id=802557" target="_blank" rel="external">M. Weiser. ICSE’81</a>]:</p>
+<blockquote>
+<p>Starting from a subset of a program’s behavior, slicing reduces that program to a minimal form which still produces that behavior. The reduced program, called a “slice”, is an independent program guaranteed to faithfully represent the original program within the domain of the specified subset of behavior.</p>
+</blockquote>
+<p>Kudos to Jonathan Salwan, we can easily apply backward program slicing to binary analysis process with minor modification of <a href="https://github.com/JonathanSalwan/Triton/blob/master/src/examples/python/backward_slicing.py" target="_blank" rel="external"><code>backward_slicing.py</code></a> and <a href="https://github.com/JonathanSalwan/Triton/blob/master/src/examples/python/proving_opaque_predicates.py" target="_blank" rel="external"><code>proving_opaque_predicates.py</code></a>. I wrote a simple, tiny glue between Triton and IDA Pro:</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div><div class="line">22</div><div class="line">23</div><div class="line">24</div><div class="line">25</div><div class="line">26</div><div class="line">27</div><div class="line">28</div><div class="line">29</div><div class="line">30</div><div class="line">31</div><div class="line">32</div><div class="line">33</div><div class="line">34</div><div class="line">35</div><div class="line">36</div><div class="line">37</div><div class="line">38</div><div class="line">39</div><div class="line">40</div><div class="line">41</div><div class="line">42</div><div class="line">43</div><div class="line">44</div><div class="line">45</div><div class="line">46</div><div class="line">47</div><div class="line">48</div><div class="line">49</div><div class="line">50</div><div class="line">51</div><div class="line">52</div><div class="line">53</div><div class="line">54</div><div class="line">55</div><div class="line">56</div><div class="line">57</div><div class="line">58</div><div class="line">59</div><div class="line">60</div><div class="line">61</div><div class="line">62</div><div class="line">63</div><div class="line">64</div><div class="line">65</div><div class="line">66</div></pre></td><td class="code"><pre><div class="line"><span class="comment">#!/usr/bin/env python</span></div><div class="line"><span class="comment">#coding: utf-8</span></div><div class="line"></div><div class="line"><span class="keyword">from</span> idc <span class="keyword">import</span> *</div><div class="line"><span class="keyword">from</span> idaapi <span class="keyword">import</span> *</div><div class="line"><span class="keyword">from</span> triton <span class="keyword">import</span> *</div><div class="line"></div><div class="line">ctx = TritonContext()</div><div class="line">regs = &#123;</div><div class="line">        <span class="string">'eax'</span>: REG.X86.EAX,</div><div class="line">        <span class="string">'ebx'</span>: REG.X86.EBX,</div><div class="line">        <span class="string">'ecx'</span>: REG.X86.ECX,</div><div class="line">        <span class="string">'edx'</span>: REG.X86.EDX,</div><div class="line">        &#125;</div><div class="line"></div><div class="line"><span class="function"><span class="keyword">def</span> <span class="title">symbolization_init</span><span class="params">()</span>:</span></div><div class="line">    Triton.convertRegisterToSymbolicVariable(Triton.registers.eax)</div><div class="line">    Triton.convertRegisterToSymbolicVariable(Triton.registers.ebx)</div><div class="line">    Triton.convertRegisterToSymbolicVariable(Triton.registers.ecx)</div><div class="line">    Triton.convertRegisterToSymbolicVariable(Triton.registers.edx)</div><div class="line">    <span class="keyword">return</span></div><div class="line"></div><div class="line"><span class="function"><span class="keyword">def</span> <span class="title">opaque_predicate_detection</span><span class="params">(pc)</span>:</span></div><div class="line">    ctx.setArchitecture(ARCH.X86)</div><div class="line">    ctx.setAstRepresentationMode(AST_REPRESENTATION.PYTHON)</div><div class="line">    symbolization_init()</div><div class="line">    ast_ctx = ctx.getAstContext()</div><div class="line"></div><div class="line">    <span class="keyword">while</span> <span class="keyword">True</span>:</div><div class="line">        instruction = Instruction()</div><div class="line">        instruction.setAddress(pc)</div><div class="line">        opcode = GetManyBytes(pc, ItemSize(pc)) <span class="comment"># Disassemble with IDA Pro</span></div><div class="line">        instruction.setOpcode(opcode)</div><div class="line"></div><div class="line">        ctx.processing(instruction) <span class="comment"># Emulate instruction without Pintool</span></div><div class="line"></div><div class="line">        <span class="keyword">for</span> se <span class="keyword">in</span> instruction.getSymbolicExpressions():</div><div class="line">            se.setComment(str(instruction))</div><div class="line"></div><div class="line">        <span class="keyword">if</span> str(instruction.getDisassembly()).split()[<span class="number">0</span>] == <span class="string">'cmp'</span>: <span class="comment"># if instruction.isCompare():</span></div><div class="line">            reg = str(instruction.getOperands()[<span class="number">0</span>]).split(<span class="string">':'</span>)[<span class="number">0</span>] <span class="comment"># Get first operand</span></div><div class="line">            <span class="keyword">if</span> reg <span class="keyword">in</span> regs:</div><div class="line">                Expr = ctx.getSymbolicRegisters()[regs[reg]]</div><div class="line">                slicing = ctx.sliceExpressions(Expr)</div><div class="line">                <span class="keyword">for</span> k, v <span class="keyword">in</span> sorted(slicing.items()):</div><div class="line">                    <span class="keyword">print</span> v.getComment()</div><div class="line">                <span class="keyword">print</span> instruction</div><div class="line">        <span class="keyword">elif</span> instruction.isBranch():</div><div class="line">            <span class="keyword">print</span> instruction</div><div class="line">            <span class="keyword">if</span> instruction.isConditionTaken():</div><div class="line">                <span class="keyword">print</span> <span class="string">'branch will taken'</span></div><div class="line">            <span class="keyword">else</span>:</div><div class="line">                <span class="keyword">print</span> <span class="string">'branch will not taken'</span></div><div class="line"></div><div class="line">            <span class="keyword">break</span></div><div class="line"></div><div class="line">        pc = NextHead(pc)</div><div class="line"></div><div class="line">    <span class="keyword">print</span> <span class="string">'-'</span> * <span class="number">50</span></div><div class="line"></div><div class="line"><span class="function"><span class="keyword">def</span> <span class="title">main</span><span class="params">()</span>:</span></div><div class="line">    ea = ScreenEA() <span class="comment"># Get address corresponding to cursor</span></div><div class="line">    opaque_predicate_detection(ea) </div><div class="line"></div><div class="line"><span class="keyword">if</span> __name__ == <span class="string">'__main__'</span>:</div><div class="line">    view = main()</div></pre></td></tr></table></figure>
+<h1 id="Showcase"><a href="#Showcase" class="headerlink" title="Showcase"></a>Showcase</h1><p>The snippet extracts subset of program which is relevant to branch condition. We can run this from <code>File -&gt; Script file</code> in IDA Pro menu.</p>
+<h2 id="Conditional-Branch"><a href="#Conditional-Branch" class="headerlink" title="Conditional Branch"></a>Conditional Branch</h2><figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div></pre></td><td class="code"><pre><div class="line">.text:004074DD     loc_4074DD:</div><div class="line">.text:004074DD 040 mov     dword ptr [edi+18h], 0Ah</div><div class="line">.text:004074E4 040 mov     dword ptr [edi+14h], 0</div><div class="line">.text:004074EB 040 mov     word ptr [edi+8], 8235h</div><div class="line">.text:004074F1 040 mov     dword ptr [edi+0Ch], 3E8h</div><div class="line">.text:004074F8 040 mov     dword ptr [edi+10h], 0BB8h</div><div class="line">.text:004074FF 040 sub     esp, 4</div><div class="line">.text:00407502 044 mov     [esp+40h+Memory], 0B8h ; Size        ; cursor</div><div class="line">.text:00407509 044 call    ??2@YAPAXI@Z    ; operator new(uint)</div><div class="line">.text:0040750E 044 add     esp, 4</div><div class="line">.text:00407511 040 mov     [esi+18h], eax</div><div class="line">.text:00407514 040 mov     eax, dword_591EE4</div><div class="line">.text:00407519 040 mov     ecx, dword_591EE0</div><div class="line">.text:0040751F 040 imul    eax, eax</div><div class="line">.text:00407522 040 imul    edx, eax, 7</div><div class="line">.text:00407525 040 dec     edx</div><div class="line">.text:00407526 040 mov     eax, ecx</div><div class="line">.text:00407528 040 imul    eax, eax</div><div class="line">.text:0040752B 040 cmp     edx, eax</div><div class="line">.text:0040752D 040 jz      short loc_407538</div></pre></td></tr></table></figure>
+<p>becomes:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div></pre></td><td class="code"><pre><div class="line">0x407514: mov eax, dword ptr [0x591ee4]</div><div class="line">0x40751f: imul eax, eax</div><div class="line">0x407522: imul edx, eax, 7</div><div class="line">0x407525: dec edx</div><div class="line">0x40752b: cmp edx, eax</div><div class="line">0x40752d: je 0x407538</div><div class="line">branch will not taken</div></pre></td></tr></table></figure>
+<h2 id="Unconditional-Branch"><a href="#Unconditional-Branch" class="headerlink" title="Unconditional Branch"></a>Unconditional Branch</h2><figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div></pre></td><td class="code"><pre><div class="line">.text:004078C3     loc_4078C3:</div><div class="line">.text:004078C3 000 mov     esp, edi           ; cursor</div><div class="line">.text:004078C5 000 mov     eax, dword_591EAC</div><div class="line">.text:004078CA 000 lea     ecx, [eax+4]</div><div class="line">.text:004078CD 000 mov     edx, eax</div><div class="line">.text:004078CF 000 sar     edx, cl</div><div class="line">.text:004078D1 000 lea     eax, [eax+edx*2]</div><div class="line">.text:004078D4 000 mov     dword_591EAC, eax</div><div class="line">.text:004078D9 000 jmp     short loc_4</div></pre></td></tr></table></figure>
+<p>becomes:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div></pre></td><td class="code"><pre><div class="line">0x4078d9: jmp 0x40789a</div><div class="line">branch will taken</div></pre></td></tr></table></figure>
+<p>Looks nice.</p>
+<h1 id="Last-Words"><a href="#Last-Words" class="headerlink" title="Last Words"></a>Last Words</h1><p>Triton’s emulation iteration is compatible to IDAPython manner. Therefore, The combination of IDA Pro and Triton is pretty good. </p>
+<p>Cheers,</p>
+]]></content>
+    
+    <summary type="html">
+    
+      &lt;h1 id=&quot;Introduction&quot;&gt;&lt;a href=&quot;#Introduction&quot; class=&quot;headerlink&quot; title=&quot;Introduction&quot;&gt;&lt;/a&gt;Introduction&lt;/h1&gt;&lt;p&gt;As you know, IDAPython is quit
+    
+    </summary>
+    
+    
+      <category term="reversing" scheme="http://ntddk.github.io/tags/reversing/"/>
+    
+      <category term="symbolic execution" scheme="http://ntddk.github.io/tags/symbolic-execution/"/>
+    
+  </entry>
+  
+  <entry>
     <title>A Supplemental Guide to Migrate PySide Code to PyQt5 Within Your IDAPython Script</title>
     <link href="http://ntddk.github.io/2017/11/08/a-supplemental-guide-to-migrate-pySide-code-to-pyqt5-within-your-idapython-script/"/>
     <id>http://ntddk.github.io/2017/11/08/a-supplemental-guide-to-migrate-pySide-code-to-pyqt5-within-your-idapython-script/</id>
     <published>2017-11-08T12:00:00.000Z</published>
-    <updated>2017-11-08T14:30:14.842Z</updated>
+    <updated>2017-11-17T03:24:58.366Z</updated>
     
     <content type="html"><![CDATA[<h1 id="Introduction"><a href="#Introduction" class="headerlink" title="Introduction"></a>Introduction</h1><p>IDAPython is a powerful feature of IDA Pro, and there are many open-sourced IDAPython projects. However, we cannot use every GUI-based IDAPython script due to some Qt-related breaking changes between IDA Pro 6.8 and 6.9 or later. The main problem is about migrating no longer supported PySide code to PyQt5.</p>
-<p>Recently I ported PySide code within <a href="https://github.com/RobinDavid/idasec" target="_blank" rel="external">idasec</a> – one of the most sophisticated deobfuscation frameworks, which tackles opaque predicates and call stack tampering in terms of infeasibility questions, by utilizing Backward-Bounded Dynamic Symbolic Execution proposed in the remarkably well written paper <a href="https://www.ieee-security.org/TC/SP2017/papers/220.pdf" target="_blank" rel="external">S. Bardin et al. IEEE S&amp;P’17</a> – to PyQt5.</p>
+<p>Recently I ported PySide code within <a href="https://github.com/RobinDavid/idasec" target="_blank" rel="external">idasec</a>–one of the most sophisticated deobfuscation frameworks, which tackles opaque predicates and call stack tampering in terms of infeasibility questions, by utilizing Backward-Bounded Dynamic Symbolic Execution proposed in the remarkably well written paper <a href="https://www.ieee-security.org/TC/SP2017/papers/220.pdf" target="_blank" rel="external">S. Bardin et al. IEEE S&amp;P’17</a>–to PyQt5.</p>
 <p>That’s why I decided to write this blog post for a note to self and for someone trying to do similar thing.</p>
 <h1 id="Related-Work"><a href="#Related-Work" class="headerlink" title="Related Work"></a>Related Work</h1><p>There are 2 guidances to migrate PySide code to PyQt5:</p>
 <ul>
@@ -68,7 +107,7 @@
 <li><code>QtWidgets.QSpacerItem</code></li>
 <li><code>QtWidgets.QScrollArea</code></li>
 <li><code>QtWidgets.QSplitter</code></li>
-<li>There might be more …</li>
+<li>There might be more…</li>
 </ul>
 <p>My experience says that other than the following 3 methods may be rewritten:</p>
 <ul>
@@ -135,10 +174,10 @@
     <link href="http://ntddk.github.io/2017/08/24/z3py-link-collection/"/>
     <id>http://ntddk.github.io/2017/08/24/z3py-link-collection/</id>
     <published>2017-08-24T14:59:59.000Z</published>
-    <updated>2017-08-27T06:54:55.000Z</updated>
+    <updated>2017-11-17T03:25:14.798Z</updated>
     
     <content type="html"><![CDATA[<p>　なにもかも忘れかけている．</p>
-<h1 id="はじめに"><a href="#はじめに" class="headerlink" title="はじめに"></a>はじめに</h1><p>　z3pyはSMTソルバ<a href="https://github.com/Z3Prover/z3" target="_blank" rel="external">z3</a>のPythonバインディング．たとえば</p>
+<h1 id="はじめに"><a href="#はじめに" class="headerlink" title="はじめに"></a>はじめに</h1><p>　z3pyはSMTソルバ<a href="https://github.com/Z3Prover/z3" target="_blank" rel="external">Z3</a>のPythonバインディング．たとえば</p>
 <figure class="highlight c"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div></pre></td><td class="code"><pre><div class="line">...</div><div class="line">    <span class="keyword">if</span>(x * <span class="number">2</span> + <span class="number">3</span> * y == <span class="number">4</span></div><div class="line">        &amp;&amp; x * <span class="number">3</span> + y == <span class="number">-1</span>)&#123;</div><div class="line">        <span class="built_in">puts</span>(<span class="string">"congrats!"</span>);</div><div class="line">    &#125;</div></pre></td></tr></table></figure>
 <p>のようなプログラムに対して</p>
 <figure class="highlight python"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div></pre></td><td class="code"><pre><div class="line"><span class="keyword">from</span> z3 <span class="keyword">import</span> *</div><div class="line"></div><div class="line">x = Int(<span class="string">'x'</span>)</div><div class="line">y = Int(<span class="string">'y'</span>)</div><div class="line"></div><div class="line">s = Solver()</div><div class="line">s.add(x * <span class="number">2</span> + <span class="number">3</span> * y == <span class="number">4</span>)</div><div class="line">s.add(x * <span class="number">3</span> + y == <span class="number">-1</span>)</div><div class="line"></div><div class="line">print(s.check())</div><div class="line">print(s.model())</div></pre></td></tr></table></figure>
@@ -1477,7 +1516,7 @@
     <link href="http://ntddk.github.io/2015/12/19/generating-thesis-titles-with-rnnlm/"/>
     <id>http://ntddk.github.io/2015/12/19/generating-thesis-titles-with-rnnlm/</id>
     <published>2015-12-19T14:45:00.000Z</published>
-    <updated>2016-07-08T08:52:28.000Z</updated>
+    <updated>2017-11-19T05:15:48.744Z</updated>
     
     <content type="html"><![CDATA[<p>　本稿は<a href="http://www.adventar.org/calendars/1053" target="_blank" rel="external">慶應義塾大学SFC村井&amp;徳田研 Advent Calendar 2015</a>の19日目である．</p>
 <h1 id="TL-DR"><a href="#TL-DR" class="headerlink" title="TL;DR:"></a>TL;DR:</h1><p>　村井研・徳田研の卒論・修論・博論アーカイブから過去の論文タイトルを収集し，RNNLM（Recurrent Neural Network Language Model, 再帰型ニューラルネット言語モデル）[1]を用いて論文タイトルを自動生成する．</p>
@@ -1525,9 +1564,9 @@
     </summary>
     
     
-      <category term="neural network" scheme="http://ntddk.github.io/tags/neural-network/"/>
+      <category term="machine learning" scheme="http://ntddk.github.io/tags/machine-learning/"/>
     
-      <category term="machine learing" scheme="http://ntddk.github.io/tags/machine-learing/"/>
+      <category term="neural network" scheme="http://ntddk.github.io/tags/neural-network/"/>
     
   </entry>
   
@@ -1775,53 +1814,6 @@
       <category term="taint analysis" scheme="http://ntddk.github.io/tags/taint-analysis/"/>
     
       <category term="virtual machine introspection" scheme="http://ntddk.github.io/tags/virtual-machine-introspection/"/>
-    
-      <category term="dynamic binary translation" scheme="http://ntddk.github.io/tags/dynamic-binary-translation/"/>
-    
-  </entry>
-  
-  <entry>
-    <title>QEMUの動的バイナリ変換におけるボトルネック</title>
-    <link href="http://ntddk.github.io/2015/07/13/qemu-dbt-bottleneck/"/>
-    <id>http://ntddk.github.io/2015/07/13/qemu-dbt-bottleneck/</id>
-    <published>2015-07-13T06:00:00.000Z</published>
-    <updated>2015-09-15T08:45:05.000Z</updated>
-    
-    <content type="html"><![CDATA[<h1 id="はじめに"><a href="#はじめに" class="headerlink" title="はじめに"></a>はじめに</h1><p>QEMUは動的バイナリ変換を用いた完全仮想化式のハイパーバイザである．<br>QEMUは実行対象の命令列を逆アセンブルし，いちど中間表現に変換したうえで，ホストのアーキテクチャの命令列に変換して実行する．これによりQEMUは異なるアーキテクチャのバイナリを実行することができる．<br>しかしQEMUは遅かったため，アクセラレータとしてkqemuが開発された．<br>kqemuはユーザーモードのコードをホストのCPUに実行させる準仮想化ドライバであり，やがてKVMへと変貌を遂げた．さらにKVMはハードウェアによる仮想化支援機能を用いることで，さらなる高速化を実現した．もはやKVMにおいてQEMUはハードウェアのエミュレーションにしか用いられていない．<br>かわいそうなQEMU！<br>しかしQEMUの活躍する場面はいまだ多く残されている．たとえばマルウェア解析で．<br>それでも遅いのは困りものだ．QEMUはどこが遅いのだろうか．<br>ここでは<code>perf</code>を用いてQEMUのボトルネックを<strong>雑に</strong>特定する．</p>
-<h1 id="実験"><a href="#実験" class="headerlink" title="実験"></a>実験</h1><p>今回はARMエミュレーションについて調査した．ホスト・ゲストともOSにはUbuntu 12.04(3.2.0-23-generic)を用いた．<code>perf</code>でQEMUのプロファイリングを行っている間，ゲストではgccを用いてコンパイルを実行した．</p>
-<ul>
-<li><p>ARM版Ubuntu 12.04のインストール</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div></pre></td><td class="code"><pre><div class="line"># sudo apt-get install qemu</div><div class="line"># wget http://odroid.us/odroid/users/osterluk/qemu-example/qemu-example.tgz</div><div class="line"># tar xzf qemu-example.tgz ./zImage</div><div class="line"># wget http://releases.linaro.org/12.04/ubuntu/precise-images/developer/linaro-precise-developer-20120426-86.tar.gz</div><div class="line"># tar xzf linaro-precise-developer-20120426-86.tar.gz</div><div class="line"># qemu-img create -f raw rootfs.img 3G</div><div class="line"># mkfs.ext3 rootfs.img</div><div class="line"># mkdir mnt</div><div class="line"># sudo mount -o loop rootfs.img mnt</div><div class="line"># rsync -a binary/boot/filesystem.dir/ mnt/</div><div class="line"># sudo umount mnt</div></pre></td></tr></table></figure>
-</li>
-<li><p>QEMUのビルド</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div></pre></td><td class="code"><pre><div class="line"># sudo apt-get build-dep qemu</div><div class="line"># git clone git://git.qemu-project.org/qemu.git</div><div class="line"># cd qemu</div><div class="line"># git log | grep &apos;^commit&apos; | head -1 | awk &apos;&#123;print $2&#125;&apos;</div><div class="line">6169b60285fe1ff730d840a49527e721bfb30899</div><div class="line"># git submodule update --init dtc</div><div class="line"># git submodule update --init pixman</div><div class="line"># ./configure --extra-ldflags=-pg --target-list=arm-softmmu</div><div class="line"># make</div></pre></td></tr></table></figure>
-</li>
-<li><p><code>perf</code>のインストール</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div></pre></td><td class="code"><pre><div class="line"># sudo apt-get install linux-tools</div><div class="line"># sudo echo 0 &gt; /proc/sys/kernel/perf_event_paranoid</div></pre></td></tr></table></figure>
-</li>
-<li><p><code>perf</code>によるプロファイリング</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div></pre></td><td class="code"><pre><div class="line"># perf record -a -g -F100000 qemu/arm-softmmu/qemu-system-arm -M vexpress-a9 -m 512 -kernel zImage -sd rootfs.img -append &quot;root=/dev/mmcblk0 rw physmap.enabled=0 console=ttyAMA0&quot; -monitor stdio</div><div class="line">WARNING: Image format was not specified for &apos;../../rootfs.img&apos; and probing guessed raw.</div><div class="line">         Automatically detecting the format is dangerous for raw images, write operations on block 0 will be restricted.</div><div class="line">         Specify the &apos;raw&apos; format explicitly to remove the restrictions.</div><div class="line">QEMU 2.3.90 monitor - type &apos;help&apos; for more information</div><div class="line">(qemu) audio: Could not init `oss&apos; audio driver</div><div class="line"></div><div class="line">(qemu) q</div><div class="line">[ perf record: Woken up 37 times to write data ]</div><div class="line">[ perf record: Captured and wrote 9.465 MB perf.data (~413514 samples) ]</div><div class="line"></div><div class="line"></div><div class="line">Failed to open /tmp/perf-6993.map, continuing without symbols</div><div class="line">Failed to open [vmxnet], continuing without symbols</div><div class="line">Failed to open [vmci], continuing without symbols</div><div class="line">Failed to open [vsock], continuing without symbols</div><div class="line">no symbols found in /bin/dash, maybe install a debug package?</div><div class="line">no symbols found in /usr/bin/xargs, maybe install a debug package?</div><div class="line">no symbols found in /usr/bin/updatedb.mlocate, maybe install a debug package?</div><div class="line">no symbols found in /usr/bin/dpkg-query, maybe install a debug package?</div></pre></td></tr></table></figure>
-</li>
-<li><p>Flame Graphsによる可視化</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div></pre></td><td class="code"><pre><div class="line"># wget https://raw.githubusercontent.com/brendangregg/FlameGraph/master/stackcollapse-perf.pl</div><div class="line"># wget https://raw.githubusercontent.com/brendangregg/FlameGraph/master/flamegraph.pl</div><div class="line"># perf script&gt; perf_data.txt</div><div class="line"># perl stackcollapse-perf.pl perf_data.txt|perl flamegraph.pl --title &quot;Flame Graphs - qemu-system-arm&quot; &gt; flamegraphs-qemu-system-arm.svg</div></pre></td></tr></table></figure>
-</li>
-</ul>
-<p><code>perf</code>の結果をFlame Graphsを用いて可視化すると下図のようになった．Flame GraphsはUSENIX LISA’2013にて発表された可視化ツールである．</p>
-<p><img src="/image/flamegraphs-qemu-system-arm.png"></p>
-<p>x軸は時系列，y軸はコールスタックを意味する．横幅が広く上位に位置する関数がボトルネックであるといえる．<br>よってボトルネックは<code>clear_page()</code>すなわちTCGの各関数で発生しているページフォルトである．</p>
-<h1 id="おわりに"><a href="#おわりに" class="headerlink" title="おわりに"></a>おわりに</h1><p>ページフォルトだけは勘弁してほしい．</p>
-<h1 id="参考文献"><a href="#参考文献" class="headerlink" title="参考文献"></a>参考文献</h1><ul>
-<li>“perf + Flame Graphs で Linux カーネル内のボトルネックを特定する - ablog,” <a href="http://d.hatena.ne.jp/yohei-a/20150706/1436208007" target="_blank" rel="external">http://d.hatena.ne.jp/yohei-a/20150706/1436208007</a></li>
-<li>Brendan Gregg, “<a href="https://www.usenix.org/conference/lisa13/technical-sessions/plenary/gregg" target="_blank" rel="external">Blazing Performance with Flame Graphs</a>,” Proceedings of the 27th Large Installation System Administration Conference, USENIX LISA’13, Washington, D.C., USA, 2013.</li>
-</ul>
-]]></content>
-    
-    <summary type="html">
-    
-      &lt;h1 id=&quot;はじめに&quot;&gt;&lt;a href=&quot;#はじめに&quot; class=&quot;headerlink&quot; title=&quot;はじめに&quot;&gt;&lt;/a&gt;はじめに&lt;/h1&gt;&lt;p&gt;QEMUは動的バイナリ変換を用いた完全仮想化式のハイパーバイザである．&lt;br&gt;QEMUは実行対象の命令列を逆アセンブルし，い
-    
-    </summary>
-    
     
       <category term="dynamic binary translation" scheme="http://ntddk.github.io/tags/dynamic-binary-translation/"/>
     

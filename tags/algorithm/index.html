@@ -5,12 +5,15 @@
   
   <title>Tag: algorithm | 一生あとで読んでろ</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-  <meta property="og:type" content="website">
+  <meta name="description" content="技術ブログ">
+<meta property="og:type" content="website">
 <meta property="og:title" content="一生あとで読んでろ">
 <meta property="og:url" content="http://ntddk.github.io/tags/algorithm/index.html">
 <meta property="og:site_name" content="一生あとで読んでろ">
+<meta property="og:description" content="技術ブログ">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="一生あとで読んでろ">
+<meta name="twitter:description" content="技術ブログ">
   
   
   <link href="//fonts.googleapis.com/css?family=Ubuntu" rel="stylesheet" type="text/css">
@@ -65,7 +68,7 @@
     <div class="article-entry" itemprop="articleBody">
       
         <p>　なにもかも忘れかけている．</p>
-<h1 id="はじめに"><a href="#はじめに" class="headerlink" title="はじめに"></a>はじめに</h1><p>　z3pyはSMTソルバ<a href="https://github.com/Z3Prover/z3" target="_blank" rel="external">z3</a>のPythonバインディング．たとえば</p>
+<h1 id="はじめに"><a href="#はじめに" class="headerlink" title="はじめに"></a>はじめに</h1><p>　z3pyはSMTソルバ<a href="https://github.com/Z3Prover/z3" target="_blank" rel="external">Z3</a>のPythonバインディング．たとえば</p>
 <figure class="highlight c"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div></pre></td><td class="code"><pre><div class="line">...</div><div class="line">    <span class="keyword">if</span>(x * <span class="number">2</span> + <span class="number">3</span> * y == <span class="number">4</span></div><div class="line">        &amp;&amp; x * <span class="number">3</span> + y == <span class="number">-1</span>)&#123;</div><div class="line">        <span class="built_in">puts</span>(<span class="string">"congrats!"</span>);</div><div class="line">    &#125;</div></pre></td></tr></table></figure>
 <p>のようなプログラムに対して</p>
 <figure class="highlight python"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div></pre></td><td class="code"><pre><div class="line"><span class="keyword">from</span> z3 <span class="keyword">import</span> *</div><div class="line"></div><div class="line">x = Int(<span class="string">'x'</span>)</div><div class="line">y = Int(<span class="string">'y'</span>)</div><div class="line"></div><div class="line">s = Solver()</div><div class="line">s.add(x * <span class="number">2</span> + <span class="number">3</span> * y == <span class="number">4</span>)</div><div class="line">s.add(x * <span class="number">3</span> + y == <span class="number">-1</span>)</div><div class="line"></div><div class="line">print(s.check())</div><div class="line">print(s.model())</div></pre></td></tr></table></figure>
@@ -158,7 +161,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://ntddk.github.io/2017/08/24/z3py-link-collection/" data-id="cj9qzc7410031eu7t6kzqk689" class="article-share-link">Share</a>
+      <a data-url="http://ntddk.github.io/2017/08/24/z3py-link-collection/" data-id="cjab6b5s80029as7tku7pemkv" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/algorithm/">algorithm</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/symbolic-execution/">symbolic execution</a></li></ul>
@@ -220,7 +223,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://ntddk.github.io/2016/03/02/sushi-and-memorized-recursion/" data-id="cj9qzc73g0010eu7t247kzc1e" class="article-share-link">Share</a>
+      <a data-url="http://ntddk.github.io/2016/03/02/sushi-and-memorized-recursion/" data-id="cjab6b5rv001nas7tds15e50i" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/algorithm/">algorithm</a></li></ul>

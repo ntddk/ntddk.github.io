@@ -5,17 +5,17 @@
   
   <title>z3pyリンク集 | 一生あとで読んでろ</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-  <meta name="description" content="なにもかも忘れかけている． はじめに　z3pyはSMTソルバz3のPythonバインディング．たとえば 12345...    if(x * 2 + 3 * y == 4        &amp;amp;&amp;amp; x * 3 + y == -1)&amp;#123;        puts(&quot;congrats!&quot;);    &amp;#125; のようなプログラムに対して 1234567891011from z3 i">
+  <meta name="description" content="なにもかも忘れかけている． はじめに　z3pyはSMTソルバZ3のPythonバインディング．たとえば 12345...    if(x * 2 + 3 * y == 4        &amp;amp;&amp;amp; x * 3 + y == -1)&amp;#123;        puts(&quot;congrats!&quot;);    &amp;#125; のようなプログラムに対して 1234567891011from z3 i">
 <meta name="keywords" content="symbolic execution,algorithm">
 <meta property="og:type" content="article">
 <meta property="og:title" content="z3pyリンク集">
 <meta property="og:url" content="http://ntddk.github.io/2017/08/24/z3py-link-collection/index.html">
 <meta property="og:site_name" content="一生あとで読んでろ">
-<meta property="og:description" content="なにもかも忘れかけている． はじめに　z3pyはSMTソルバz3のPythonバインディング．たとえば 12345...    if(x * 2 + 3 * y == 4        &amp;amp;&amp;amp; x * 3 + y == -1)&amp;#123;        puts(&quot;congrats!&quot;);    &amp;#125; のようなプログラムに対して 1234567891011from z3 i">
-<meta property="og:updated_time" content="2017-08-27T06:54:55.000Z">
+<meta property="og:description" content="なにもかも忘れかけている． はじめに　z3pyはSMTソルバZ3のPythonバインディング．たとえば 12345...    if(x * 2 + 3 * y == 4        &amp;amp;&amp;amp; x * 3 + y == -1)&amp;#123;        puts(&quot;congrats!&quot;);    &amp;#125; のようなプログラムに対して 1234567891011from z3 i">
+<meta property="og:updated_time" content="2017-11-17T03:25:14.798Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="z3pyリンク集">
-<meta name="twitter:description" content="なにもかも忘れかけている． はじめに　z3pyはSMTソルバz3のPythonバインディング．たとえば 12345...    if(x * 2 + 3 * y == 4        &amp;amp;&amp;amp; x * 3 + y == -1)&amp;#123;        puts(&quot;congrats!&quot;);    &amp;#125; のようなプログラムに対して 1234567891011from z3 i">
+<meta name="twitter:description" content="なにもかも忘れかけている． はじめに　z3pyはSMTソルバZ3のPythonバインディング．たとえば 12345...    if(x * 2 + 3 * y == 4        &amp;amp;&amp;amp; x * 3 + y == -1)&amp;#123;        puts(&quot;congrats!&quot;);    &amp;#125; のようなプログラムに対して 1234567891011from z3 i">
   
   
   <link href="//fonts.googleapis.com/css?family=Ubuntu" rel="stylesheet" type="text/css">
@@ -70,7 +70,7 @@
     <div class="article-entry" itemprop="articleBody">
       
         <p>　なにもかも忘れかけている．</p>
-<h1 id="はじめに"><a href="#はじめに" class="headerlink" title="はじめに"></a>はじめに</h1><p>　z3pyはSMTソルバ<a href="https://github.com/Z3Prover/z3" target="_blank" rel="external">z3</a>のPythonバインディング．たとえば</p>
+<h1 id="はじめに"><a href="#はじめに" class="headerlink" title="はじめに"></a>はじめに</h1><p>　z3pyはSMTソルバ<a href="https://github.com/Z3Prover/z3" target="_blank" rel="external">Z3</a>のPythonバインディング．たとえば</p>
 <figure class="highlight c"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div></pre></td><td class="code"><pre><div class="line">...</div><div class="line">    <span class="keyword">if</span>(x * <span class="number">2</span> + <span class="number">3</span> * y == <span class="number">4</span></div><div class="line">        &amp;&amp; x * <span class="number">3</span> + y == <span class="number">-1</span>)&#123;</div><div class="line">        <span class="built_in">puts</span>(<span class="string">"congrats!"</span>);</div><div class="line">    &#125;</div></pre></td></tr></table></figure>
 <p>のようなプログラムに対して</p>
 <figure class="highlight python"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div></pre></td><td class="code"><pre><div class="line"><span class="keyword">from</span> z3 <span class="keyword">import</span> *</div><div class="line"></div><div class="line">x = Int(<span class="string">'x'</span>)</div><div class="line">y = Int(<span class="string">'y'</span>)</div><div class="line"></div><div class="line">s = Solver()</div><div class="line">s.add(x * <span class="number">2</span> + <span class="number">3</span> * y == <span class="number">4</span>)</div><div class="line">s.add(x * <span class="number">3</span> + y == <span class="number">-1</span>)</div><div class="line"></div><div class="line">print(s.check())</div><div class="line">print(s.model())</div></pre></td></tr></table></figure>
@@ -163,7 +163,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://ntddk.github.io/2017/08/24/z3py-link-collection/" data-id="cj9qzc7410031eu7t6kzqk689" class="article-share-link">Share</a>
+      <a data-url="http://ntddk.github.io/2017/08/24/z3py-link-collection/" data-id="cjab6b5s80029as7tku7pemkv" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/algorithm/">algorithm</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/symbolic-execution/">symbolic execution</a></li></ul>

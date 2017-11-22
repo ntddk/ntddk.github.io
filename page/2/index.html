@@ -5,12 +5,15 @@
   
   <title>一生あとで読んでろ</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-  <meta property="og:type" content="website">
+  <meta name="description" content="技術ブログ">
+<meta property="og:type" content="website">
 <meta property="og:title" content="一生あとで読んでろ">
 <meta property="og:url" content="http://ntddk.github.io/page/2/index.html">
 <meta property="og:site_name" content="一生あとで読んでろ">
+<meta property="og:description" content="技術ブログ">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="一生あとで読んでろ">
+<meta name="twitter:description" content="技術ブログ">
   
   
   <link href="//fonts.googleapis.com/css?family=Ubuntu" rel="stylesheet" type="text/css">
@@ -46,6 +49,92 @@
 </header>
       <div class="outer">
         <section id="main">
+  
+    <article id="post-cyber-security-in-israel" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    
+      <header class="article-header">
+        
+  
+    <a class="article-title" href="/2016/06/29/cyber-security-in-israel/">イスラエルのサイバーセキュリティ事情</a>
+  
+
+      </header>
+    
+    <time class="article-date" datetime="2016-06-29T13:30:00.000Z" itemprop="datePublished">06-29-2016</time>
+    
+  </div>
+  <div class="article-inner">
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p>　これはマルウェアに感染した端末の基板で構成されたトロイの木馬．国際会議<a href="http://cyberweek.tau.ac.il" target="_blank" rel="external">Cyber Week</a>の展示の一環．</p>
+<p><img src="/image/israel/cyberhorse.jpg" width="100%" height="100%"></p>
+<h1 id="はじめに"><a href="#はじめに" class="headerlink" title="はじめに"></a>はじめに</h1><p>　先週，イスラエル外務省からの招待でイスラエルのサイバーセキュリティ産業の視察に参加した．<br>　視察の参加者は日本政府・重要インフラ・セキュリティ業界関係に大別される．視察の目的は彼らにイスラエルの起業文化とサイバーセキュリティ技術を伝え，相互理解を図ることにあった．そんな視察になぜ一介のモラトリアム大学生でしかない私が潜り込めたのかというと，イスラエル外務省をハックしたから——というのは嘘．昨年発表した<a href="http://codeblue.jp/" target="_blank" rel="external">CODEBLUE</a>というセキュリティカンファレンスのオーガナイザーにイスラエル大使館から打診があり，若者枠に組み込まれたという経緯である．なんと旅費はイスラエル外務省の負担．<br>　そういうわけで，記憶が錆びつかないうちに，イスラエルのサイバーセキュリティ事情を紹介したい．</p>
+<h1 id="総括"><a href="#総括" class="headerlink" title="総括"></a>総括</h1><p>　最初にまとめてしまうと，イスラエルのサイバーセキュリティ産業は小国ゆえのフットワークの軽さがあってこそ成り立っている．とりわけ，以下の要素に負うところが大きい：</p>
+<ul>
+<li>徴兵制による人的つながり</li>
+<li>R&amp;Dを重視したスタートアップのエコシステム</li>
+<li>危機感</li>
+</ul>
+<p>したがって，そのまま日本にあてはめて考えることはできないが，柔軟な組織間連携の体制は間違いなく参考になるはずだ．</p>
+<h2 id="徴兵制による人的つながり"><a href="#徴兵制による人的つながり" class="headerlink" title="徴兵制による人的つながり"></a>徴兵制による人的つながり</h2><p>　イスラエルでは，18歳から男性は36ヶ月，女性は21ヶ月にわたる兵役が義務づけられている．高校を卒業して大学に進学するのではなく，まず国防軍 (IDF) に組み込まれるというわけだ．ツアーガイドの方が「6ヶ月間の基礎訓練が終わってはじめて教官が名前を教えてくれる．それからは下の名前で呼び合う，生涯にわたる仲になる」というエモい話を聞かせてくれたが，この兵役での人的つながりが，イスラエルのサイバーセキュリティ産業に多大な影響を及ぼしている．<strong>分野を越えたコネクションが形成され，小国ゆえに誰がどのように優秀か国が一元的に把握できる</strong>ためである．<br>　とりわけ優秀な人材は<a href="https://en.wikipedia.org/wiki/Talpiot_program" target="_blank" rel="external">タルピオット</a>という3年で数学と物理学の学位および中尉の階級を取得する人材育成プログラムに組み込まれるか，<a href="https://en.wikipedia.org/wiki/Unit_8200" target="_blank" rel="external">8200部隊</a>という諜報部隊——かのStuxnetをNSAと共同で開発したといういわくつきの——に配属され，それらの出身者であることがキャリアパス上の絶大なアピールポイントとなっている．<br>　このように兵役による能力のフィルタリングがあるため，学生は日本のように就職活動をするのではなく，優秀だった順に政府機関や企業から声がかかるという．多くの企業は軍との直接的なつながりを持たないが，重要インフラ事業者や政府のサイバーセキュリティ関連機関，軍需企業は軍と密接に結びついていて，盛んに情報を共有しているという．<br>　軍との関係は兵役が終わったらそれきりというわけではない．たとえば視察時に開催されていたCyber Week併設の全年齢対象CTFでは，空軍が（おそらくリクルートを兼ねて）作成した問題が用いられていた．開始早々に見学した問題の内容としてはMetasploitを用いるペンテストのようなものや，Androidアプリケーションのリバースエンジニアリングなど．</p>
+<h2 id="R-amp-Dを重視したスタートアップのエコシステム"><a href="#R-amp-Dを重視したスタートアップのエコシステム" class="headerlink" title="R&amp;Dを重視したスタートアップのエコシステム"></a>R&amp;Dを重視したスタートアップのエコシステム</h2><p>　さて，イスラエル政府が擁するサイバーセキュリティ関連機関は軍を除くと次のような構造になっている：</p>
+<ul>
+<li>イスラエル首相府<ul>
+<li><a href="http://www.pmo.gov.il/English/PrimeMinistersOffice/DivisionsAndAuthorities/cyber/Pages/default.aspx" target="_blank" rel="external">国家サイバー局 (NCB: National Cyber Bureau)</a><ul>
+<li><a href="http://www.cyberspark.org.il/" target="_blank" rel="external">CyberSpark</a></li>
+<li><a href="https://icrc.tau.ac.il/" target="_blank" rel="external">ICRC (Blavatnik Interdisciplinary Cyber Research Center)</a></li>
+<li>IC3 (Israel Cyber Companies Consortium)</li>
+</ul>
+</li>
+<li>国家サイバーセキュリティ委員会 (NCSA: National Cyber Security Authority)<ul>
+<li><a href="https://il-cert.org.il/" target="_blank" rel="external">IL-CERT</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<p>　国家サイバー局は日本でいうところの<a href="http://www.nisc.go.jp/" target="_blank" rel="external">内閣サイバーセキュリティセンター (NISC) </a>的な立ち位置で，サイバーセキュリティ関連の産業育成と防衛について政府に進言する立場を担っている．国家サイバーセキュリティ委員会は各種標準化団体のほかCSIRTとしてIL-CERTを抱える機関である．<strong>IL-CERTではSTIX/TAXIIを用いた情報共有体制が確立されており，検体の挙動をタグベースで共有することで，機微情報を漏らすことなく複数機関にまたがったインシデントに対応できるようになっている</strong>らしい．視察では，ウェブベースの情報共有ツールも紹介された．<br>　国家サイバー局の下部にあるCyberSparkはイスラエル南部の中心都市ベエルシェバにある研究開発特区・機関で，ベンチャーキャピタル，国内のスタートアップ企業のほか，IBMやLockheed Martinといった多国籍企業，隣接するベン・グリオン大学から構成される．ネゲブ砂漠の開発を進めつつ，<strong>競合他社を大学との共同研究という形でまとめ，その研究をスタートアップとして興す</strong>ことを目的としているようだ．ICRCもまたテルアビブ大学を中心とした同様の学際的研究機関で，Cyber Weekのオーガナイザーでもあった．これらは東大京大と産総研やNII, NICTが直接つながっているようなものだと思えばよいが，研究内容を即座にスタートアップ化する点は興味深い．<br>　IC3は国営の軍需企業<a href="http://www.iai.co.il/" target="_blank" rel="external">IAI (Israel Aerospace Industries) </a>を中心としたジョイントベンチャーで，2020年の東京オリンピックに向けた日本市場開拓を虎視眈々とねらっている．<br>　この構造には，政府機関のほか次のようなベンチャーキャピタルとスタートアップ推進企業が噛んでいる：</p>
+<ul>
+<li><a href="https://www.bvp.com/" target="_blank" rel="external">BVP (Bessemer Venture Partners)</a></li>
+<li><a href="www.jvpvc.com/">JVP (Jerusalem Venture Partners)</a></li>
+<li><a href="http://www.team8.vc/" target="_blank" rel="external">Team8</a></li>
+</ul>
+<p>　BVPはアメリカ最古のベンチャーキャピタルだが，イスラエルのサイバーセキュリティ産業に熱視線を投げかけており，後述のTeam8や<a href="http://www.illusivenetworks.com/" target="_blank" rel="external">illusive networks</a>などに投資している．<br>　JVPはイスラエルのベンチャーキャピタルで，CyberSparkを構成する企業のひとつである．Cyber Labsという研究部門も設けており，軍と連携を図りつつ，国内のスタートアップをいくつも育成してきた．興味深かったのは<a href="http://www.cyactive.com/" target="_blank" rel="external">CyActive</a>なる企業の取り組み．遺伝的アルゴリズムを用いて既存のマルウェアを変異させることで，亜種そして未来のマルウェアに対して頑強なヒューリスティックエンジンを開発するといった研究を行っているそうだ．折しも今年のはじめに国際会議NDSSにおいて（PDFファイルに限定してはいるものの）<a href="http://www.internetsociety.org/sites/default/files/11_2-ndss2016-slides.pdf" target="_blank" rel="external">類似の研究</a>が発表されており，今後の動向に注目したい．<br>　Team8はサイバーセキュリティのR&amp;Dをスタートアップ化することを目的としたインキュベーション企業で，illusive networksの母体である．Team8の創設者はかの8200部隊出身者であり，軍で培った問題意識やマネジメント能力が糧となっていると語る．<br>　これらの企業の支援のもと興ったスタートアップは，狭いイスラエル国内でシェアを握るのではなく，海外市場の開拓とCyberSparkに参画しているような多国籍企業へのイグジットを目的としている．<br>　しかしこうした産学軍連携のスタートアップ促進体制は，<strong>イスラエルが小国であり，かつ物騒な隣人に恵まれていて，軍が産業の中核に食い込んでいるという特性</strong>（それは同時に「<strong>だからこそ</strong>イスラエルはサイバーセキュリティ先進国である」というイメージを抱かせることにも寄与している）あってこそだろう．</p>
+<h2 id="危機感"><a href="#危機感" class="headerlink" title="危機感"></a>危機感</h2><p>　彼らの口ぶりからすると，やはり周辺諸国との関係がサイバーセキュリティ産業の発展を後押ししているようだ．<br>　たとえば，<a href="https://www.iec.co.il/" target="_blank" rel="external">イスラエル電力公社</a>は国内の電力を一手に担っており，発電所がサイバー攻撃によって停止してしまえばイスラエルの国防は壊滅的な打撃を被る（もちろん周辺諸国からの給電は望めない）．したがって彼らのサイバーセキュリティに対する意識はきわめて高い．彼らのSOCは各施設に派遣されたオペレーターとそこからのアラートを分析する本社施設に分散して設置されており，情報の集約（縮約）と即時共有に力を入れている様子がうかがえた．<br>　また，電力公社の子会社として，電力制御システムに対するサイバー攻撃とその防御の訓練施設<a href="http://www.cybergym.co.il/" target="_blank" rel="external">CyberGym</a>がある．CyberGymは電力公社における訓練のみならず，他社からの依頼に応じてその運用環境を可能な限り再現，かつ攻撃ベクタを強調した環境を用いた5日ほどの演習サービスを提供している．演習場には小型のプラント装置が設置されており，攻撃によってはそこから水が噴き出してくるという．そうした物理的な（！）非常事態への対応力を養うことも，演習の目的であるようだ．<br>　電力公社のほか，IAIは企業のネットワークに対するサイバー攻撃演習サービスを提供している．IAIの演習では，仮想マシン・仮想ネットワーク上の演習環境を用いて，シナリオベースで攻撃への対応を学べるようになっている．<br>　電力公社・IAIとも，ベンダを問わずハードウェア・サーバソフトウェアを柔軟に組み替えられる環境を提供しており，有事——<strong>つねに有事ともいえる</strong>——に備えた訓練に余念がない．</p>
+<h1 id="おわりに"><a href="#おわりに" class="headerlink" title="おわりに"></a>おわりに</h1><p>　ざっくりとではあるが，イスラエルのサイバーセキュリティ事情を紹介してきた．<br>　国防上の要請があるため，どうしても緊張感は漂っているし，そこばかり強調したような文章になってしまったが，いい国だと思う．海は綺麗だし，食事も野菜が多く健康的で美味（帰国したらすぐに口内炎ができてしまった）．なにより，技術者が必要とされ，尊敬される風土である．サイバーセキュリティ関連の事業を興したいのであれば，移住を十分検討していい．とりあえずビザ申請しておくか……．<br>　はじめに断ったとおり，私はインテリジェンス活動や最新の脅威分析に携わっているわけではない，しがない学生なので，提示できる情報の解像度はこの程度である．同行した<a href="https://www.facebook.com/dnobori/posts/997712146972091?pnref=story" target="_blank" rel="external">ソフトイーサ登さんのレポート</a>も参照されたし．<br>　そのほかメモと感想：</p>
+<ul>
+<li>テルアビブ大学の学生のポスターセッション，みんな（セキュリティ分野なのに）機械学習やってて海外でも流行ってるんだなと思った</li>
+<li>何の変哲もない（外には看板など一切なし）アパートの一区画を徴発して国家サイバー局が運営されていて流石にクソ興奮した，まあ見学者向けのダミーかもしれないが</li>
+<li>イスラエル電力公社のSOCではおよそオペレーターの役には立たないだろう攻撃元の国をGoogle Mapにマッピングするシステムが表示されていたが，「可視化はきわめて重要だ．なぜなら，視察にきた海外政府関係者におたくの国からこれほど攻撃されている．ゆえに～とアピールできるからだ」と語っていたのがよかった．nicterやWADJETもそんな感じに使えるのかな</li>
+<li>在イスラエル日本国大使館大使公邸にお邪魔したら入口の扉が3つあってモンティ・ホール問題かよと思った</li>
+<li>飲み屋でチェイサーに水 (water) を頼んだら毎回ウォッカ (vodka) が出てくるので英語力の低さを呪っていたらロシア系移民のふざけた風習だった</li>
+<li>エルサレムもテルアビブも治安としては渋谷とかその辺程度</li>
+<li>人工知能による意思決定の文脈でadversarial examplesの問題を引き合いに出していた人がいて，やはりセキュリティ分野ではルールベースというか決定木に起こせないとトリアージが効かないから難しいなと思った</li>
+<li>死海の名前の由来は「塩分濃度が高すぎて魚が住めないから」だそうだが，湖水の比重が高く多少の風では波立たないため時間が停まっているように見える様子が死を連想させる</li>
+<li>IED兵士はみんなタボールを抱えているのかと思ったらベエルシェバの検問を除いて警察と同様みなCAR-15系にジェリコだった</li>
+<li>イスラエルはLGBTに寛容で多様性を尊重する国であるというイメージ戦略なのだろうか，カーナビの地図上でLGBT区域が緑色に表示されるらしい</li>
+<li>ベン・グリオン国際空港の端末はWindows + IE9でアエロフロート機内の端末はLinuxベース</li>
+<li>トランジットで立ち寄ったシェレメチェボ空港での入出国審査はロシアだし「<a href="http://store.steampowered.com/app/239030/" target="_blank" rel="external">Papers, Please</a>」のような感じだと思っていたらそんなことはなかった</li>
+<li>イスラエル出国審査時にパスポートの顔写真と顔が一致するかスキャンする（？）装置があったが，しっかりaccuracyが出るわけないのでおそらくはハリボテで，裏で人間がチェックしているのだろう</li>
+<li>アラブ諸国に入国できなくなるという噂のパスポートへのスタンプは廃止されていた</li>
+</ul>
+<p>　はい．</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://ntddk.github.io/2016/06/29/cyber-security-in-israel/" data-id="cjab6b5ro0015as7tad34w194" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/intelligence/">intelligence</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
   
     <article id="post-neural-image-caption-generator-twitter-bot" class="article article-type-post" itemscope itemprop="blogPost">
   <div class="article-meta">
@@ -90,7 +179,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://ntddk.github.io/2016/03/26/neural-image-caption-generator-twitter-bot/" data-id="cj9qzc73a000ieu7timkhuex1" class="article-share-link">Share</a>
+      <a data-url="http://ntddk.github.io/2016/03/26/neural-image-caption-generator-twitter-bot/" data-id="cjab6b5rq0019as7tjsi7dbzj" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/machine-learning/">machine learning</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/neural-network/">neural network</a></li></ul>
@@ -178,7 +267,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://ntddk.github.io/2016/03/21/book-guide-for-computational-neuroscience/" data-id="cj9qzc7370009eu7tjwmvab41" class="article-share-link">Share</a>
+      <a data-url="http://ntddk.github.io/2016/03/21/book-guide-for-computational-neuroscience/" data-id="cjab6b5rm000zas7tilxuql3s" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/machine-learning/">machine learning</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/neural-network/">neural network</a></li></ul>
@@ -240,7 +329,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://ntddk.github.io/2016/03/02/sushi-and-memorized-recursion/" data-id="cj9qzc73g0010eu7t247kzc1e" class="article-share-link">Share</a>
+      <a data-url="http://ntddk.github.io/2016/03/02/sushi-and-memorized-recursion/" data-id="cjab6b5rv001nas7tds15e50i" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/algorithm/">algorithm</a></li></ul>
@@ -303,7 +392,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://ntddk.github.io/2016/01/08/controlling-rolling-spider-with-leap-motion-cylon-js/" data-id="cj9qzc7360008eu7tpqj528ti" class="article-share-link">Share</a>
+      <a data-url="http://ntddk.github.io/2016/01/08/controlling-rolling-spider-with-leap-motion-cylon-js/" data-id="cjab6b5rn0013as7tasowwkh3" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/drone/">drone</a></li></ul>
@@ -373,10 +462,10 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://ntddk.github.io/2015/12/19/generating-thesis-titles-with-rnnlm/" data-id="cj9qzc73b000meu7tra6f7yf1" class="article-share-link">Share</a>
+      <a data-url="http://ntddk.github.io/2015/12/19/generating-thesis-titles-with-rnnlm/" data-id="cjab6b5rq001bas7tovvbdu28" class="article-share-link">Share</a>
       
       
-  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/machine-learing/">machine learing</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/neural-network/">neural network</a></li></ul>
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/machine-learning/">machine learning</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/neural-network/">neural network</a></li></ul>
 
     </footer>
   </div>
@@ -465,7 +554,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://ntddk.github.io/2015/12/11/autoprobe/" data-id="cj9qzc737000beu7turuvukfq" class="article-share-link">Share</a>
+      <a data-url="http://ntddk.github.io/2015/12/11/autoprobe/" data-id="cjab6b5r50008as7t30wx5bwo" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/symbolic-execution/">symbolic execution</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/taint-analysis/">taint analysis</a></li></ul>
@@ -532,7 +621,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://ntddk.github.io/2015/11/09/is-linear-obfuscation-a-threat/" data-id="cj9qzc738000deu7t16kbc0b0" class="article-share-link">Share</a>
+      <a data-url="http://ntddk.github.io/2015/11/09/is-linear-obfuscation-a-threat/" data-id="cjab6b5rn0011as7t18k731eq" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/symbolic-execution/">symbolic execution</a></li></ul>
@@ -611,7 +700,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://ntddk.github.io/2015/09/14/xen-add-hypercall/" data-id="cj9qzc73l001ieu7tsoxm5q3z" class="article-share-link">Share</a>
+      <a data-url="http://ntddk.github.io/2015/09/14/xen-add-hypercall/" data-id="cjab6b5s40023as7t7z97jsud" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/virtual-machine-introspection/">virtual machine introspection</a></li></ul>
@@ -664,70 +753,10 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://ntddk.github.io/2015/08/16/automated-malware-analysis-using-decaf-in-seccamp15/" data-id="cj9qzc7350005eu7t9p7v9kuf" class="article-share-link">Share</a>
+      <a data-url="http://ntddk.github.io/2015/08/16/automated-malware-analysis-using-decaf-in-seccamp15/" data-id="cjab6b5r30004as7tzu34p7js" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/dynamic-binary-translation/">dynamic binary translation</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/symbolic-execution/">symbolic execution</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/taint-analysis/">taint analysis</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/virtual-machine-introspection/">virtual machine introspection</a></li></ul>
-
-    </footer>
-  </div>
-  
-</article>
-
-
-  
-    <article id="post-qemu-dbt-bottleneck" class="article article-type-post" itemscope itemprop="blogPost">
-  <div class="article-meta">
-    
-      <header class="article-header">
-        
-  
-    <a class="article-title" href="/2015/07/13/qemu-dbt-bottleneck/">QEMUの動的バイナリ変換におけるボトルネック</a>
-  
-
-      </header>
-    
-    <time class="article-date" datetime="2015-07-13T06:00:00.000Z" itemprop="datePublished">07-13-2015</time>
-    
-  </div>
-  <div class="article-inner">
-    <div class="article-entry" itemprop="articleBody">
-      
-        <h1 id="はじめに"><a href="#はじめに" class="headerlink" title="はじめに"></a>はじめに</h1><p>QEMUは動的バイナリ変換を用いた完全仮想化式のハイパーバイザである．<br>QEMUは実行対象の命令列を逆アセンブルし，いちど中間表現に変換したうえで，ホストのアーキテクチャの命令列に変換して実行する．これによりQEMUは異なるアーキテクチャのバイナリを実行することができる．<br>しかしQEMUは遅かったため，アクセラレータとしてkqemuが開発された．<br>kqemuはユーザーモードのコードをホストのCPUに実行させる準仮想化ドライバであり，やがてKVMへと変貌を遂げた．さらにKVMはハードウェアによる仮想化支援機能を用いることで，さらなる高速化を実現した．もはやKVMにおいてQEMUはハードウェアのエミュレーションにしか用いられていない．<br>かわいそうなQEMU！<br>しかしQEMUの活躍する場面はいまだ多く残されている．たとえばマルウェア解析で．<br>それでも遅いのは困りものだ．QEMUはどこが遅いのだろうか．<br>ここでは<code>perf</code>を用いてQEMUのボトルネックを<strong>雑に</strong>特定する．</p>
-<h1 id="実験"><a href="#実験" class="headerlink" title="実験"></a>実験</h1><p>今回はARMエミュレーションについて調査した．ホスト・ゲストともOSにはUbuntu 12.04(3.2.0-23-generic)を用いた．<code>perf</code>でQEMUのプロファイリングを行っている間，ゲストではgccを用いてコンパイルを実行した．</p>
-<ul>
-<li><p>ARM版Ubuntu 12.04のインストール</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div></pre></td><td class="code"><pre><div class="line"># sudo apt-get install qemu</div><div class="line"># wget http://odroid.us/odroid/users/osterluk/qemu-example/qemu-example.tgz</div><div class="line"># tar xzf qemu-example.tgz ./zImage</div><div class="line"># wget http://releases.linaro.org/12.04/ubuntu/precise-images/developer/linaro-precise-developer-20120426-86.tar.gz</div><div class="line"># tar xzf linaro-precise-developer-20120426-86.tar.gz</div><div class="line"># qemu-img create -f raw rootfs.img 3G</div><div class="line"># mkfs.ext3 rootfs.img</div><div class="line"># mkdir mnt</div><div class="line"># sudo mount -o loop rootfs.img mnt</div><div class="line"># rsync -a binary/boot/filesystem.dir/ mnt/</div><div class="line"># sudo umount mnt</div></pre></td></tr></table></figure>
-</li>
-<li><p>QEMUのビルド</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div></pre></td><td class="code"><pre><div class="line"># sudo apt-get build-dep qemu</div><div class="line"># git clone git://git.qemu-project.org/qemu.git</div><div class="line"># cd qemu</div><div class="line"># git log | grep &apos;^commit&apos; | head -1 | awk &apos;&#123;print $2&#125;&apos;</div><div class="line">6169b60285fe1ff730d840a49527e721bfb30899</div><div class="line"># git submodule update --init dtc</div><div class="line"># git submodule update --init pixman</div><div class="line"># ./configure --extra-ldflags=-pg --target-list=arm-softmmu</div><div class="line"># make</div></pre></td></tr></table></figure>
-</li>
-<li><p><code>perf</code>のインストール</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div></pre></td><td class="code"><pre><div class="line"># sudo apt-get install linux-tools</div><div class="line"># sudo echo 0 &gt; /proc/sys/kernel/perf_event_paranoid</div></pre></td></tr></table></figure>
-</li>
-<li><p><code>perf</code>によるプロファイリング</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div></pre></td><td class="code"><pre><div class="line"># perf record -a -g -F100000 qemu/arm-softmmu/qemu-system-arm -M vexpress-a9 -m 512 -kernel zImage -sd rootfs.img -append &quot;root=/dev/mmcblk0 rw physmap.enabled=0 console=ttyAMA0&quot; -monitor stdio</div><div class="line">WARNING: Image format was not specified for &apos;../../rootfs.img&apos; and probing guessed raw.</div><div class="line">         Automatically detecting the format is dangerous for raw images, write operations on block 0 will be restricted.</div><div class="line">         Specify the &apos;raw&apos; format explicitly to remove the restrictions.</div><div class="line">QEMU 2.3.90 monitor - type &apos;help&apos; for more information</div><div class="line">(qemu) audio: Could not init `oss&apos; audio driver</div><div class="line"></div><div class="line">(qemu) q</div><div class="line">[ perf record: Woken up 37 times to write data ]</div><div class="line">[ perf record: Captured and wrote 9.465 MB perf.data (~413514 samples) ]</div><div class="line"></div><div class="line"></div><div class="line">Failed to open /tmp/perf-6993.map, continuing without symbols</div><div class="line">Failed to open [vmxnet], continuing without symbols</div><div class="line">Failed to open [vmci], continuing without symbols</div><div class="line">Failed to open [vsock], continuing without symbols</div><div class="line">no symbols found in /bin/dash, maybe install a debug package?</div><div class="line">no symbols found in /usr/bin/xargs, maybe install a debug package?</div><div class="line">no symbols found in /usr/bin/updatedb.mlocate, maybe install a debug package?</div><div class="line">no symbols found in /usr/bin/dpkg-query, maybe install a debug package?</div></pre></td></tr></table></figure>
-</li>
-<li><p>Flame Graphsによる可視化</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div></pre></td><td class="code"><pre><div class="line"># wget https://raw.githubusercontent.com/brendangregg/FlameGraph/master/stackcollapse-perf.pl</div><div class="line"># wget https://raw.githubusercontent.com/brendangregg/FlameGraph/master/flamegraph.pl</div><div class="line"># perf script&gt; perf_data.txt</div><div class="line"># perl stackcollapse-perf.pl perf_data.txt|perl flamegraph.pl --title &quot;Flame Graphs - qemu-system-arm&quot; &gt; flamegraphs-qemu-system-arm.svg</div></pre></td></tr></table></figure>
-</li>
-</ul>
-<p><code>perf</code>の結果をFlame Graphsを用いて可視化すると下図のようになった．Flame GraphsはUSENIX LISA’2013にて発表された可視化ツールである．</p>
-<p><img src="/image/flamegraphs-qemu-system-arm.png"></p>
-<p>x軸は時系列，y軸はコールスタックを意味する．横幅が広く上位に位置する関数がボトルネックであるといえる．<br>よってボトルネックは<code>clear_page()</code>すなわちTCGの各関数で発生しているページフォルトである．</p>
-<h1 id="おわりに"><a href="#おわりに" class="headerlink" title="おわりに"></a>おわりに</h1><p>ページフォルトだけは勘弁してほしい．</p>
-<h1 id="参考文献"><a href="#参考文献" class="headerlink" title="参考文献"></a>参考文献</h1><ul>
-<li>“perf + Flame Graphs で Linux カーネル内のボトルネックを特定する - ablog,” <a href="http://d.hatena.ne.jp/yohei-a/20150706/1436208007" target="_blank" rel="external">http://d.hatena.ne.jp/yohei-a/20150706/1436208007</a></li>
-<li>Brendan Gregg, “<a href="https://www.usenix.org/conference/lisa13/technical-sessions/plenary/gregg" target="_blank" rel="external">Blazing Performance with Flame Graphs</a>,” Proceedings of the 27th Large Installation System Administration Conference, USENIX LISA’13, Washington, D.C., USA, 2013.</li>
-</ul>
-
-      
-    </div>
-    <footer class="article-footer">
-      <a data-url="http://ntddk.github.io/2015/07/13/qemu-dbt-bottleneck/" data-id="cj9qzc73d000qeu7txx7v9dir" class="article-share-link">Share</a>
-      
-      
-  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/dynamic-binary-translation/">dynamic binary translation</a></li></ul>
 
     </footer>
   </div>

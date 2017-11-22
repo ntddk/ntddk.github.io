@@ -5,12 +5,15 @@
   
   <title>Archives | 一生あとで読んでろ</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-  <meta property="og:type" content="website">
+  <meta name="description" content="技術ブログ">
+<meta property="og:type" content="website">
 <meta property="og:title" content="一生あとで読んでろ">
 <meta property="og:url" content="http://ntddk.github.io/archives/page/4/index.html">
 <meta property="og:site_name" content="一生あとで読んでろ">
+<meta property="og:description" content="技術ブログ">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="一生あとで読んでろ">
+<meta name="twitter:description" content="技術ブログ">
   
   
   <link href="//fonts.googleapis.com/css?family=Ubuntu" rel="stylesheet" type="text/css">
@@ -46,6 +49,64 @@
 </header>
       <div class="outer">
         <section id="main">
+  
+    <article id="post-vine-howto" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    
+      <header class="article-header">
+        
+  
+    <a class="article-title" href="/2014/09/28/vine-howto/">Vineを動かす</a>
+  
+
+      </header>
+    
+    <time class="article-date" datetime="2014-09-27T20:56:08.000Z" itemprop="datePublished">09-28-2014</time>
+    
+  </div>
+  <div class="article-inner">
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h1 id="はじめに"><a href="#はじめに" class="headerlink" title="はじめに"></a>はじめに</h1><p>ここでは，<a href="http://bitblaze.cs.berkeley.edu/" target="_blank" rel="external">BitBlaze</a>のうち，静的解析に特化したコンポーネントであるVineを動かしてみる．</p>
+<h1 id="BitBlaze"><a href="#BitBlaze" class="headerlink" title="BitBlaze"></a>BitBlaze</h1><p>BitBlazeはDawn Songらによるバイナリ解析プラットフォームで，2008年に<a href="http://bitblaze.cs.berkeley.edu/papers/bitblaze_iciss08.pdf" target="_blank" rel="external">BitBlaze: A New Approach to Computer Security via Binary Analysis [PDF]</a>が発表されて以来，数多くの研究に用いられてきた．BitBlazeは，動的解析コンポーネントの<a href="http://bitblaze.cs.berkeley.edu/temu.html" target="_blank" rel="external">TEMU</a>，静的解析コンポーネントの<a href="http://bitblaze.cs.berkeley.edu/vine.html" target="_blank" rel="external">Vine</a>，動的シンボリック実行コンポーネントの<a href="http://bitblaze.cs.berkeley.edu/rudder.html" target="_blank" rel="external">Rudder</a>から構成される．このうち，TEMUとVineのソースコードが公開されている．</p>
+<h2 id="TEMU-The-BitBlaze-Dynamic-Analysis-Component"><a href="#TEMU-The-BitBlaze-Dynamic-Analysis-Component" class="headerlink" title="TEMU: The BitBlaze Dynamic Analysis Component"></a>TEMU: The BitBlaze Dynamic Analysis Component</h2><p>TEMUはQEMUをベースとしたエミュレータで，テイント解析(taint analysis)の機能を備えている．テイント解析とは，タグを設定したデータの伝搬を追跡することで，データ同士の依存関係を解析する技術である．TEMUはtracecapというプラグインを用いて，ゲストOS上で動作するアプリケーションのトレースログを取得することができる．</p>
+<h2 id="Vine-The-BitBlaze-Static-Analysis-Component"><a href="#Vine-The-BitBlaze-Static-Analysis-Component" class="headerlink" title="Vine: The BitBlaze Static Analysis Component"></a>Vine: The BitBlaze Static Analysis Component</h2><p>Vineは，逆アセンブリやTEMUのトレースファイルから，中間表現VineILや最弱事前条件，STP formulaなどを出力する．公開されているVineには，TEMU/tracecapのトレースファイルとしてfive.traceが同梱されている．これを例にVineの機能を見てみよう．</p>
+<h1 id="Vineのインストール"><a href="#Vineのインストール" class="headerlink" title="Vineのインストール"></a>Vineのインストール</h1><p><a href="http://bitblaze.cs.berkeley.edu/release/vine-1.0/howto.html" target="_blank" rel="external">Vine installation and user manual</a>の通り．OCamlで記述されているため，関連のパッケージを導入する必要がある．また，32bit環境での動作を前提としている．</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div></pre></td><td class="code"><pre><div class="line">sudo apt-get install g++ ocaml ocaml-findlib libgdome2-ocaml-dev camlidl \ </div><div class="line">                     libextlib-ocaml-dev ocaml-native-compilers \ </div><div class="line">                     libocamlgraph-ocaml-dev binutils-dev texlive \ </div><div class="line">                     texlive-latex-extra transfig hevea</div></pre></td></tr></table></figure>
+<h1 id="trace-reader"><a href="#trace-reader" class="headerlink" title="trace_reader"></a>trace_reader</h1><p>TEMU/tracecapが出力するトレースファイルはhuman-readableではなく，閲覧はVineのtrace_readerを介して行う必要がある．five.traceでは，T1がタグの識別子となっており，T0はデータに設定されたタグが存在しないことを意味する．なお，ここではキーボードからの入力にタグが設定されている．</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div></pre></td><td class="code"><pre><div class="line">../trace_utils/trace_reader -trace five.trace | grep T1 | head -n 20</div><div class="line">42075911:	movzbl (%eax),%eax	R@eax[0x40014000][4]	T0	M@0x40014000[0x00000035][1]	T1 &#123;1 (1001, 0) ()()()&#125;</div><div class="line">42077e0c:	cmp    $0xffffffff,%eax	I@0x00000000[0xffffffff][1]	T0	R@eax[0x00000035][4]	T1 &#123;1 (1001, 0) ()()()&#125;</div><div class="line">42077e14:	movzbl (%edx),%eax	R@eax[0x00000035][4]	T1 &#123;1 (1001, 0) ()()()&#125;	M@0x40014000[0x00000035][1]	T1 &#123;1 (1001, 0) ()()()&#125;</div><div class="line">4205abc5:	mov    %eax,-0xac(%ebp)	R@eax[0x00000035][4]	T1 &#123;1 (1001, 0) ()()()&#125;	M@0xbffff69c[0x00000000][4]	T0</div><div class="line">4205abce:	mov    -0xa8(%ebp),%eax	R@eax[0x00000035][4]	T1 &#123;1 (1001, 0) ()()()&#125;	M@0xbffff6a0[0x00000000][4]	T0</div><div class="line">4205abd5:	cmpl   $0xffffffff,-0xac(%ebp)	I@0x00000000[0xffffffff][1]	T0	M@0xbffff69c[0x00000035][4]	T1 &#123;1 (1001, 0) ()()()&#125;</div><div class="line">4205abf5:	mov    -0xac(%ebp),%edx	R@edx[0x40014001][4]	T0	M@0xbffff69c[0x00000035][4]	T1 &#123;1 (1001, 0) ()()()&#125;</div><div class="line">4205ac0b:	cmpl   $0xffffffff,-0xac(%ebp)	I@0x00000000[0xffffffff][1]	T0	M@0xbffff69c[0x00000035][4]	T1 &#123;1 (1001, 0) ()()()&#125;</div><div class="line">4205ac14:	movzbl -0xac(%ebp),%eax	R@eax[0x42130b80][4]	T0	M@0xbffff69c[0x00000035][1]	T1 &#123;1 (1001, 0) ()()()&#125;</div><div class="line">4205ac24:	push   %eax	R@eax[0x00000035][4]	T1 &#123;1 (1001, 0) ()()()&#125;	M@0xbffff604[0x4213030c][4]	T0</div><div class="line">4205ac25:	mov    0x8(%ebp),%eax	R@eax[0x00000035][4]	T1 &#123;1 (1001, 0) ()()()&#125;	M@0xbffff750[0x4212d980][4]	T0</div><div class="line">4207793a:	mov    0xc(%ebp),%edx	R@edx[0x00000035][4]	T1 &#123;1 (1001, 0) ()()()&#125;	M@0xbffff604[0x00000035][4]	T1 &#123;1 (1001, 0) ()()()&#125;</div><div class="line">42077945:	cmp    %dl,-0x1(%eax)	R@dl[0x00000035][1]	T1 &#123;1 (1001, 0) ()()()&#125;	M@0x40014000[0x00000035][1]	T1 &#123;1 (1001, 0) ()()()&#125;</div><div class="line">42077974:	movzbl %dl,%eax	R@dl[0x00000035][1]	T1 &#123;1 (1001, 0) ()()()&#125;	R@eax[0x40014000][4]	T0</div><div class="line">42077960:	cmp    $0xffffffff,%eax	I@0x00000000[0xffffffff][1]	T0	R@eax[0x00000035][4]	T1 &#123;1 (1001, 0) ()()()&#125;</div><div class="line">4205ac39:	movzbl -0x9d(%ebp),%eax	R@eax[0x00000035][4]	T1 &#123;1 (1001, 0) ()()()&#125;	M@0xbffff6ab[0x00000064][1]	T0</div><div class="line">4205c550:	mov    $0xa,%edx	I@0x00000000[0x0000000a][4]	T0	R@edx[0x00000035][4]	T1 &#123;1 (1001, 0) ()()()&#125;</div><div class="line">4205c566:	cmpl   $0xffffffff,-0xac(%ebp)	I@0x00000000[0xffffffff][1]	T0	M@0xbffff69c[0x00000035][4]	T1 &#123;1 (1001, 0) ()()()&#125;</div><div class="line">4205dcd1:	movzbl (%eax),%edi	R@edi[0x00000000][4]	T0	M@0x40014000[0x00000035][1]	T1 &#123;1 (1001, 0) ()()()&#125;</div><div class="line">4205dcd8:	mov    %edi,-0xac(%ebp)	R@edi[0x00000035][4]	T1 &#123;1 (1001, 0) ()()()&#125;	M@0xbffff69c[0x00000035][4]	T1 &#123;1 (1001, 0) ()()()&#125;</div></pre></td></tr></table></figure>
+<h1 id="VineIL"><a href="#VineIL" class="headerlink" title="VineIL"></a>VineIL</h1><p>Vineが生成するVineILは静的単一代入形式の中間表現であり，CFGの情報が損なわれることはない．中間表現の生成をinstruction liftingという．なお，VineILはValgrindの中間表現を扱うライブラリVEXをもとに生成される．</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div><div class="line">22</div><div class="line">23</div></pre></td><td class="code"><pre><div class="line">~/vine/examples$ ../trace_utils/appreplay -trace five.trace -ir-out five.ir</div><div class="line">~/vine/examples$ cat five.ir | awk &apos;NR==1000,NR==1020&apos;</div><div class="line">R_CC_OP_16:reg32_t = 0xd:reg32_t;</div><div class="line">T_32t9_1114:reg32_t = cast(T_8t3_1108:reg8_t)U:reg32_t;</div><div class="line">R_CC_DEP1_17:reg32_t = T_32t9_1114:reg32_t;</div><div class="line">R_CC_DEP2_18:reg32_t = 0:reg32_t;</div><div class="line">R_CC_NDEP_19:reg32_t = 0:reg32_t;</div><div class="line">/*eflags thunk: logic*/</div><div class="line"></div><div class="line">R_CF_10:reg1_t = false;</div><div class="line">T_7_1115:reg8_t = cast(T_32t9_1114:reg32_t)L:reg8_t;</div><div class="line">R_PF_11:reg1_t =</div><div class="line">!cast(</div><div class="line">      ((T_7_1115:reg8_t &gt;&gt; 7:reg32_t ^ T_7_1115:reg8_t &gt;&gt; 6:reg32_t)</div><div class="line">         ^ (T_7_1115:reg8_t &gt;&gt; 5:reg32_t ^ T_7_1115:reg8_t &gt;&gt; 4:reg32_t))</div><div class="line">       ^ </div><div class="line">         ((T_7_1115:reg8_t &gt;&gt; 3:reg32_t ^ T_7_1115:reg8_t &gt;&gt; 2:reg32_t)</div><div class="line">            ^ (T_7_1115:reg8_t &gt;&gt; 1:reg32_t ^ T_7_1115:reg8_t))</div><div class="line">         )L:reg1_t;</div><div class="line">R_AF_12:reg1_t = false;</div><div class="line">R_ZF_13:reg1_t = T_32t9_1114:reg32_t == 0:reg32_t;</div><div class="line">R_SF_14:reg1_t = 1:reg32_t == (1:reg32_t &amp; T_32t9_1114:reg32_t &gt;&gt; 7:reg32_t);</div><div class="line">R_OF_15:reg1_t = false;</div></pre></td></tr></table></figure>
+<p>出力している行の番号は適当．</p>
+<h1 id="最弱事前条件"><a href="#最弱事前条件" class="headerlink" title="最弱事前条件"></a>最弱事前条件</h1><p>最弱事前条件(weakest precondition)はDijkstraによる述語変換意味論の基礎を成す概念である．Sを条件，式をRとした際，最弱事前条件WP(S, R)は，Rを実行する前にS’が成り立っていればSの実行後にSが成り立つ最も弱い条件S’を表す．単純な例だと，以下のように表現される．</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div></pre></td><td class="code"><pre><div class="line">WP(S, x=e) = S[e/x]</div><div class="line">WP(new == org,  new = new+taint) </div><div class="line">=  new+taint == org</div></pre></td></tr></table></figure>
+<p>Vineにおける最弱事前条件の出力は，以下のようになる．</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div><div class="line">22</div><div class="line">23</div><div class="line">24</div></pre></td><td class="code"><pre><div class="line">~/vine/examples$ ../trace_utils/appreplay -trace five.trace -wp-out five.wp</div><div class="line">~/vine/examples$ grep let five.wp | head -n 20</div><div class="line">let post_1681:reg1_t = true in</div><div class="line">let R_EAX_1682:reg32_t = 0x40014000:reg32_t in</div><div class="line">let idx_1683:reg32_t = 0x40014000:reg32_t in</div><div class="line">let val_1684:reg8_t = INPUT_1001_0000_61:reg8_t in</div><div class="line">let temp_1685:reg8_t = val_1684:reg8_t &amp; 0xff:reg8_t in</div><div class="line">let temp_1686:reg8_t = temp_1685:reg8_t &gt;&gt; 0:reg8_t in</div><div class="line">let towrite_1688:reg8_t = cast(temp_1686:reg8_t)L:reg8_t in</div><div class="line">let mem_arr_1687:reg8_t[4294967296] =</div><div class="line">    let mem_arr_57[0x40014000:reg32_t]:reg8_t = towrite_1688:reg8_t in</div><div class="line">    mem_arr_57:reg8_t[4294967296]</div><div class="line">in</div><div class="line">let R_EAX_1689:reg32_t = 0x40014000:reg32_t in</div><div class="line">let R_GDT_1690:reg32_t = 0xc02dbd80:reg32_t in</div><div class="line">let R_LDT_1691:reg32_t = 0xc02dcc58:reg32_t in</div><div class="line">let R_DFLAG_1692:reg32_t = 1:reg32_t in</div><div class="line">let T_32t0_1693:reg32_t = R_EAX_1689:reg32_t in</div><div class="line">let T_8t2_1694:reg8_t = mem_arr_1687[0x40014000:reg32_t]:reg8_t in</div><div class="line">let T_32t1_1695:reg32_t = cast(T_8t2_1694:reg8_t)U:reg32_t in</div><div class="line">let R_EAX_1696:reg32_t = T_32t1_1695:reg32_t in</div><div class="line">let temp_1697:reg32_t = R_EAX_1696:reg32_t &amp; 0xffff00ff:reg32_t in</div><div class="line">let temp_1698:reg32_t = cast(0:reg8_t)U:reg32_t in</div><div class="line">let temp_1699:reg32_t = temp_1698:reg32_t &lt;&lt; 8:reg8_t in</div></pre></td></tr></table></figure>
+<p>このような手法でソースコードの存在しないバイナリから最弱事前条件を抽出し，仕様書を復元する試みがあるらしい．ゾッとする．</p>
+<h1 id="STP-formula"><a href="#STP-formula" class="headerlink" title="STP formula"></a>STP formula</h1><p>Vineは，TEMUのトレースファイルからSTP formulaを出力する．STP formulaとはSMTソルバであるSTP用のフォーマットである．</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div><div class="line">22</div></pre></td><td class="code"><pre><div class="line">~/vine/examples$ ../trace_utils/appreplay -trace five.trace -stp-out five.stp</div><div class="line">~/vine/examples$ head -n 20 five.stp</div><div class="line">% free variables: </div><div class="line">mem_arr_57 : ARRAY BITVECTOR(64) OF BITVECTOR(8);</div><div class="line">INPUT_1001_0000_61 : BITVECTOR(8);</div><div class="line">% end free variables.</div><div class="line"> </div><div class="line"> </div><div class="line">ASSERT( 0bin1 =</div><div class="line">(LET post_1681 =</div><div class="line">    0bin1</div><div class="line">IN</div><div class="line">(LET R_EAX_1682 =</div><div class="line">    0hex40014000</div><div class="line">IN</div><div class="line">(LET idx_1683 =</div><div class="line">    0hex40014000</div><div class="line">IN</div><div class="line">(LET val_1684 =</div><div class="line">    INPUT_1001_0000_61</div><div class="line">IN</div><div class="line">(LET temp_1685 =</div></pre></td></tr></table></figure>
+<p>SMTソルバは充足可能性問題を解く．では，ここで与えられる命題とは何か．それは，任意の初期値がトレースファイルの結果と一致するというものだ．STPは命題が充足可能か解こうとし，充足不能であった場合は反例を出力する．</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div></pre></td><td class="code"><pre><div class="line">~/vine/examples$ cat &gt;&gt;five.stp</div><div class="line">QUERY(FALSE);</div><div class="line">COUNTEREXAMPLE;</div></pre></td></tr></table></figure>
+<p>ここで出力される反例は，実行経路に影響を与えた入力値となるようだ．five.traceでは，0x35(ASCIIで5)という入力値が分岐に影響を与えている．</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div></pre></td><td class="code"><pre><div class="line">~/vine/examples$ ../stp/stp five.stp</div><div class="line">Invalid.</div><div class="line">ASSERT( INPUT_1001_0_61  = 0hex35  );</div></pre></td></tr></table></figure>
+<p>これはトレースファイルに対する静的なシンボリック実行だと言える．シンボリック実行とは，記号によって表現したプログラムの変数を操作することで，実行経路に影響する制約を抽出する静的解析の手法である．シンボリック実行は到達定義の解析などモデルベーステストの領域で発展してきたが，マルウェアの挙動解析に役立てられないだろうか．</p>
+<h1 id="BAP"><a href="#BAP" class="headerlink" title="BAP"></a>BAP</h1><p><a href="http://bap.ece.cmu.edu" target="_blank" rel="external">BAP</a>はDavid BrumleyらによるVineの再実装である．彼らはCMUに所属しており，PPPのメンバーでもある．彼らは脆弱性解析の自動化をmotivationとしてBitBlazeを扱ってきた．BAPはVineをより発展させたプロジェクトであり，逆アセンブリやTEMUのトレースファイルから中間表現BILを生成するほか，CFGのみならずCDG(control dependence graphs)やDDG(data dependence graphs)の出力をサポートしているようだ．</p>
+<h1 id="おわりに"><a href="#おわりに" class="headerlink" title="おわりに"></a>おわりに</h1><p>TEMUのトレースファイルについて，ざっくりVineによる静的解析を行った．とりあえず動かしてみただけなので，コードを噛み砕く必要がある．気になるのはやはり中間表現のフォーマットだ．一度，QEMU，Valgrind，DynamoRIO，LLVM，Vine，BAPなどの中間表現について，対応を整理したほうが良いかもしれない．</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://ntddk.github.io/2014/09/28/vine-howto/" data-id="cjab6b5s0001zas7taocsddmb" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/dynamic-binary-translation/">dynamic binary translation</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/symbolic-execution/">symbolic execution</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/taint-analysis/">taint analysis</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
   
     <article id="post-symexec-intro" class="article article-type-post" itemscope itemprop="blogPost">
   <div class="article-meta">
@@ -110,7 +171,7 @@ mov esi, 0x2014
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://ntddk.github.io/2014/09/12/symexec-intro/" data-id="cj9qzc73i0016eu7tt25qagtg" class="article-share-link">Share</a>
+      <a data-url="http://ntddk.github.io/2014/09/12/symexec-intro/" data-id="cjab6b5rx001sas7t377kl0rk" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/dynamic-binary-translation/">dynamic binary translation</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/symbolic-execution/">symbolic execution</a></li></ul>
@@ -198,7 +259,7 @@ pop esi ;retアドレスを除去
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://ntddk.github.io/2014/09/11/after-rop/" data-id="cj9qzc7320002eu7tn1vhhr8g" class="article-share-link">Share</a>
+      <a data-url="http://ntddk.github.io/2014/09/11/after-rop/" data-id="cjab6b5r30003as7tb2iib3p8" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/exploitation/">exploitation</a></li></ul>
@@ -240,5 +301,23 @@ pop esi ;retアドレスを除去
 
 <script src="/js/script.js"></script>
   </div>
+
+<!-- Begin: Injected MathJax -->
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Config({"tex2jax":{"inlineMath":[["$","$"],["\\(","\\)"]],"skipTags":["script","noscript","style","textarea","pre","code"],"processEscapes":true},"TeX":{"equationNumbers":{"autoNumber":"AMS"}}});
+</script>
+
+<script type="text/x-mathjax-config">
+    MathJax.Hub.Queue(function() {
+        var all = MathJax.Hub.getAllJax(), i;
+        for(i=0; i < all.length; i += 1) {
+            all[i].SourceElement().parentNode.className += ' has-jax';
+        }
+    });
+</script>
+
+<script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.0/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
+</script>
+<!-- End: Injected MathJax -->
 </body>
 </html>

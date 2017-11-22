@@ -12,7 +12,7 @@
 <meta property="og:url" content="http://ntddk.github.io/2017/11/08/a-supplemental-guide-to-migrate-pySide-code-to-pyqt5-within-your-idapython-script/index.html">
 <meta property="og:site_name" content="一生あとで読んでろ">
 <meta property="og:description" content="IntroductionIDAPython is a powerful feature of IDA Pro, and there are many open-sourced IDAPython projects. However, we cannot use every GUI-based IDAPython script due to some Qt-related breaking chan">
-<meta property="og:updated_time" content="2017-11-08T14:30:14.842Z">
+<meta property="og:updated_time" content="2017-11-17T03:24:58.366Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="A Supplemental Guide to Migrate PySide Code to PyQt5 Within Your IDAPython Script">
 <meta name="twitter:description" content="IntroductionIDAPython is a powerful feature of IDA Pro, and there are many open-sourced IDAPython projects. However, we cannot use every GUI-based IDAPython script due to some Qt-related breaking chan">
@@ -70,7 +70,7 @@
     <div class="article-entry" itemprop="articleBody">
       
         <h1 id="Introduction"><a href="#Introduction" class="headerlink" title="Introduction"></a>Introduction</h1><p>IDAPython is a powerful feature of IDA Pro, and there are many open-sourced IDAPython projects. However, we cannot use every GUI-based IDAPython script due to some Qt-related breaking changes between IDA Pro 6.8 and 6.9 or later. The main problem is about migrating no longer supported PySide code to PyQt5.</p>
-<p>Recently I ported PySide code within <a href="https://github.com/RobinDavid/idasec" target="_blank" rel="external">idasec</a> – one of the most sophisticated deobfuscation frameworks, which tackles opaque predicates and call stack tampering in terms of infeasibility questions, by utilizing Backward-Bounded Dynamic Symbolic Execution proposed in the remarkably well written paper <a href="https://www.ieee-security.org/TC/SP2017/papers/220.pdf" target="_blank" rel="external">S. Bardin et al. IEEE S&amp;P’17</a> – to PyQt5.</p>
+<p>Recently I ported PySide code within <a href="https://github.com/RobinDavid/idasec" target="_blank" rel="external">idasec</a>–one of the most sophisticated deobfuscation frameworks, which tackles opaque predicates and call stack tampering in terms of infeasibility questions, by utilizing Backward-Bounded Dynamic Symbolic Execution proposed in the remarkably well written paper <a href="https://www.ieee-security.org/TC/SP2017/papers/220.pdf" target="_blank" rel="external">S. Bardin et al. IEEE S&amp;P’17</a>–to PyQt5.</p>
 <p>That’s why I decided to write this blog post for a note to self and for someone trying to do similar thing.</p>
 <h1 id="Related-Work"><a href="#Related-Work" class="headerlink" title="Related Work"></a>Related Work</h1><p>There are 2 guidances to migrate PySide code to PyQt5:</p>
 <ul>
@@ -115,7 +115,7 @@
 <li><code>QtWidgets.QSpacerItem</code></li>
 <li><code>QtWidgets.QScrollArea</code></li>
 <li><code>QtWidgets.QSplitter</code></li>
-<li>There might be more …</li>
+<li>There might be more…</li>
 </ul>
 <p>My experience says that other than the following 3 methods may be rewritten:</p>
 <ul>
@@ -142,7 +142,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://ntddk.github.io/2017/11/08/a-supplemental-guide-to-migrate-pySide-code-to-pyqt5-within-your-idapython-script/" data-id="cj9r55y6r00008k7twico9tyx" class="article-share-link">Share</a>
+      <a data-url="http://ntddk.github.io/2017/11/08/a-supplemental-guide-to-migrate-pySide-code-to-pyqt5-within-your-idapython-script/" data-id="cjab6b5qx0000as7tokzmwrqd" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/reversing/">reversing</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/symbolic-execution/">symbolic execution</a></li></ul>
@@ -162,6 +162,11 @@
       </div>
     </a>
   
+  
+    <a href="/2017/11/23/backward-program-slicing-with-idapython-and-triton/" id="article-nav-older" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Older</strong>
+      <div class="article-nav-title">Backward Program Slicing With IDAPython and Triton</div>
+    </a>
   
 </nav>
 
