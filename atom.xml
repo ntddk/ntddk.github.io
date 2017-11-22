@@ -5,7 +5,7 @@
   <link href="/atom.xml" rel="self"/>
   
   <link href="http://ntddk.github.io/"/>
-  <updated>2017-11-22T16:28:00.469Z</updated>
+  <updated>2017-11-22T16:30:19.537Z</updated>
   <id>http://ntddk.github.io/</id>
   
   <author>
@@ -20,10 +20,10 @@
     <link href="http://ntddk.github.io/2017/11/23/backward-program-slicing-with-idapython-and-triton/"/>
     <id>http://ntddk.github.io/2017/11/23/backward-program-slicing-with-idapython-and-triton/</id>
     <published>2017-11-22T16:30:00.000Z</published>
-    <updated>2017-11-22T16:28:00.469Z</updated>
+    <updated>2017-11-22T16:30:19.537Z</updated>
     
     <content type="html"><![CDATA[<h1 id="Introduction"><a href="#Introduction" class="headerlink" title="Introduction"></a>Introduction</h1><p>As you know, IDAPython is quite useful. And <a href="https://github.com/JonathanSalwan/Triton" target="_blank" rel="external">Triton</a> concolic execution engine has python binding. Then… why not integrate them? I tried to stand on the shoulders of giants.</p>
-<h1 id="Backward-Program-Slicing"><a href="#Backward-Program-Slicing" class="headerlink" title="Backward Program Slicing"></a>Backward Program Slicing</h1><p>Roughly speaking, program slicing is a method to extract subset of program which is relevant to given statement. Here is an excerpt from [<a href="https://dl.acm.org/citation.cfm?id=802557" target="_blank" rel="external">M. Weiser. ICSE’81</a>]:</p>
+<h1 id="Backward-Program-Slicing"><a href="#Backward-Program-Slicing" class="headerlink" title="Backward Program Slicing"></a>Backward Program Slicing</h1><p>Roughly speaking, program slicing is a method to extract subset of program which is relevant to given statement. Here is an excerpt from <a href="https://dl.acm.org/citation.cfm?id=802557" target="_blank" rel="external">M. Weiser. ICSE’81</a>:</p>
 <blockquote>
 <p>Starting from a subset of a program’s behavior, slicing reduces that program to a minimal form which still produces that behavior. The reduced program, called a “slice”, is an independent program guaranteed to faithfully represent the original program within the domain of the specified subset of behavior.</p>
 </blockquote>
