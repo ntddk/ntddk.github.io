@@ -50,6 +50,59 @@
       <div class="outer">
         <section id="main">
   
+    <article id="post-how-i-found-the-honeypot-dark-web-osint-and-image-processing" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    
+      <header class="article-header">
+        
+  
+    <a class="article-title" href="/2017/12/02/how-i-found-the-honeypot-dark-web-osint-and-image-processing/">How I Found the Honeypot: Dark Web OSINT and Image Processing</a>
+  
+
+      </header>
+    
+    <time class="article-date" datetime="2017-12-01T15:00:00.000Z" itemprop="datePublished">12-02-2017</time>
+    
+  </div>
+  <div class="article-inner">
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p>This post is for <a href="https://adventar.org/calendars/2263" target="_blank" rel="external">Honeypot Advent Calendar 2017</a>.</p>
+<h1 id="Introduction"><a href="#Introduction" class="headerlink" title="Introduction"></a>Introduction</h1><p>In May this year, Trend Micro researchers have announced interesting research results in the article titled <a href="http://blog.trendmicro.com/trendlabs-security-intelligence/red-on-red-the-attack-landscape-of-the-dark-web/" target="_blank" rel="external">Red on Red: The Attack Landscape of the Dark Web - TrendLabs Security Intelligence Blog</a>. They had deployed a honeypot on the dark web and monitored attack activities. They’ve done great work, indeed.</p>
+<p>Well then, with the aid of the screenshot in that article, probably I found the honeypot. May I introduce the how and why?</p>
+<h1 id="Dark-Web-OSINT"><a href="#Dark-Web-OSINT" class="headerlink" title="Dark Web OSINT"></a>Dark Web OSINT</h1><p>In March this year, when they would have created an presentation slide, I have been running the crawler for the dark web. My purpose was to create a pictorial book of Tor hidden services below:</p>
+<p><img src="/image/onionstack/onionstack.png" width="100%" height="100%"></p>
+<p>The crawler is simple, just like saying “Hello, world!” to PhantomJS. It has only capability of taking a screenshot.</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div></pre></td><td class="code"><pre><div class="line">service_args = [ </div><div class="line">            <span class="comment"># Do not insert blank to each of args.</span></div><div class="line">            <span class="string">'--proxy=127.0.0.1:9050'</span>,</div><div class="line">            <span class="string">'--proxy-type=socks5'</span></div><div class="line">        ]</div><div class="line">dcap = &#123;</div><div class="line">        <span class="string">'phantomjs.page.settings.userAgent'</span>: <span class="string">'Mozilla/5.0 (Windows NT 6.1; rv:31.0) Gecko/20100101 Firefox/31.0'</span></div><div class="line">&#125;</div><div class="line"></div><div class="line"><span class="function"><span class="keyword">def</span> <span class="title">get_title_with_screenshot</span><span class="params">(url)</span>:</span></div><div class="line">    driver = webdriver.PhantomJS(service_args = service_args, desired_capabilities = dcap)</div><div class="line">    driver.set_window_size(<span class="number">1024</span>, <span class="number">512</span>)</div><div class="line">    driver.get(<span class="string">'http://'</span> + url + <span class="string">'.onion'</span>) <span class="comment"># 'http://' is required.</span></div><div class="line">    driver.save_screenshot(url + <span class="string">'.png'</span>)</div><div class="line">    title = driver.title</div><div class="line">    driver.close()</div><div class="line">    <span class="keyword">return</span> title</div></pre></td></tr></table></figure>
+<p>I have discovered 40,208 onion domains and confirmed 1,797 domains were active.</p>
+<h1 id="Image-Processing"><a href="#Image-Processing" class="headerlink" title="Image Processing"></a>Image Processing</h1><p>Thanks to collecting screenshots by chance, I was able to find a site similar to the screenshot in their article–with histgram calculation:</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div></pre></td><td class="code"><pre><div class="line">list = glob.glob(<span class="string">'./images/*.png'</span>)</div><div class="line"></div><div class="line"><span class="function"><span class="keyword">def</span> <span class="title">cbir</span><span class="params">()</span>:</span></div><div class="line">    target_im = cv2.imread(sys.argv[<span class="number">1</span>])</div><div class="line">    target_hist = cv2.calcHist([target_im], [<span class="number">0</span>], <span class="keyword">None</span>, [<span class="number">256</span>], [<span class="number">0</span>, <span class="number">256</span>])</div><div class="line"></div><div class="line">    <span class="keyword">for</span> i <span class="keyword">in</span> list:</div><div class="line">        comparing_im = cv2.imread(i)</div><div class="line">        comparing_hist = cv2.calcHist([comparing_im], [<span class="number">0</span>], <span class="keyword">None</span>, [<span class="number">256</span>], [<span class="number">0</span>, <span class="number">256</span>])</div><div class="line">        diff = cv2.compareHist(target_hist, comparing_hist, <span class="number">0</span>)</div><div class="line">        <span class="keyword">if</span> diff &gt; float(sys.argv[<span class="number">2</span>]): <span class="comment"># Threshold</span></div><div class="line">            <span class="keyword">print</span> i, diff</div></pre></td></tr></table></figure>
+<p>Yet domain names are not posted in their articles, I believe this is it.</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div></pre></td><td class="code"><pre><div class="line">$ wget http://blog.trendmicro.com/trendlabs-security-intelligence/files/2017/05/red-on-red-1.jpg</div><div class="line">$ cbir.py red-on-red-1.jpg</div><div class="line">$ python cbir.py red-on-red-1.jpg 0.9</div><div class="line">./images/s5**********jlp2.png 0.979927357262</div></pre></td></tr></table></figure>
+<p>The screenshot:</p>
+<p><img src="/image/onionstack/s5__________jlp2.png" width="100%" height="100%"></p>
+<p>There are many clone sites in the dark web–for backup, or even for spying? <code>s5**********jlp2.onion</code> might be cloned and have maintained by others. Even in that case, the site is likely to be a honeypot.</p>
+<p>Interestingly, I also found some posts like to induce to the site at <a href="https://www.reddit.com/r/onions/" target="_blank" rel="external">r/onions</a>. I believe these are done by researcher.</p>
+<h1 id="Last-Words"><a href="#Last-Words" class="headerlink" title="Last Words"></a>Last Words</h1><p>We got a glimpse of deep in abyss. This is just an accidental case study. Needless to say, no insult intended.</p>
+<p>My crawler and image processing scripts are available at <a href="https://github.com/ntddk/onionstack" target="_blank" rel="external">ntddk/onionstack</a>. Crawling of the dark web is accompanied by risk. After all, with ethical consideration, I’ve deleted screenshots I’d captured except for the honeypot.</p>
+<p>If you interested in the dark web OSINT, <a href="http://www.automatingosint.com/blog/category/dark-web/" target="_blank" rel="external">Dark Web | Automating OSINT Blog</a> will be a good starting point.</p>
+<p>Anyway, keep safety.</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://ntddk.github.io/2017/12/02/how-i-found-the-honeypot-dark-web-osint-and-image-processing/" data-id="cjao6b4lq0000pt7tyc8qlzh5" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/dark-web/">dark web</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/honeypot/">honeypot</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
     <article id="post-backward-program-slicing-with-idapython-and-triton" class="article article-type-post" itemscope itemprop="blogPost">
   <div class="article-meta">
     
@@ -746,5 +799,23 @@
 
 <script src="/js/script.js"></script>
   </div>
+
+<!-- Begin: Injected MathJax -->
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Config({"tex2jax":{"inlineMath":[["$","$"],["\\(","\\)"]],"skipTags":["script","noscript","style","textarea","pre","code"],"processEscapes":true},"TeX":{"equationNumbers":{"autoNumber":"AMS"}}});
+</script>
+
+<script type="text/x-mathjax-config">
+    MathJax.Hub.Queue(function() {
+        var all = MathJax.Hub.getAllJax(), i;
+        for(i=0; i < all.length; i += 1) {
+            all[i].SourceElement().parentNode.className += ' has-jax';
+        }
+    });
+</script>
+
+<script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.0/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
+</script>
+<!-- End: Injected MathJax -->
 </body>
 </html>

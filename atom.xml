@@ -5,7 +5,7 @@
   <link href="/atom.xml" rel="self"/>
   
   <link href="http://ntddk.github.io/"/>
-  <updated>2017-11-22T16:30:19.537Z</updated>
+  <updated>2017-12-01T17:44:52.691Z</updated>
   <id>http://ntddk.github.io/</id>
   
   <author>
@@ -14,6 +14,49 @@
   </author>
   
   <generator uri="http://hexo.io/">Hexo</generator>
+  
+  <entry>
+    <title>How I Found the Honeypot: Dark Web OSINT and Image Processing</title>
+    <link href="http://ntddk.github.io/2017/12/02/how-i-found-the-honeypot-dark-web-osint-and-image-processing/"/>
+    <id>http://ntddk.github.io/2017/12/02/how-i-found-the-honeypot-dark-web-osint-and-image-processing/</id>
+    <published>2017-12-01T15:00:00.000Z</published>
+    <updated>2017-12-01T17:44:52.691Z</updated>
+    
+    <content type="html"><![CDATA[<p>This post is for <a href="https://adventar.org/calendars/2263" target="_blank" rel="external">Honeypot Advent Calendar 2017</a>.</p>
+<h1 id="Introduction"><a href="#Introduction" class="headerlink" title="Introduction"></a>Introduction</h1><p>In May this year, Trend Micro researchers have announced interesting research results in the article titled <a href="http://blog.trendmicro.com/trendlabs-security-intelligence/red-on-red-the-attack-landscape-of-the-dark-web/" target="_blank" rel="external">Red on Red: The Attack Landscape of the Dark Web - TrendLabs Security Intelligence Blog</a>. They had deployed a honeypot on the dark web and monitored attack activities. They’ve done great work, indeed.</p>
+<p>Well then, with the aid of the screenshot in that article, probably I found the honeypot. May I introduce the how and why?</p>
+<h1 id="Dark-Web-OSINT"><a href="#Dark-Web-OSINT" class="headerlink" title="Dark Web OSINT"></a>Dark Web OSINT</h1><p>In March this year, when they would have created an presentation slide, I have been running the crawler for the dark web. My purpose was to create a pictorial book of Tor hidden services below:</p>
+<p><img src="/image/onionstack/onionstack.png" width="100%" height="100%"></p>
+<p>The crawler is simple, just like saying “Hello, world!” to PhantomJS. It has only capability of taking a screenshot.</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div></pre></td><td class="code"><pre><div class="line">service_args = [ </div><div class="line">            <span class="comment"># Do not insert blank to each of args.</span></div><div class="line">            <span class="string">'--proxy=127.0.0.1:9050'</span>,</div><div class="line">            <span class="string">'--proxy-type=socks5'</span></div><div class="line">        ]</div><div class="line">dcap = &#123;</div><div class="line">        <span class="string">'phantomjs.page.settings.userAgent'</span>: <span class="string">'Mozilla/5.0 (Windows NT 6.1; rv:31.0) Gecko/20100101 Firefox/31.0'</span></div><div class="line">&#125;</div><div class="line"></div><div class="line"><span class="function"><span class="keyword">def</span> <span class="title">get_title_with_screenshot</span><span class="params">(url)</span>:</span></div><div class="line">    driver = webdriver.PhantomJS(service_args = service_args, desired_capabilities = dcap)</div><div class="line">    driver.set_window_size(<span class="number">1024</span>, <span class="number">512</span>)</div><div class="line">    driver.get(<span class="string">'http://'</span> + url + <span class="string">'.onion'</span>) <span class="comment"># 'http://' is required.</span></div><div class="line">    driver.save_screenshot(url + <span class="string">'.png'</span>)</div><div class="line">    title = driver.title</div><div class="line">    driver.close()</div><div class="line">    <span class="keyword">return</span> title</div></pre></td></tr></table></figure>
+<p>I have discovered 40,208 onion domains and confirmed 1,797 domains were active.</p>
+<h1 id="Image-Processing"><a href="#Image-Processing" class="headerlink" title="Image Processing"></a>Image Processing</h1><p>Thanks to collecting screenshots by chance, I was able to find a site similar to the screenshot in their article–with histgram calculation:</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div></pre></td><td class="code"><pre><div class="line">list = glob.glob(<span class="string">'./images/*.png'</span>)</div><div class="line"></div><div class="line"><span class="function"><span class="keyword">def</span> <span class="title">cbir</span><span class="params">()</span>:</span></div><div class="line">    target_im = cv2.imread(sys.argv[<span class="number">1</span>])</div><div class="line">    target_hist = cv2.calcHist([target_im], [<span class="number">0</span>], <span class="keyword">None</span>, [<span class="number">256</span>], [<span class="number">0</span>, <span class="number">256</span>])</div><div class="line"></div><div class="line">    <span class="keyword">for</span> i <span class="keyword">in</span> list:</div><div class="line">        comparing_im = cv2.imread(i)</div><div class="line">        comparing_hist = cv2.calcHist([comparing_im], [<span class="number">0</span>], <span class="keyword">None</span>, [<span class="number">256</span>], [<span class="number">0</span>, <span class="number">256</span>])</div><div class="line">        diff = cv2.compareHist(target_hist, comparing_hist, <span class="number">0</span>)</div><div class="line">        <span class="keyword">if</span> diff &gt; float(sys.argv[<span class="number">2</span>]): <span class="comment"># Threshold</span></div><div class="line">            <span class="keyword">print</span> i, diff</div></pre></td></tr></table></figure>
+<p>Yet domain names are not posted in their articles, I believe this is it.</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div></pre></td><td class="code"><pre><div class="line">$ wget http://blog.trendmicro.com/trendlabs-security-intelligence/files/2017/05/red-on-red-1.jpg</div><div class="line">$ cbir.py red-on-red-1.jpg</div><div class="line">$ python cbir.py red-on-red-1.jpg 0.9</div><div class="line">./images/s5**********jlp2.png 0.979927357262</div></pre></td></tr></table></figure>
+<p>The screenshot:</p>
+<p><img src="/image/onionstack/s5__________jlp2.png" width="100%" height="100%"></p>
+<p>There are many clone sites in the dark web–for backup, or even for spying? <code>s5**********jlp2.onion</code> might be cloned and have maintained by others. Even in that case, the site is likely to be a honeypot.</p>
+<p>Interestingly, I also found some posts like to induce to the site at <a href="https://www.reddit.com/r/onions/" target="_blank" rel="external">r/onions</a>. I believe these are done by researcher.</p>
+<h1 id="Last-Words"><a href="#Last-Words" class="headerlink" title="Last Words"></a>Last Words</h1><p>We got a glimpse of deep in abyss. This is just an accidental case study. Needless to say, no insult intended.</p>
+<p>My crawler and image processing scripts are available at <a href="https://github.com/ntddk/onionstack" target="_blank" rel="external">ntddk/onionstack</a>. Crawling of the dark web is accompanied by risk. After all, with ethical consideration, I’ve deleted screenshots I’d captured except for the honeypot.</p>
+<p>If you interested in the dark web OSINT, <a href="http://www.automatingosint.com/blog/category/dark-web/" target="_blank" rel="external">Dark Web | Automating OSINT Blog</a> will be a good starting point.</p>
+<p>Anyway, keep safety.</p>
+]]></content>
+    
+    <summary type="html">
+    
+      &lt;p&gt;This post is for &lt;a href=&quot;https://adventar.org/calendars/2263&quot; target=&quot;_blank&quot; rel=&quot;external&quot;&gt;Honeypot Advent Calendar 2017&lt;/a&gt;.&lt;/p&gt;
+&lt;h1 
+    
+    </summary>
+    
+    
+      <category term="honeypot" scheme="http://ntddk.github.io/tags/honeypot/"/>
+    
+      <category term="dark web" scheme="http://ntddk.github.io/tags/dark-web/"/>
+    
+  </entry>
   
   <entry>
     <title>Backward Program Slicing With IDAPython and Triton</title>
@@ -1770,52 +1813,6 @@
     
     
       <category term="virtual machine introspection" scheme="http://ntddk.github.io/tags/virtual-machine-introspection/"/>
-    
-  </entry>
-  
-  <entry>
-    <title>DECAFによるマルウェア自動解析</title>
-    <link href="http://ntddk.github.io/2015/08/16/automated-malware-analysis-using-decaf-in-seccamp15/"/>
-    <id>http://ntddk.github.io/2015/08/16/automated-malware-analysis-using-decaf-in-seccamp15/</id>
-    <published>2015-08-16T09:00:00.000Z</published>
-    <updated>2016-07-08T08:53:12.000Z</updated>
-    
-    <content type="html"><![CDATA[<h1 id="はじめに"><a href="#はじめに" class="headerlink" title="はじめに"></a>はじめに</h1><p>2015.08.11~15にわたって開催された<a href="https://www.ipa.go.jp/jinzai/camp/2015/zenkoku2015.html" target="_blank" rel="external">セキュリティ・キャンプ全国大会 2015</a>に解析トラックの講師として参加した．講義では「仮想化技術を用いてマルウェア解析」と題して，QEMUをベースに開発が行われている<a href="https://github.com/sycurelab/DECAF" target="_blank" rel="external">DECAF</a>という解析プラットフォームを用いて演習を行った．</p>
-<h1 id="講義資料"><a href="#講義資料" class="headerlink" title="講義資料"></a>講義資料</h1><script async class="speakerdeck-embed" data-id="11c7632b9b844e199ac966e4494a1dd2" data-ratio="1.77777777777778" src="//speakerdeck.com/assets/embed.js"></script>
-
-<h1 id="講義内容"><a href="#講義内容" class="headerlink" title="講義内容"></a>講義内容</h1><p>演習では実際のマルウェアに用いられている解析妨害機能を備えたサンプルプログラムを扱った．素のDECAFには解析妨害機能への対策が施されていない．そこで，受講者にはDECAFのプラグインを拡張し，対策手法を実装して頂いた．<br>演習で用いたプログラムはGitHub上で公開している．</p>
-<ul>
-<li>解析妨害機能を備えたサンプルプログラム<ul>
-<li><a href="https://github.com/ntddk/blue" target="_blank" rel="external">ntddk/blue</a></li>
-</ul>
-</li>
-<li>DECAFプラグインのひな形<ul>
-<li><a href="https://github.com/ntddk/geteip" target="_blank" rel="external">ntddk/geteip</a></li>
-</ul>
-</li>
-</ul>
-<p>ひな形にある通り，IsDebuggerPresent()をフックするDECAFプラグインは以下のように書ける．</p>
-<figure class="highlight c"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div><div class="line">22</div><div class="line">23</div><div class="line">24</div><div class="line">25</div><div class="line">26</div><div class="line">27</div><div class="line">28</div><div class="line">29</div><div class="line">30</div><div class="line">31</div><div class="line">32</div><div class="line">33</div><div class="line">34</div><div class="line">35</div><div class="line">36</div><div class="line">37</div></pre></td><td class="code"><pre><div class="line"><span class="keyword">static</span> DECAF_Handle isdebuggerpresent_handle = DECAF_NULL_HANDLE;</div><div class="line"></div><div class="line"><span class="keyword">typedef</span> <span class="keyword">struct</span> &#123;</div><div class="line">        <span class="keyword">uint32_t</span> call_stack[<span class="number">1</span>]; <span class="comment">//paramters and return address</span></div><div class="line">        DECAF_Handle hook_handle;</div><div class="line">&#125; IsDebuggerPresent_hook_context_t;</div><div class="line"></div><div class="line"><span class="comment">/*</span></div><div class="line"> * BOOL IsDebuggerPresent(VOID);</div><div class="line"> */</div><div class="line"></div><div class="line"><span class="function"><span class="keyword">static</span> <span class="keyword">void</span> <span class="title">IsDebuggerPresent_ret</span><span class="params">(<span class="keyword">void</span> *param)</span></span></div><div class="line">&#123;</div><div class="line">        IsDebuggerPresent_hook_context_t *ctx = (IsDebuggerPresent_hook_context_t *)param;</div><div class="line">        hookapi_remove_hook(ctx-&gt;hook_handle);</div><div class="line">        DECAF_printf(<span class="string">"EIP = %08x, EAX = %d\n"</span>, cpu_single_env-&gt;eip, cpu_single_env-&gt;regs[R_EAX]);</div><div class="line">        <span class="built_in">free</span>(ctx);</div><div class="line">&#125;</div><div class="line"></div><div class="line"><span class="function"><span class="keyword">static</span> <span class="keyword">void</span> <span class="title">IsDebuggerPresent_call</span><span class="params">(<span class="keyword">void</span> *opaque)</span></span></div><div class="line">&#123;</div><div class="line">        DECAF_printf(<span class="string">"IsDebuggerPresent "</span>);</div><div class="line">        IsDebuggerPresent_hook_context_t *ctx = (IsDebuggerPresent_hook_context_t*)<span class="built_in">malloc</span>(<span class="keyword">sizeof</span>(IsDebuggerPresent_hook_context_t));</div><div class="line">        <span class="keyword">if</span>(!ctx) <span class="keyword">return</span>;</div><div class="line">        DECAF_read_mem(<span class="literal">NULL</span>, cpu_single_env-&gt;regs[R_ESP], <span class="number">4</span>, ctx-&gt;call_stack);</div><div class="line">        ctx-&gt;hook_handle = hookapi_hook_return(ctx-&gt;call_stack[<span class="number">0</span>], IsDebuggerPresent_ret, ctx, <span class="keyword">sizeof</span>(*ctx));</div><div class="line">&#125;</div><div class="line"></div><div class="line"><span class="function"><span class="keyword">static</span> <span class="keyword">void</span> <span class="title">geteip_loadmainmodule_callback</span><span class="params">(VMI_Callback_Params* params)</span></span></div><div class="line">&#123;</div><div class="line">        <span class="keyword">if</span>(<span class="built_in">strcmp</span>(params-&gt;cp.name,targetname) == <span class="number">0</span>)</div><div class="line">        &#123;</div><div class="line">                DECAF_printf(<span class="string">"Process %s you spcecified starts \n"</span>, params-&gt;cp.name);</div><div class="line">                target_cr3 = params-&gt;cp.cr3;</div><div class="line">                isdebuggerpresent_handle = hookapi_hook_function_byname(<span class="string">"kernel32.dll"</span>, <span class="string">"IsDebuggerPresent"</span>, <span class="number">1</span>, target_cr3, IsDebuggerPresent_call, <span class="literal">NULL</span>, <span class="number">0</span>);</div><div class="line">        &#125;</div><div class="line">&#125;</div></pre></td></tr></table></figure>
-<p>現在のプロセスがデバッガのコンテキストで実行されていない場合，IsDebuggerPresent()は0を返す．ここで，IsDebuggerPresent()の戻り値を0にするには，モジュール（この場合はkernel32.dll）から戻る段階でeaxを書き換えてやればよい．</p>
-<figure class="highlight c"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div></pre></td><td class="code"><pre><div class="line"><span class="function"><span class="keyword">static</span> <span class="keyword">void</span> <span class="title">IsDebuggerPresent_ret</span><span class="params">(<span class="keyword">void</span> *param)</span></span></div><div class="line">&#123;</div><div class="line">        IsDebuggerPresent_hook_context_t *ctx = (IsDebuggerPresent_hook_context_t *)param;</div><div class="line">        hookapi_remove_hook(ctx-&gt;hook_handle);</div><div class="line">        cpu_single_env-&gt;regs[R_EAX] = <span class="number">0</span>; <span class="comment">// 追加</span></div><div class="line">        DECAF_printf(<span class="string">"EIP = %08x, EAX = %d\n"</span>, cpu_single_env-&gt;eip, cpu_single_env-&gt;regs[R_EAX]);</div><div class="line">        <span class="built_in">free</span>(ctx);</div><div class="line">&#125;</div></pre></td></tr></table></figure>
-<p>このようにDECAFのプラグインを書くことで，ゲストOSに解析用のエージェントを挿入することなくAPIの戻り値を書き換えることができる．<br>APIの引数を書き換えたい場合はモジュールに入る段階でコンテキスト構造体の<code>call_stack[]</code>を書き換えてやればよい．</p>
-<h1 id="おわりに"><a href="#おわりに" class="headerlink" title="おわりに"></a>おわりに</h1><p>受講者にサンドボックス開発の楽しさと難しさを実感してもらえたなら，講師として冥利に尽きる．<br>サンプルプログラムには4種類の解析妨害機能を実装しており，APIフックで対処できるのはうち前半2つだけとなっている．限られた演習時間の制約上，3つ目以降の解析妨害機能を回避できた受講者はいなかった．解析トラックリーダーの岩村さんから，受講者の2割がギリギリ解けないような問題を作るようにと仰せつかっていたが，やや意地悪な問題設定だったと思う．<br>なお，今回は拙作のサンプルを用いたが，より多くの解析妨害機能を備えたOSSに<a href="https://github.com/a0rtega/pafish" target="_blank" rel="external">pafish</a>がある．pafishはBackdoor.Win32.Agent.dkbp(MD5: de1af0e97e94859d372be7fcf3a5daa5)など一部のマルウェアに流用されている．</p>
-]]></content>
-    
-    <summary type="html">
-    
-      &lt;h1 id=&quot;はじめに&quot;&gt;&lt;a href=&quot;#はじめに&quot; class=&quot;headerlink&quot; title=&quot;はじめに&quot;&gt;&lt;/a&gt;はじめに&lt;/h1&gt;&lt;p&gt;2015.08.11~15にわたって開催された&lt;a href=&quot;https://www.ipa.go.jp/jinzai/c
-    
-    </summary>
-    
-    
-      <category term="symbolic execution" scheme="http://ntddk.github.io/tags/symbolic-execution/"/>
-    
-      <category term="taint analysis" scheme="http://ntddk.github.io/tags/taint-analysis/"/>
-    
-      <category term="virtual machine introspection" scheme="http://ntddk.github.io/tags/virtual-machine-introspection/"/>
-    
-      <category term="dynamic binary translation" scheme="http://ntddk.github.io/tags/dynamic-binary-translation/"/>
     
   </entry>
   
