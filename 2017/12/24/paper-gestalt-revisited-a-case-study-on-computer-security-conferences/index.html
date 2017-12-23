@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+  <title>Paper Gestalt Revisited: A Case Study on Computer Security Conferences | 一生あとで読んでろ</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="description" content="HAI DOMO. This post is for 武蔵野 Advent Calendar 2017. IntroductionIn May this year, I just started my career as an apprentice security researcher at 武蔵野某所．One of my job responsibilities is to write a “">
+<meta name="keywords" content="machine learning">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Paper Gestalt Revisited: A Case Study on Computer Security Conferences">
+<meta property="og:url" content="http://ntddk.github.io/2017/12/24/paper-gestalt-revisited-a-case-study-on-computer-security-conferences/index.html">
+<meta property="og:site_name" content="一生あとで読んでろ">
+<meta property="og:description" content="HAI DOMO. This post is for 武蔵野 Advent Calendar 2017. IntroductionIn May this year, I just started my career as an apprentice security researcher at 武蔵野某所．One of my job responsibilities is to write a “">
+<meta property="og:image" content="http://ntddk.github.io/image/paper-gestalt-revisited/wordcloud_accepted.png">
+<meta property="og:image" content="http://ntddk.github.io/image/paper-gestalt-revisited/wordcloud_rejected.png">
+<meta property="og:image" content="http://ntddk.github.io/image/paper-gestalt-revisited/preprocessed_image_1.png">
+<meta property="og:image" content="http://ntddk.github.io/image/paper-gestalt-revisited/preprocessed_image_2.png">
+<meta property="og:image" content="http://ntddk.github.io/image/paper-gestalt-revisited/model.png">
+<meta property="og:image" content="http://ntddk.github.io/image/paper-gestalt-revisited/learning_curve_accuracy.png">
+<meta property="og:image" content="http://ntddk.github.io/image/paper-gestalt-revisited/learning_curve_loss.png">
+<meta property="og:updated_time" content="2017-12-23T15:12:33.787Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Paper Gestalt Revisited: A Case Study on Computer Security Conferences">
+<meta name="twitter:description" content="HAI DOMO. This post is for 武蔵野 Advent Calendar 2017. IntroductionIn May this year, I just started my career as an apprentice security researcher at 武蔵野某所．One of my job responsibilities is to write a “">
+<meta name="twitter:image" content="http://ntddk.github.io/image/paper-gestalt-revisited/wordcloud_accepted.png">
+  
+  
+  <link href="//fonts.googleapis.com/css?family=Ubuntu" rel="stylesheet" type="text/css">
+  <link rel="stylesheet" href="/css/style.css">
+  
+</head>
+<body>
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/" id="logo">一生あとで読んでろ</a>
+      </h1>
+      
+        <h2 id="subtitle-wrap">
+          <a href="/" id="subtitle">技術ブログ</a>
+        </h2>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="sub-nav">
+        
+          <a id="nav-home-icon" class="nav-icon" href="/"></a>
+        
+          <a id="nav-about-icon" class="nav-icon" href="/about"></a>
+        
+        
+      </nav>
+    </div>
+  </div>
+</header>
+      <div class="outer">
+        <section id="main"><article id="post-paper-gestalt-revisited-a-case-study-on-computer-security-conferences" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    
+      <header class="article-header">
+        
+  
+    <h1 class="article-title" itemprop="name">
+      Paper Gestalt Revisited: A Case Study on Computer Security Conferences
+    </h1>
+  
+
+      </header>
+    
+    <time class="article-date" datetime="2017-12-23T15:00:00.000Z" itemprop="datePublished">12-24-2017</time>
+    
+  </div>
+  <div class="article-inner">
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p>HAI DOMO. This post is for <a href="https://qiita.com/advent-calendar/2017/musashino" target="_blank" rel="external">武蔵野 Advent Calendar 2017</a>.</p>
+<h1 id="Introduction"><a href="#Introduction" class="headerlink" title="Introduction"></a>Introduction</h1><p>In May this year, I just started my career as an apprentice security researcher at 武蔵野某所．One of my job responsibilities is to write a “good” paper that enough to be accepted to top-tier (non-crypto) security conferences like following:</p>
+<ul>
+<li>IEEE S&amp;P (Oakland)</li>
+<li>ACM CCS</li>
+<li>NDSS</li>
+<li>USENIX Security</li>
+</ul>
+<p>However, I am profoundly ignorant of cardinal rules of “good” security research and technical writing. ぜんぜんわからない．俺たちは雰囲気で研究をやっている．I thought I got to do something.</p>
+<p>The joke paper entitled <a href="https://vision.cornell.edu/se3/wp-content/uploads/2014/09/gestalt.pdf" target="_blank" rel="external">Paper Gestalt</a>, distributed in CVPR’10, gave me a suggestion.</p>
+<p>The key idea of the paper is that “good” paper might be distinguished by image recognition. だるくなってきた．時間がないので日本語で書きます．このジョーク論文では，論文を画像に変換，局所特徴量を抽出し，論文がトップカンファレンスにacceptされるかどうか判定する分類器が提案されている．仔細は<a href="http://d.hatena.ne.jp/n_hidekey/20120101/1325388164" target="_blank" rel="external">Paper Gestalt - n_hidekeyの日記</a>を参照されたい．かっこいい数式や図がある論文はそれっぽく見えてしまうよね，という話．</p>
+<p>　そういうわけで，本稿ではPaper Gestaltを参考に，論文がセキュリティ系トップカンファレンスにacceptされるか判定する分類器を作成する．元論文ではAdaBoostを用いていたが，ここでは畳み込みニューラルネットを試す．</p>
+<h1 id="Dataset"><a href="#Dataset" class="headerlink" title="Dataset"></a>Dataset</h1><p>　上述のカンファレンスにacceptされた論文4年分を正例，併設ワークショップにacceptされた論文同じく4年分をトップカンファレンスにrejectされた論文とみなして負例とする．負例には諸先輩方の論文が含まれていて，すみません，でもわかってくれると思うんです．</p>
+<p>　さて一通りスクレイピングしたのち，ポスターやショートペーパーなど，4ページに満たないものを削除．キーノートやスライドも取り除く．重要なのはフルペーパーだからだ．結果，それぞれの論文数は以下の通り：</p>
+<table>
+<thead>
+<tr>
+<th>accepted</th>
+<th>rejected</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1,266</td>
+<td>794</td>
+</tr>
+</tbody>
+</table>
+<p>　正例のワードクラウド：</p>
+<p><img src="/image/paper-gestalt-revisited/wordcloud_accepted.png"></p>
+<p>　負例：</p>
+<p><img src="/image/paper-gestalt-revisited/wordcloud_rejected.png"></p>
+<p>　なんもわからん．</p>
+<h1 id="Pre-processing"><a href="#Pre-processing" class="headerlink" title="Pre-processing"></a>Pre-processing</h1><p>　論文PDFを画像化する．</p>
+<p>　論文PDFの各ページを横に並べ，20ページに満たない場合は白紙で埋める処理を施した．例：</p>
+<p><img src="/image/paper-gestalt-revisited/preprocessed_image_1.png"></p>
+<p>　見ての通り，USENIX系の本会議に通った論文にはかっこいい表紙が付いてくる．他の論文と体裁を合わせるため削除：</p>
+<p><img src="/image/paper-gestalt-revisited/preprocessed_image_2.png"></p>
+<p>　3時間ほどかけて全PDFをImageMagickで画像化，訓練用・検証用に半々で分割．</p>
+<h1 id="Training"><a href="#Training" class="headerlink" title="Training"></a>Training</h1><p>　今回はベンチマークということでLeNet-5をほぼそのまま使う．いつもいつも手書き文字を認識させられるなど過酷な拷問を受けているやつ．</p>
+<p><img src="/image/paper-gestalt-revisited/model.png" width="50%" height="50%"></p>
+<p>　フレームワークはkeras. データが少数かつclass imbalancedであることを考慮して，<a href="https://blog.keras.io/building-powerful-image-classification-models-using-very-little-data.html" target="_blank" rel="external">Building powerful image classification models using very little data</a>に倣い，augmentationをかけながら訓練することにした．具体的にはズームと水平方向への反転．その他各種パラメータについてはありがちな構成を雰囲気で決めている：</p>
+<table>
+<thead>
+<tr>
+<th>活性化関数</th>
+<th>損失関数</th>
+<th>最適化手法</th>
+<th>Dropout</th>
+<th>バッチサイズ</th>
+<th>エポック</th>
+<th>Early stopping</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>ReLU</td>
+<td>クロスエントロピー</td>
+<td>RMSProp</td>
+<td>50%</td>
+<td>64</td>
+<td>100</td>
+<td>validation accuracy</td>
+</tr>
+</tbody>
+</table>
+<p>　本来ならネットワーク構成含め細かくチューニングすべきだが，手元のショボい計算機では投稿日までに計算が終わらなさそうだったため，<a href="https://github.com/hyperopt/hyperopt" target="_blank" rel="external">hyperopt/hyperopt</a>やそのkeras連携機能である<a href="https://github.com/maxpumperla/hyperas" target="_blank" rel="external">maxpumperla/hyperas</a>とか，そういったかっこいいテクニックは使っていない．すみません2.</p>
+<h1 id="Results"><a href="#Results" class="headerlink" title="Results"></a>Results</h1><p>　Early stoppingが効いて16エポックで学習打ち止め．学習曲線：</p>
+<p><img src="/image/paper-gestalt-revisited/learning_curve_accuracy.png" width="50%" height="50%"><br><img src="/image/paper-gestalt-revisited/learning_curve_loss.png" width="50%" height="50%"></p>
+<p>　微妙．しかし自分が学生時代に国内研究会に投げた論文を投入したところ，</p>
+<table>
+<thead>
+<tr>
+<th>accepted</th>
+<th>rejected</th>
+<th>predict</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>7.3411%</td>
+<td>92.6589%</td>
+<td>rejected</td>
+</tr>
+</tbody>
+</table>
+<p>とまあ正しく判定できているっぽいのでよしとしましょう．なにが正しく判定だ．俺を，馬鹿にしているのか．いま，様々なものに対して害意を抱いています．Saliency mapの可視化とかは気が向いたら．</p>
+<h1 id="Final-Words"><a href="#Final-Words" class="headerlink" title="Final Words"></a>Final Words</h1><p>　ACM CCS’17のWelcome Slidesにありがたいことばが載っている：</p>
+<script async class="speakerdeck-embed" data-slide="35" data-id="a5ca2b52d1a046d59b1bcc6f7e4ab6b9" data-ratio="1.77777777777778" src="//speakerdeck.com/assets/embed.js"></script>
+
+<p>　つまりはそういうことです．小手先の浅知恵に逃げるものはなにをやってもだめ．やるぞ〜．</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://ntddk.github.io/2017/12/24/paper-gestalt-revisited-a-case-study-on-computer-security-conferences/" data-id="cjbjbpq1w0000xc7tilcdti8y" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/machine-learning/">machine learning</a></li></ul>
+
+    </footer>
+  </div>
+  
+    
+<nav id="article-nav">
+  
+    <a href="/2017/12/04/def-con-ctf-qualifier-2017-pepperidge-farm-write-up/" id="article-nav-newer" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Newer</strong>
+      <div class="article-nav-title">
+        
+          DEF CON CTF Qualifier 2017 Pepperidge Farm Write-up
+        
+      </div>
+    </a>
+  
+  
+</nav>
+
+  
+</article>
+
+</section>
+        
+      </div>
+      <footer id="footer">
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      &copy; 2017 ntddk<br>
+      <a href="https://github.com/ntddk/hexo-theme-jathena" target="_blank">JAthena</a> by <a href="https://ntddk.github.io" target="_blank">ntddk</a> | Powered by <a href="https://hexo.io/" target="_blank">Hexo</a>
+    </div>
+  </div>
+</footer>
+
+    </div>
+    
+
+<script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+
+
+  <link rel="stylesheet" href="/fancybox/jquery.fancybox.css">
+  <script src="/fancybox/jquery.fancybox.pack.js"></script>
+
+
+<script src="/js/script.js"></script>
+  </div>
+</body>
+</html>

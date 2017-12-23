@@ -50,6 +50,73 @@
       <div class="outer">
         <section id="main">
   
+    <article id="post-is-linear-obfuscation-a-threat" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    
+      <header class="article-header">
+        
+  
+    <a class="article-title" href="/2015/11/09/is-linear-obfuscation-a-threat/">コラッツの問題を用いた難読化は脅威なのか</a>
+  
+
+      </header>
+    
+    <time class="article-date" datetime="2015-11-09T08:30:00.000Z" itemprop="datePublished">11-09-2015</time>
+    
+  </div>
+  <div class="article-inner">
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h1 id="TL-DR"><a href="#TL-DR" class="headerlink" title="TL;DR:"></a>TL;DR:</h1><p>　ソフトウェアの多くは外部からの入力に依存する実行パス（trigger-based code）をもつ．<br>　これを記号的実行（symbolic execution, シンボリック実行）などの解析手法から隠蔽する手法として，コラッツの問題を用いた線型難読化（linear obfuscation）がある[1]．<br>　本稿ではしかし，線型難読化されたコードはコンパイラ最適化によってある程度除去できることを示す．</p>
+<h1 id="コラッツの問題"><a href="#コラッツの問題" class="headerlink" title="コラッツの問題"></a>コラッツの問題</h1><p>　コラッツの問題は数論の未解決問題のひとつである．<br>　任意の1でない自然数nに対して，nが偶数ならば2で割り，nが奇数ならば3倍して1を足す．この操作を繰り返していくと，どのような自然数nから出発しても，有限回の操作のうちに必ず1に到達する．<br>　この定理は経験則的に正しいと考えられているが，いまだ証明はなされていない．</p>
+<h1 id="線型難読化"><a href="#線型難読化" class="headerlink" title="線型難読化"></a>線型難読化</h1><p>　たとえば次のプログラム<code>tr.c</code>は外部からの入力に依存する実行パスをもつ．</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div></pre></td><td class="code"><pre><div class="line"><span class="comment">// tr.c</span></div><div class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;stdio.h&gt;</span></span></div><div class="line"></div><div class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">(<span class="keyword">int</span> argc, <span class="keyword">char</span> *argv[])</span></span></div><div class="line">&#123;</div><div class="line">    <span class="keyword">int</span> x=argc;</div><div class="line">    <span class="keyword">if</span>(x==<span class="number">2</span>)</div><div class="line">        <span class="built_in">printf</span>(<span class="string">"triggered!\n"</span>);</div><div class="line"></div><div class="line">    <span class="keyword">return</span> <span class="number">0</span>;</div><div class="line">&#125;</div></pre></td></tr></table></figure>
+<p>　LLVM bitcodeレベルでの<code>tr.c</code>の制御フローグラフは次のようになる．</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div></pre></td><td class="code"><pre><div class="line"># clang -emit-llvm -c -g tr.c</div><div class="line"># opt tr.bc -dot-cfg &gt; /dev/null</div><div class="line"># dot -Tpng cfg.main.dot &gt; tr.png</div></pre></td></tr></table></figure>
+<p><img src="/image/tr.png"></p>
+<p>　この単純なプログラムにたいして，コラッツの問題にもとづくループを挿入する．</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div><div class="line">22</div><div class="line">23</div><div class="line">24</div></pre></td><td class="code"><pre><div class="line"><span class="comment">// tr2.c</span></div><div class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;stdio.h&gt;</span></span></div><div class="line"></div><div class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">(<span class="keyword">int</span> argc, <span class="keyword">char</span> *argv[])</span></span></div><div class="line">&#123;</div><div class="line">    <span class="keyword">int</span> x = argc;</div><div class="line">    <span class="keyword">int</span> y = x + <span class="number">1000</span>;</div><div class="line"></div><div class="line">    <span class="keyword">while</span>(y &gt; <span class="number">1</span>)</div><div class="line">    &#123;</div><div class="line">        <span class="keyword">if</span>(y % <span class="number">2</span> == <span class="number">1</span>)</div><div class="line">            y = <span class="number">3</span> * y + <span class="number">1</span>;</div><div class="line">        <span class="keyword">else</span></div><div class="line">            y = y / <span class="number">2</span>;</div><div class="line"></div><div class="line">        <span class="keyword">if</span>((x - y &gt; <span class="number">0</span>)&amp;&amp;(x + y &lt; <span class="number">4</span>))</div><div class="line">        &#123;</div><div class="line">            <span class="built_in">printf</span>(<span class="string">"triggered!\n"</span>);</div><div class="line">            <span class="keyword">break</span>;</div><div class="line">        &#125;</div><div class="line">    &#125;</div><div class="line"></div><div class="line">    <span class="keyword">return</span> <span class="number">0</span>;</div><div class="line">&#125;</div></pre></td></tr></table></figure>
+<p>　変数<code>y</code>は必ず1に到達する，いわば偽の変数である．<br>　難読化された<code>tr2.c</code>の制御フローグラフは次のようになる．</p>
+<p><img src="/image/tr2.png"></p>
+<p>　ループが挿入されたことによって実行パスが複雑化していることが見て取れる．</p>
+<h1 id="記号的実行"><a href="#記号的実行" class="headerlink" title="記号的実行"></a>記号的実行</h1><p>　では，線型難読化がどれほど記号的実行にたいして効力をもつか見てみよう．<br>　今回はLLVM bitcodeを扱う記号的実行ツール<a href="klee.github.io">KLEE</a>を用いる．<br>　まず次のコードを解析対象のソースに追記する必要がある．これは，変数<code>x</code>にたいして記号的実行を適用するという意味である．</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div></pre></td><td class="code"><pre><div class="line">@@ -3,6 +3,7 @@</div><div class="line"> int main(int argc, char *argv[])</div><div class="line"> &#123;</div><div class="line">     int x=argc;</div><div class="line">+    klee_make_symbolic(&amp;x, sizeof(x), &quot;x&quot;);</div><div class="line">     if(x==2)</div><div class="line">         printf(&quot;triggered!\n&quot;);</div></pre></td></tr></table></figure>
+<p>　次に，LLVM bitcodeを生成する．</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div></pre></td><td class="code"><pre><div class="line"># clang -emit-llvm -c -g tr.c</div><div class="line">tr.c:6:5: warning: implicit declaration of function &apos;klee_make_symbolic&apos; is</div><div class="line">      invalid in C99 [-Wimplicit-function-declaration]</div><div class="line">    klee_make_symbolic(&amp;x, sizeof(x), &quot;x&quot;);</div><div class="line">    ^</div><div class="line">1 warning generated.</div></pre></td></tr></table></figure>
+<p>　警告が出るが，気にしてはいけない．この関数呼び出しがKLEEにトラップされることになるのだ．<br>　ソースコードのないマルウェアなどを分析するにあたっては，IDAなどのデコンパイラでソースを出力し，型情報やシグナルハンドラなどの記述を整えたのち上記のようなコードを挿入するか，あるいはS2EやPANDAといった動的解析環境を頼ることになるだろう．<br>　それはさておき，KLEEを動かしてみよう．少し前までKLEEをビルドして動かすのはとても面倒だったが，いまではDocker Imageが提供されている．</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div></pre></td><td class="code"><pre><div class="line"># sudo docker pull klee/klee</div><div class="line"># sudo docker run --rm -ti klee/klee</div></pre></td></tr></table></figure>
+<p>　線型難読化をおこなう前の<code>tr.c</code>について記号的実行をおこなった結果を示す．</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div></pre></td><td class="code"><pre><div class="line">klee@4d625535c122:~$ time klee tr.bc</div><div class="line">KLEE: output directory is &quot;/home/klee/klee-out-1&quot;</div><div class="line">KLEE: WARNING: undefined reference to function: printf</div><div class="line">KLEE: WARNING ONCE: calling external: printf(39707328)</div><div class="line">triggered!</div><div class="line"></div><div class="line">KLEE: done: total instructions = 17</div><div class="line">KLEE: done: completed paths = 2</div><div class="line">KLEE: done: generated tests = 2</div><div class="line"></div><div class="line">real    0m0.032s</div><div class="line">user    0m0.009s</div><div class="line">sys     0m0.012s</div></pre></td></tr></table></figure>
+<p>　パスは2つしか存在しないため，32msecで解析が終わっている．<br>　ならば，線型難読化を施した後の<code>tr2.c</code>についてはどうか．</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div></pre></td><td class="code"><pre><div class="line">klee@4d625535c122:~$ time klee tr2.bc</div><div class="line">KLEE: output directory is &quot;/home/klee/klee-out-2&quot;</div><div class="line">KLEE: WARNING: undefined reference to function: printf</div><div class="line">KLEE: WARNING ONCE: calling external: printf(49859696)</div><div class="line">triggered!</div><div class="line">triggered!</div><div class="line">triggered!</div><div class="line">triggered!</div><div class="line">triggered!</div><div class="line">...</div><div class="line"></div><div class="line">KLEE: done: total instructions = 285809</div><div class="line">KLEE: done: completed paths = 158</div><div class="line">KLEE: done: generated tests = 158</div><div class="line"></div><div class="line">real    6m11.933s</div><div class="line">user    3m56.240s</div><div class="line">sys     2m14.245s</div></pre></td></tr></table></figure>
+<p>　さきほどに比べ，実行パスは158に増加し，解析に11622.9倍（！）もの時間がかかっている．<br>　今回の単純なプログラムでさえこのようになるならば，複数の入出力に依存する実行パスに線型難読化が施されたらどうなることか．</p>
+<h1 id="コンパイラ最適化"><a href="#コンパイラ最適化" class="headerlink" title="コンパイラ最適化"></a>コンパイラ最適化</h1><p>　難読化とはえてしてコンパイラ最適化の逆写像である．<br>　KLEEがLLVMにもとづいているということもあって，LLVMの最適化が線型難読化を除去できるかどうか興味をもった．検証してみよう．</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div></pre></td><td class="code"><pre><div class="line"># opt -O3 tr2.bc -o tr3.bc</div></pre></td></tr></table></figure>
+<p>　<code>-O3</code>をもって最適化した後の制御フローグラフは次のようになる．</p>
+<p><img src="/image/tr3.png"></p>
+<p>　最初の<code>tr.c</code>ほどではないが，いくらか単純になっていることがわかる．<code>printf()</code>も<code>puts()</code>に変換されている．<br>　では，実行パスは減少しているだろうか．記号的実行をおこなった結果は次の通り．</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div></pre></td><td class="code"><pre><div class="line">klee@4d625535c122:~$ time klee tr3.bc</div><div class="line">KLEE: output directory is &quot;/home/klee/klee-out-4&quot;</div><div class="line">KLEE: WARNING: undefined reference to function: puts</div><div class="line">KLEE: WARNING ONCE: calling external: puts(32090720)</div><div class="line">triggered!</div><div class="line">triggered!</div><div class="line">triggered!</div><div class="line">triggered!</div><div class="line">triggered!</div><div class="line">triggered!</div><div class="line">triggered!</div><div class="line">triggered!</div><div class="line">triggered!</div><div class="line"></div><div class="line">KLEE: done: total instructions = 3383</div><div class="line">KLEE: done: completed paths = 10</div><div class="line">KLEE: done: generated tests = 10</div><div class="line"></div><div class="line">real    0m2.845s</div><div class="line">user    0m2.490s</div><div class="line">sys     0m0.357s</div></pre></td></tr></table></figure>
+<p>　実行パスは10とさきほどの<code>tr2.c</code>よりも減少している．実行時間は<code>tr.c</code>の88.9倍であった．</p>
+<h1 id="おわりに"><a href="#おわりに" class="headerlink" title="おわりに"></a>おわりに</h1><p>　線型難読化は脅威ではないことがわかった–少なくとも提唱者の思惑ほどには．<br>　塵も積もれば山となるように，線型難読化を多数の箇所に施せばその効力は増すだろう．しかしそれはクラスタリングなどの手法で対処される可能性を高めるだけである．もちろん，どれほどの範囲で難読化を適用すれば効果的かという閾値を探ることに価値はある．<br>　LLVMの<code>-O3</code>最適化は複数の最適化パスを組み合わせ，再帰的に適用することによっておこなわれる．どのパスが線型難読化の除去にもっとも寄与しているか調べてみるとおもしろいかもしれない（やる気がない）．</p>
+<h1 id="参考文献"><a href="#参考文献" class="headerlink" title="参考文献"></a>参考文献</h1><ul>
+<li>[1]Zhi Wang, Jiang Ming, Chunfu Jia, Debin Gao, “<a href="http://flyer.sis.smu.edu.sg/esorics11.pdf" target="_blank" rel="external">Linear Obfuscation to Combat Symbolic Execution[PDF]</a>,” Proceedings of the 16th European Conference on Research in Computer Security(ESORICS’11), pp.210-226, 2011.</li>
+</ul>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://ntddk.github.io/2015/11/09/is-linear-obfuscation-a-threat/" data-id="cjbiq70s3000o8w7tllpdt9ag" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/symbolic-execution/">symbolic execution</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
     <article id="post-xen-add-hypercall" class="article article-type-post" itemscope itemprop="blogPost">
   <div class="article-meta">
     
@@ -117,7 +184,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://ntddk.github.io/2015/09/14/xen-add-hypercall/" data-id="cjab6b5s40023as7t7z97jsud" class="article-share-link">Share</a>
+      <a data-url="http://ntddk.github.io/2015/09/14/xen-add-hypercall/" data-id="cjbiq70sn001x8w7txproq83m" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/virtual-machine-introspection/">virtual machine introspection</a></li></ul>
@@ -170,7 +237,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://ntddk.github.io/2015/08/16/automated-malware-analysis-using-decaf-in-seccamp15/" data-id="cjab6b5r30004as7tzu34p7js" class="article-share-link">Share</a>
+      <a data-url="http://ntddk.github.io/2015/08/16/automated-malware-analysis-using-decaf-in-seccamp15/" data-id="cjbiq70rw000a8w7tzoiv3laz" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/dynamic-binary-translation/">dynamic binary translation</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/symbolic-execution/">symbolic execution</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/taint-analysis/">taint analysis</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/virtual-machine-introspection/">virtual machine introspection</a></li></ul>
@@ -230,7 +297,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://ntddk.github.io/2015/07/13/qemu-dbt-bottleneck/" data-id="cjab6b5rz001xas7t9n74gwqd" class="article-share-link">Share</a>
+      <a data-url="http://ntddk.github.io/2015/07/13/qemu-dbt-bottleneck/" data-id="cjbiq70sa00188w7tfcykijua" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/dynamic-binary-translation/">dynamic binary translation</a></li></ul>
@@ -363,7 +430,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://ntddk.github.io/2015/04/04/semiotics-of-programming/" data-id="cjab6b5ru001las7t21jc8uq2" class="article-share-link">Share</a>
+      <a data-url="http://ntddk.github.io/2015/04/04/semiotics-of-programming/" data-id="cjbiq70se001f8w7t09sm6bt9" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/computational-semiotics/">computational semiotics</a></li></ul>
@@ -449,7 +516,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://ntddk.github.io/2015/04/03/pin-to-pemu/" data-id="cjab6b5rs001gas7to6dzx544" class="article-share-link">Share</a>
+      <a data-url="http://ntddk.github.io/2015/04/03/pin-to-pemu/" data-id="cjbiq70s900158w7trmxg1w2a" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/dynamic-binary-translation/">dynamic binary translation</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/taint-analysis/">taint analysis</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/virtual-machine-introspection/">virtual machine introspection</a></li></ul>
@@ -519,7 +586,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://ntddk.github.io/2015/03/14/sandbox-transparency-in-the-wild/" data-id="cjab6b5s20021as7txmonxi8r" class="article-share-link">Share</a>
+      <a data-url="http://ntddk.github.io/2015/03/14/sandbox-transparency-in-the-wild/" data-id="cjbiq70sf001j8w7t1n9pszkh" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/virtual-machine-introspection/">virtual machine introspection</a></li></ul>
@@ -565,7 +632,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://ntddk.github.io/2015/02/24/before-c-constructor/" data-id="cjab6b5rl000xas7t3tu1k10a" class="article-share-link">Share</a>
+      <a data-url="http://ntddk.github.io/2015/02/24/before-c-constructor/" data-id="cjbiq70rx000b8w7t3czjty1t" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/exploitation/">exploitation</a></li></ul>
@@ -626,7 +693,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://ntddk.github.io/2015/01/31/xen-libvmi/" data-id="cjab6b5s60025as7t6iutnz6z" class="article-share-link">Share</a>
+      <a data-url="http://ntddk.github.io/2015/01/31/xen-libvmi/" data-id="cjbiq70sp00248w7tdlbhks7h" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/virtual-machine-introspection/">virtual machine introspection</a></li></ul>
@@ -670,62 +737,10 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://ntddk.github.io/2015/01/23/sandbox-transparency/" data-id="cjab6b5s70027as7thdr8ur4t" class="article-share-link">Share</a>
+      <a data-url="http://ntddk.github.io/2015/01/23/sandbox-transparency/" data-id="cjbiq70sb001a8w7t8ff2uvrx" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/dynamic-binary-translation/">dynamic binary translation</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/virtual-machine-introspection/">virtual machine introspection</a></li></ul>
-
-    </footer>
-  </div>
-  
-</article>
-
-
-  
-    <article id="post-pintool-nx" class="article article-type-post" itemscope itemprop="blogPost">
-  <div class="article-meta">
-    
-      <header class="article-header">
-        
-  
-    <a class="article-title" href="/2014/12/11/pintool-nx/">Intel PinにおけるNXの扱い</a>
-  
-
-      </header>
-    
-    <time class="article-date" datetime="2014-12-11T09:00:00.000Z" itemprop="datePublished">12-11-2014</time>
-    
-  </div>
-  <div class="article-inner">
-    <div class="article-entry" itemprop="articleBody">
-      
-        <h1 id="はじめに"><a href="#はじめに" class="headerlink" title="はじめに"></a>はじめに</h1><p>2014.12.07~08にわたって開催されたSECCON CTF 2014の予選（英語版）にて，ROP: Impossibleというpwn問題が出題された．タイトルの通り，この問題ではROPが制限されている．<br>ここでは，その実現手法として用いられていたIntel Pin(pintool)について，またこの問題にあった欠陥について述べる．<br>したがって，このエントリはROP: Impossibleの<strong>ネタバレ</strong>を兼ねている．注意されたし．</p>
-<h1 id="問題の概要"><a href="#問題の概要" class="headerlink" title="問題の概要"></a>問題の概要</h1><p>問題文は以下の通り．Pinによって保護された脆弱なバイナリからフラグを読み出せというものだ．</p>
-<blockquote>
-<p>ropi.pwn.seccon.jp:10000<br>read <code>/flag</code> and write the content to stdout, such as the following pseudo code.<br><code>open(&quot;/flag&quot;, 0);</code><br><code>read(3, buf, 32);</code><br><code>write(1, buf, 32);</code><br>Notice that the <code>vuln</code> executable is protected by an Intel Pin tool, the source code of which is <code>norop.cpp</code>.</p>
-</blockquote>
-<p>パッと見，バイナリは良心的な構成であるように思われる．<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div></pre></td><td class="code"><pre><div class="line">vuln: ELF 32-bit LSB executable, Intel 80386, version 1 (SYSV), statically linked, for GNU/Linux 2.6.26, BuildID[sha1]=0xcb671b1dc0409082c3f3962818d366fcb8771ead, not stripped</div></pre></td></tr></table></figure></p>
-<p>有効になっているのはNXだけだ．<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div></pre></td><td class="code"><pre><div class="line">RELRO           STACK CANARY      NX            PIE             RPATH      RUNPATH      FILE</div><div class="line">No RELRO        No canary found   NX enabled    No PIE          No RPATH   No RUNPATH   vuln</div></pre></td></tr></table></figure></p>
-<p>だからといって，解法が自明であるわけではない．この問題の肝は，いかにしてPinによる保護をかい潜るかにある．</p>
-<h1 id="Pin"><a href="#Pin" class="headerlink" title="Pin"></a>Pin</h1><p>Pinは，Intelによって開発されたDBI(dynamic binary instrumentation)フレームワークである．<br>DBIとは，プログラムにコードを挿入することで実行時の情報を取得・操作する技術であり，プログラムのパフォーマンス測定やエラー検出，CPUキャッシュの分析や未定義命令のエミュレーションなど，多方面で応用されている．<br>さて，ROP: Impossibleは以下のコードによって保護されている．<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div><div class="line">22</div><div class="line">23</div><div class="line">24</div><div class="line">25</div><div class="line">26</div><div class="line">27</div><div class="line">28</div><div class="line">29</div><div class="line">30</div><div class="line">31</div><div class="line">32</div><div class="line">33</div><div class="line">34</div><div class="line">35</div><div class="line">36</div><div class="line">37</div><div class="line">38</div><div class="line">39</div><div class="line">40</div><div class="line">41</div><div class="line">42</div><div class="line">43</div><div class="line">44</div><div class="line">45</div><div class="line">46</div><div class="line">47</div><div class="line">48</div><div class="line">49</div><div class="line">50</div><div class="line">51</div><div class="line">52</div><div class="line">53</div><div class="line">54</div><div class="line">55</div><div class="line">56</div><div class="line">57</div><div class="line">58</div><div class="line">59</div><div class="line">60</div><div class="line">61</div><div class="line">62</div><div class="line">63</div><div class="line">64</div><div class="line">65</div><div class="line">66</div><div class="line">67</div><div class="line">68</div><div class="line">69</div><div class="line">70</div><div class="line">71</div><div class="line">72</div><div class="line">73</div><div class="line">74</div><div class="line">75</div><div class="line">76</div><div class="line">77</div><div class="line">78</div><div class="line">79</div><div class="line">80</div><div class="line">81</div><div class="line">82</div></pre></td><td class="code"><pre><div class="line">#include &lt;stdlib.h&gt;</div><div class="line">#include &quot;pin.H&quot;</div><div class="line"></div><div class="line">ADDRINT	shadow_stack[4096];</div><div class="line">int		shadow_sp = -1;</div><div class="line"></div><div class="line">VOID push_retaddr(ADDRINT esp, ADDRINT eip)</div><div class="line">&#123;</div><div class="line">	if(shadow_sp &gt;= (int)sizeof(shadow_stack) - 1)&#123;</div><div class="line">		// cannot push retaddr to shadow stack</div><div class="line">		exit(-1);</div><div class="line">	&#125;</div><div class="line">	PIN_SafeCopy(&amp;shadow_stack[++shadow_sp], (VOID*)esp, sizeof(ADDRINT));</div><div class="line">&#125;</div><div class="line"></div><div class="line">VOID pop_retaddr(ADDRINT esp, ADDRINT eip)</div><div class="line">&#123;</div><div class="line">	ADDRINT		retaddr;</div><div class="line"></div><div class="line">	PIN_SafeCopy(&amp;retaddr, (VOID*)esp, sizeof(ADDRINT));</div><div class="line"></div><div class="line">	while(shadow_sp &gt;= 0 &amp;&amp; shadow_stack[shadow_sp--] != retaddr);</div><div class="line">	if(shadow_sp &lt; 0)&#123;</div><div class="line">		exit(-1);</div><div class="line">	&#125;</div><div class="line">&#125;</div><div class="line"></div><div class="line">VOID check_syscall(ADDRINT eax)</div><div class="line">&#123;</div><div class="line">	switch(eax)&#123;</div><div class="line">	// syscalls for exploit</div><div class="line">	case 3:		// sys_read</div><div class="line">	case 4:		// sys_write</div><div class="line">	case 5:		// sys_open</div><div class="line">	case 6:		// sys_close</div><div class="line"></div><div class="line">	// syscalls executed until entry point</div><div class="line">	case 45:	// sys_brk</div><div class="line">	case 122:	// sys_newuname</div><div class="line">	case 192:	// sys_mmap2</div><div class="line">	case 197:	// sys_fstatfs64</div><div class="line">	case 243:	// sys_set_thread_area</div><div class="line">		break;</div><div class="line"></div><div class="line">	// invalid syscalls</div><div class="line">	default:</div><div class="line">		exit(-1);</div><div class="line">	&#125;</div><div class="line">&#125;</div><div class="line"></div><div class="line">VOID insert_hooks(INS ins, VOID *val)</div><div class="line">&#123;</div><div class="line">	if(INS_IsCall(ins))&#123;</div><div class="line">		// push retaddr to shadow stack</div><div class="line">		if(XED_ICLASS_CALL_FAR == INS_Opcode(ins))&#123;</div><div class="line">			exit(-1);</div><div class="line">		&#125;</div><div class="line">		INS_InsertCall(ins, IPOINT_TAKEN_BRANCH,(AFUNPTR)push_retaddr,</div><div class="line">			IARG_REG_VALUE, REG_ESP, IARG_INST_PTR, IARG_END);</div><div class="line">	&#125;else if(INS_IsRet(ins))&#123;</div><div class="line">		// pop retaddr from shadow stack, and then check it</div><div class="line">		if(XED_ICLASS_RET_FAR == INS_Opcode(ins))&#123;</div><div class="line">			exit(-1);</div><div class="line">		&#125;else&#123;</div><div class="line">			INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR)pop_retaddr,</div><div class="line">				IARG_REG_VALUE, REG_ESP, IARG_INST_PTR, IARG_END);</div><div class="line">		&#125;</div><div class="line">	&#125;else if(INS_IsSyscall(ins))&#123;</div><div class="line">		// check syscall</div><div class="line">		INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR)check_syscall,</div><div class="line">			IARG_REG_VALUE, REG_EAX, IARG_END);</div><div class="line">	&#125;</div><div class="line">&#125;</div><div class="line"></div><div class="line">int main(int argc, char *argv[])</div><div class="line">&#123;</div><div class="line">	PIN_Init(argc, argv);</div><div class="line">	INS_AddInstrumentFunction(insert_hooks, NULL);</div><div class="line">    PIN_StartProgram();</div><div class="line">    </div><div class="line">    return 0;</div><div class="line">&#125;</div></pre></td></tr></table></figure></p>
-<p>このプログラムが，vulnの共有ライブラリとして噛まされている．<code>INS_*</code>は命令単位のinstumentationのために提供されているPinのAPIである．<br>要するに，リターンアドレスの検証によって，ROPが制限されているのだ．</p>
-<h1 id="JOP"><a href="#JOP" class="headerlink" title="JOP"></a>JOP</h1><p>ROPができない環境ならば，どうすればよいのか．<br>そもそも，ROPに用いられる<code>ret</code>は，スタックの最上位アドレスに対する<code>pop</code>と<code>jmp</code>と等価であると見做せる．ゆえに<code>jmp</code>によってchainを構築すれば，<code>ret</code>を用いること無くROPと同様なコードを作成することができる．これをJOP(Jump-oriented programming)という．<br>さらに，スタックに対するアドレスの<code>push</code>と<code>jmp</code>は，<code>call</code>と等価であると見做せる．ゆえに<code>call</code>と<code>pop</code>によってROPを代替することができる．<br>つまり，ROP: Impossibleは<code>ret</code>制限下の環境を前提に<code>jmp</code>と<code>call</code>でchainを構築しろというストイックな問題だった．<br>Pinに起因する欠陥がなければ．</p>
-<h1 id="writeup"><a href="#writeup" class="headerlink" title="writeup"></a>writeup</h1><p>この問題を最初に解いたのは，TOEFL BEGINNERという謎のチームだった．続いてbinja, PPPと続いている．<br>優勝チームであるPPPメンバーのRicky Zhouが公開しているwriteupを見てみよう．</p>
-<ul>
-<li><a href="https://rzhou.org/~ricky/seccon2014/rop_impossible/" target="_blank" rel="external">Index of /~ricky/seccon2014/rop_impossible/</a></li>
-</ul>
-<p>明らかにおかしい．bssセグメントにシェルコードを置いて実行しているだけではないか．<br>だが，このバイナリはNXが有効だったはずだ．ローカルでこのコードを実行しても，SIGSEGVが発生する．<br>これは一体どうしたことだろう．</p>
-<h1 id="JITコンパイルの弊害"><a href="#JITコンパイルの弊害" class="headerlink" title="JITコンパイルの弊害"></a>JITコンパイルの弊害</h1><p>結論から言うと，Pinの制御下にあるバイナリのNXは無効化されるようになっている．<br>/proc/pid/mapsを確認すると，一見nonexecであるように見える．<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div></pre></td><td class="code"><pre><div class="line">bf984000-bf9a5000 rw-p 00000000 00:00 0          [stack]</div></pre></td></tr></table></figure></p>
-<p>だが，実際はそうではない．<br>PinはJITコンパイルによってinstrumentationを実現している．そのため，バイナリはPinによってmmapされ，execされる．このとき，Pinは元来バイナリに付与されていた実行権限を無視してしまう．<br>つまり，ROPを制限するためのPinが，NXを無効化してしまっていたのだ．<br>そもそも，LinuxにおいてNXの状態をmaps以外から取得するのは難しい．強いて挙げるならば，checksecのように<code>readelf -W -l file | grep &#39;GNU_STACK&#39;</code>を叩くといったところだろうか．だが，これだけではmmapやmprotectに追随することができない．WindowsのVirtualQueryに相当する機能はないのだろうか．</p>
-<h1 id="おわりに"><a href="#おわりに" class="headerlink" title="おわりに"></a>おわりに</h1><p>XSS Bonsaiも同様だが，CTFについてもテストは重要であるということを気付かされた．<br>運営の穴を突くのもCTFの醍醐味のひとつなのだろうが，しかし厄介な問題である．<br>最近はPinやDynamoRioによるマルウェア解析が流行っているように見受けられるが，やがてはDBIツールのデメリットについても検討を加えなければならなくなるだろう．</p>
-
-      
-    </div>
-    <footer class="article-footer">
-      <a data-url="http://ntddk.github.io/2014/12/11/pintool-nx/" data-id="cjab6b5rp0016as7to8jwftxr" class="article-share-link">Share</a>
-      
-      
-  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/exploitation/">exploitation</a></li></ul>
 
     </footer>
   </div>

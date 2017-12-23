@@ -5,7 +5,7 @@
   <link href="/atom.xml" rel="self"/>
   
   <link href="http://ntddk.github.io/"/>
-  <updated>2017-12-04T14:23:15.692Z</updated>
+  <updated>2017-12-23T15:12:33.787Z</updated>
   <id>http://ntddk.github.io/</id>
   
   <author>
@@ -16,11 +16,122 @@
   <generator uri="http://hexo.io/">Hexo</generator>
   
   <entry>
+    <title>Paper Gestalt Revisited: A Case Study on Computer Security Conferences</title>
+    <link href="http://ntddk.github.io/2017/12/24/paper-gestalt-revisited-a-case-study-on-computer-security-conferences/"/>
+    <id>http://ntddk.github.io/2017/12/24/paper-gestalt-revisited-a-case-study-on-computer-security-conferences/</id>
+    <published>2017-12-23T15:00:00.000Z</published>
+    <updated>2017-12-23T15:12:33.787Z</updated>
+    
+    <content type="html"><![CDATA[<p>HAI DOMO. This post is for <a href="https://qiita.com/advent-calendar/2017/musashino" target="_blank" rel="external">武蔵野 Advent Calendar 2017</a>.</p>
+<h1 id="Introduction"><a href="#Introduction" class="headerlink" title="Introduction"></a>Introduction</h1><p>In May this year, I just started my career as an apprentice security researcher at 武蔵野某所．One of my job responsibilities is to write a “good” paper that enough to be accepted to top-tier (non-crypto) security conferences like following:</p>
+<ul>
+<li>IEEE S&amp;P (Oakland)</li>
+<li>ACM CCS</li>
+<li>NDSS</li>
+<li>USENIX Security</li>
+</ul>
+<p>However, I am profoundly ignorant of cardinal rules of “good” security research and technical writing. ぜんぜんわからない．俺たちは雰囲気で研究をやっている．I thought I got to do something.</p>
+<p>The joke paper entitled <a href="https://vision.cornell.edu/se3/wp-content/uploads/2014/09/gestalt.pdf" target="_blank" rel="external">Paper Gestalt</a>, distributed in CVPR’10, gave me a suggestion.</p>
+<p>The key idea of the paper is that “good” paper might be distinguished by image recognition. だるくなってきた．時間がないので日本語で書きます．このジョーク論文では，論文を画像に変換，局所特徴量を抽出し，論文がトップカンファレンスにacceptされるかどうか判定する分類器が提案されている．仔細は<a href="http://d.hatena.ne.jp/n_hidekey/20120101/1325388164" target="_blank" rel="external">Paper Gestalt - n_hidekeyの日記</a>を参照されたい．かっこいい数式や図がある論文はそれっぽく見えてしまうよね，という話．</p>
+<p>　そういうわけで，本稿ではPaper Gestaltを参考に，論文がセキュリティ系トップカンファレンスにacceptされるか判定する分類器を作成する．元論文ではAdaBoostを用いていたが，ここでは畳み込みニューラルネットを試す．</p>
+<h1 id="Dataset"><a href="#Dataset" class="headerlink" title="Dataset"></a>Dataset</h1><p>　上述のカンファレンスにacceptされた論文4年分を正例，併設ワークショップにacceptされた論文同じく4年分をトップカンファレンスにrejectされた論文とみなして負例とする．負例には諸先輩方の論文が含まれていて，すみません，でもわかってくれると思うんです．</p>
+<p>　さて一通りスクレイピングしたのち，ポスターやショートペーパーなど，4ページに満たないものを削除．キーノートやスライドも取り除く．重要なのはフルペーパーだからだ．結果，それぞれの論文数は以下の通り：</p>
+<table>
+<thead>
+<tr>
+<th>accepted</th>
+<th>rejected</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1,266</td>
+<td>794</td>
+</tr>
+</tbody>
+</table>
+<p>　正例のワードクラウド：</p>
+<p><img src="/image/paper-gestalt-revisited/wordcloud_accepted.png"></p>
+<p>　負例：</p>
+<p><img src="/image/paper-gestalt-revisited/wordcloud_rejected.png"></p>
+<p>　なんもわからん．</p>
+<h1 id="Pre-processing"><a href="#Pre-processing" class="headerlink" title="Pre-processing"></a>Pre-processing</h1><p>　論文PDFを画像化する．</p>
+<p>　論文PDFの各ページを横に並べ，20ページに満たない場合は白紙で埋める処理を施した．例：</p>
+<p><img src="/image/paper-gestalt-revisited/preprocessed_image_1.png"></p>
+<p>　見ての通り，USENIX系の本会議に通った論文にはかっこいい表紙が付いてくる．他の論文と体裁を合わせるため削除：</p>
+<p><img src="/image/paper-gestalt-revisited/preprocessed_image_2.png"></p>
+<p>　3時間ほどかけて全PDFをImageMagickで画像化，訓練用・検証用に半々で分割．</p>
+<h1 id="Training"><a href="#Training" class="headerlink" title="Training"></a>Training</h1><p>　今回はベンチマークということでLeNet-5をほぼそのまま使う．いつもいつも手書き文字を認識させられるなど過酷な拷問を受けているやつ．</p>
+<p><img src="/image/paper-gestalt-revisited/model.png" width="50%" height="50%"></p>
+<p>　フレームワークはkeras. データが少数かつclass imbalancedであることを考慮して，<a href="https://blog.keras.io/building-powerful-image-classification-models-using-very-little-data.html" target="_blank" rel="external">Building powerful image classification models using very little data</a>に倣い，augmentationをかけながら訓練することにした．具体的にはズームと水平方向への反転．その他各種パラメータについてはありがちな構成を雰囲気で決めている：</p>
+<table>
+<thead>
+<tr>
+<th>活性化関数</th>
+<th>損失関数</th>
+<th>最適化手法</th>
+<th>Dropout</th>
+<th>バッチサイズ</th>
+<th>エポック</th>
+<th>Early stopping</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>ReLU</td>
+<td>クロスエントロピー</td>
+<td>RMSProp</td>
+<td>50%</td>
+<td>64</td>
+<td>100</td>
+<td>validation accuracy</td>
+</tr>
+</tbody>
+</table>
+<p>　本来ならネットワーク構成含め細かくチューニングすべきだが，手元のショボい計算機では投稿日までに計算が終わらなさそうだったため，<a href="https://github.com/hyperopt/hyperopt" target="_blank" rel="external">hyperopt/hyperopt</a>やそのkeras連携機能である<a href="https://github.com/maxpumperla/hyperas" target="_blank" rel="external">maxpumperla/hyperas</a>とか，そういったかっこいいテクニックは使っていない．すみません2.</p>
+<h1 id="Results"><a href="#Results" class="headerlink" title="Results"></a>Results</h1><p>　Early stoppingが効いて16エポックで学習打ち止め．学習曲線：</p>
+<p><img src="/image/paper-gestalt-revisited/learning_curve_accuracy.png" width="50%" height="50%"><br><img src="/image/paper-gestalt-revisited/learning_curve_loss.png" width="50%" height="50%"></p>
+<p>　微妙．しかし自分が学生時代に国内研究会に投げた論文を投入したところ，</p>
+<table>
+<thead>
+<tr>
+<th>accepted</th>
+<th>rejected</th>
+<th>predict</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>7.3411%</td>
+<td>92.6589%</td>
+<td>rejected</td>
+</tr>
+</tbody>
+</table>
+<p>とまあ正しく判定できているっぽいのでよしとしましょう．なにが正しく判定だ．俺を，馬鹿にしているのか．いま，様々なものに対して害意を抱いています．Saliency mapの可視化とかは気が向いたら．</p>
+<h1 id="Final-Words"><a href="#Final-Words" class="headerlink" title="Final Words"></a>Final Words</h1><p>　ACM CCS’17のWelcome Slidesにありがたいことばが載っている：</p>
+<script async class="speakerdeck-embed" data-slide="35" data-id="a5ca2b52d1a046d59b1bcc6f7e4ab6b9" data-ratio="1.77777777777778" src="//speakerdeck.com/assets/embed.js"></script>
+
+<p>　つまりはそういうことです．小手先の浅知恵に逃げるものはなにをやってもだめ．やるぞ〜．</p>
+]]></content>
+    
+    <summary type="html">
+    
+      &lt;p&gt;HAI DOMO. This post is for &lt;a href=&quot;https://qiita.com/advent-calendar/2017/musashino&quot; target=&quot;_blank&quot; rel=&quot;external&quot;&gt;武蔵野 Advent Calendar 
+    
+    </summary>
+    
+    
+      <category term="machine learning" scheme="http://ntddk.github.io/tags/machine-learning/"/>
+    
+  </entry>
+  
+  <entry>
     <title>DEF CON CTF Qualifier 2017 Pepperidge Farm Write-up</title>
     <link href="http://ntddk.github.io/2017/12/04/def-con-ctf-qualifier-2017-pepperidge-farm-write-up/"/>
     <id>http://ntddk.github.io/2017/12/04/def-con-ctf-qualifier-2017-pepperidge-farm-write-up/</id>
     <published>2017-12-03T15:00:00.000Z</published>
-    <updated>2017-12-04T14:23:15.692Z</updated>
+    <updated>2017-12-21T00:39:44.085Z</updated>
     
     <content type="html"><![CDATA[<p>HAI DOMO. This post is for <a href="https://qiita.com/advent-calendar/2017/musashino" target="_blank" rel="external">武蔵野 Advent Calendar 2017</a> and also for <a href="https://adventar.org/calendars/2431" target="_blank" rel="external">CTF Advent Calendar 2017</a>.</p>
 <h1 id="Introduction"><a href="#Introduction" class="headerlink" title="Introduction"></a>Introduction</h1><p>In May this year, I participated in DEF CON CTF Qualifier 2017 as a member of a certain 武蔵野-related team. Actually, I’m not a top-tier CTF player, but I did my best and solved 4 challenges:</p>
@@ -53,7 +164,7 @@
 <p>But in this post, I describe a solution without both IDA Pro and Binary Ninja. Because VMNDH-2k12 is open-sourced and easy to modify.</p>
 <h1 id="Surface-Analysis"><a href="#Surface-Analysis" class="headerlink" title="Surface Analysis"></a>Surface Analysis</h1><figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div><div class="line">22</div><div class="line">23</div><div class="line">24</div></pre></td><td class="code"><pre><div class="line">$ ./vmndh -debug -file pepperidge_farm</div><div class="line">[Console]#&gt; help</div><div class="line">&lt;enter&gt;              Execute next instruction</div><div class="line">run                  Run program</div><div class="line">bp &lt;addr&gt;            Set breakpoint</div><div class="line">info bp              Display info breakpoint</div><div class="line">info reg             Display registers</div><div class="line">show sp              Display SP memory</div><div class="line">show pc              Display PC memory</div><div class="line">dis &lt;addr&gt;:&lt;size&gt;    Disassembly X bytes from ADDR</div><div class="line">x/x &lt;addr&gt;:&lt;size&gt;    Print X bytes from ADDR</div><div class="line">x/s &lt;addr&gt;           Print string addr</div><div class="line">set reg=value        Set value in register</div><div class="line">syscall              Execute &apos;syscall&apos; instruction</div><div class="line">help                 Display this help</div><div class="line">quit                 Quit console debugging</div><div class="line">[Console]#&gt; dis</div><div class="line">Error: Set addr between 0x8000 and 0x882a</div><div class="line">[Console]#&gt; dis 0x8000:82a</div><div class="line">0x8000: jmpl 0x0720</div><div class="line">0x8003: push r2</div><div class="line">0x8007: .byte 0x00</div><div class="line">0x8008: nop</div><div class="line">...</div></pre></td></tr></table></figure>
 <p>Yes, the VM has own debugger and disassembler.</p>
-<h1 id="Modifying-the-Disassembler"><a href="#Modifying-the-Disassembler" class="headerlink" title="Modifying the Disassembler"></a>Modifying the Disassembler</h1><p>However, there are pitfalls here. </p>
+<h1 id="Modifying-The-Disassembler"><a href="#Modifying-The-Disassembler" class="headerlink" title="Modifying The Disassembler"></a>Modifying The Disassembler</h1><p>However, there are pitfalls here. </p>
 <p>Because it is a unique architecture, the destination of the control flow instructions are different from it shown on the disassembly dump. For example, take a look at <code>src_vm/op_call.c</code>:</p>
 <figure class="highlight c"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div></pre></td><td class="code"><pre><div class="line"><span class="function"><span class="keyword">static</span> <span class="keyword">void</span> <span class="title">op_call_dir16</span><span class="params">(<span class="keyword">void</span>)</span></span></div><div class="line">&#123;</div><div class="line">  <span class="keyword">uint16_t</span> operande;</div><div class="line"></div><div class="line">  operande = *(<span class="keyword">uint16_t</span> *)(core.memory.vmem + core.memory.pc + <span class="number">2</span>);</div><div class="line">  <span class="keyword">if</span> (core.flagmode.noverbose == <span class="number">0</span>)</div><div class="line">    <span class="built_in">fprintf</span>(<span class="built_in">stdout</span>, <span class="string">"%s0x%4.x%s &gt; call 0x%.2x\n"</span>, RED, core.memory.pc, ENDC, operande);</div><div class="line"></div><div class="line">  core.memory.sp -= <span class="number">2</span>; <span class="comment">/* sub sp */</span></div><div class="line">  *(<span class="keyword">uint16_t</span> *)(core.memory.vmem + core.memory.sp) = core.memory.pc + <span class="number">4</span>;</div><div class="line">  core.memory.pc = core.memory.pc + operande + <span class="number">4</span>;</div><div class="line">&#125;</div></pre></td></tr></table></figure>
 <p>Acording to this, I modified the dissassembler in <code>src_vm/disass.c</code>:</p>
@@ -75,7 +186,7 @@
 <figure class="highlight diff"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div></pre></td><td class="code"><pre><div class="line"><span class="meta">@@ -322,8 +322,15 @@</span></div><div class="line"> static uint16_t dis_inc(uint16_t addr)</div><div class="line"> &#123;</div><div class="line">   uint8_t operande;</div><div class="line"><span class="addition">+  char OP, OP2;</span></div><div class="line"> </div><div class="line"><span class="addition">+  OP = *(core.memory.vmem + addr);</span></div><div class="line"><span class="addition">+  OP2 = *(core.memory.vmem + addr + 1);</span></div><div class="line">   operande = *(core.memory.vmem + addr + 1);</div><div class="line"><span class="addition">+  if(addr &gt; 0x8759)</span></div><div class="line"><span class="addition">+    fprintf(stdout, "%s0x%.4x%s: [DEBUG] .byte 0x%.2x\n", RED, addr, ENDC, (unsigned char)OP);</span></div><div class="line"><span class="addition">+    fprintf(stdout, "%s0x%.4x%s: [DEBUG] .byte 0x%.2x\n", RED, addr + 1, ENDC, (unsigned char)OP2);</span></div><div class="line"><span class="addition">+</span></div><div class="line">   fprintf(stdout, "%s0x%.4x%s: inc r%d\n", RED, addr, ENDC, operande);</div><div class="line"> </div><div class="line">   return (addr + 2);</div></pre></td></tr></table></figure>
 <p>Awful… who cares?</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div></pre></td><td class="code"><pre><div class="line">0x87e8: [DEBUG] .byte 0x0a</div><div class="line">0x87e9: [DEBUG] .byte 0x52</div><div class="line">0x87e8: inc r82</div><div class="line">0x87ea: .byte 0x3d (=)</div></pre></td></tr></table></figure>
-<h1 id="First-Attempt-With-KLEE"><a href="#First-Attempt-With-KLEE" class="headerlink" title="First Attempt With KLEE"></a>First Attempt With KLEE</h1><p>This is a failure case.</p>
+<h1 id="First-Attempt-with-KLEE"><a href="#First-Attempt-with-KLEE" class="headerlink" title="First Attempt with KLEE"></a>First Attempt with KLEE</h1><p>This is a failure case.</p>
 <p>As we have seen so far, VMNDH-2k12 is open-sourced. So I tried to solve the challenge with source code-based symbolic execution tool–<a href="http://klee.github.io/" target="_blank" rel="external">KLEE</a>.</p>
 <p>I modified <code>src_vm/syscall_write.c</code> for assertion:</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div><div class="line">22</div></pre></td><td class="code"><pre><div class="line">@@ -18,6 +18,8 @@</div><div class="line"> */</div><div class="line"> </div><div class="line"> #include &quot;vmndh.h&quot;</div><div class="line">+#include &lt;klee/klee.h&gt;</div><div class="line">+#include &lt;string.h&gt;</div><div class="line"> </div><div class="line"> void syscall_write(void)</div><div class="line"> &#123;</div><div class="line">@@ -32,7 +34,12 @@</div><div class="line"> </div><div class="line">   if (core.flagmode.noverbose == 0)</div><div class="line">     write(1, txt, strlen(txt));</div><div class="line">+</div><div class="line">+  if (strstr(arg2, &quot;Thank&quot;) != NULL)</div><div class="line">+    klee_assert(0);</div><div class="line">+</div><div class="line">   core.regs.r0 = write(arg1, arg2, arg3);</div><div class="line">+</div><div class="line">   if (core.flagmode.noverbose == 0)</div><div class="line">     write(1, &quot;\n&quot;, 1);</div><div class="line"> &#125;</div></pre></td></tr></table></figure>
@@ -87,7 +198,7 @@
 <p>I also wrote solver with <a href="http://angr.io/" target="_blank" rel="external">angr</a>. Which symbolizes stdin, but… let’s not talk about it.</p>
 <p>An example of insufficient SMTLIB2 representations is:</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div></pre></td><td class="code"><pre><div class="line">(set-logic QF_AUFBV )</div><div class="line">(declare-fun model_version () (Array (_ BitVec 32) (_ BitVec 8) ) )</div><div class="line">(declare-fun stdin () (Array (_ BitVec 32) (_ BitVec 8) ) )</div><div class="line">(declare-fun stdin-stat () (Array (_ BitVec 32) (_ BitVec 8) ) )</div><div class="line">(assert (let ( (?B1 (select  stdin (_ bv25 32) ) ) (?B2 (select  stdin (_ bv31 32) ) ) (?B3 (select  stdin (_ bv18 32) ) ) (?B4 (select  stdin (_ bv40 32) ) ) (?B5 (select  stdin (_ bv36 32) ) ) (?B6 (select  stdin (_ bv23 32) ) ) (?B7 (select  stdin (_ bv27 32) ) ) (?B8 (select  stdin (_ bv33 32) ) ) (?B9 (select  stdin (_ bv6 32) ) ) (?B10 (select  stdin (_ bv8 32) ) ) ) (let ( (?B13 ((_ zero_extend 16)  ((_ zero_extend 8)  ?B7 ) ) ) (?B14 ((_ zero_extend 16)  ((_ zero_extend 8)  ?B8 ) ) ) (?B12 ((_ zero_extend 16)  ((_ zero_extend 8)  ?B2 ) ) ) (?B11 ((_ zero_extend 16)  ((_ zero_extend 8)  ?B1 ) ) ) ) (and  (and  (and  (and  (and  (and  (and  (and  (and  (and  (and  (and  (and  (and  (and  (and  (and  (and  (and  (and  (and  (and  (and  (and  (and  (and  (and  (and  (and  (and  (and  (and  (and  (and  (and  (and  (and  (and  (and  (and  (and  (and  (and  (and  (and  (and  (and  (and  (and  (and  (and  (and  (and  (=  false (=  (_ bv0 64) (bvand  (concat  (select  stdin-stat (_ bv15 32) ) (concat  (select  stdin-stat (_ bv14 32) ) (concat  (select  stdin-stat (_ bv13 32) ) (concat  (select  stdin-stat (_ bv12 32) ) (concat  (select  stdin-stat (_ bv11 32) ) (concat  (select  stdin-stat (_ bv10 32) ) (concat  (select  stdin-stat (_ bv9 32) ) (select  stdin-stat (_ bv8 32) ) ) ) ) ) ) ) ) (_ bv2147483647 64) ) ) ) (bvult  (concat  (select  stdin-stat (_ bv63 32) ) (concat  (select  stdin-stat (_ bv62 32) ) (concat  (select  stdin-stat (_ bv61 32) ) (concat  (select  stdin-stat (_ bv60 32) ) (concat  (select  stdin-stat (_ bv59 32) ) (concat  (select  stdin-stat (_ bv58 32) ) (concat  (select  stdin-stat (_ bv57 32) ) (select  stdin-stat (_ bv56 32) ) ) ) ) ) ) ) ) (_ bv65536 64) ) ) (=  (_ bv1 32) (concat  (select  model_version (_ bv3 32) ) (concat  (select  model_version (_ bv2 32) ) (concat  (select  model_version (_ bv1 32) ) (select  model_version (_ bv0 32) ) ) ) ) ) ) (=  (_ bv48 8) (select  stdin (_ bv0 32) ) ) ) (=  (_ bv48 8) (select  stdin (_ bv1 32) ) ) ) (=  (_ bv57 8) (select  stdin (_ bv2 32) ) ) ) (=  (_ bv70 8) (select  stdin (_ bv3 32) ) ) ) (=  (_ bv48 8) (select  stdin (_ bv4 32) ) ) ) (=  (_ bv48 8) (select  stdin (_ bv5 32) ) ) ) (=  false (=  (_ bv48 8) ?B9 ) ) ) (=  false (bvult  (_ bv48 32) ((_ zero_extend 16)  ((_ zero_extend 8)  ?B9 ) ) ) ) ) (=  false (=  (_ bv48 8) ?B10 ) ) ) (=  false (bvult  (_ bv48 32) ((_ zero_extend 16)  ((_ zero_extend 8)  ?B10 ) ) ) ) ) (=  (_ bv48 8) (select  stdin (_ bv12 32) ) ) ) (=  (_ bv48 8) (select  stdin (_ bv13 32) ) ) ) (=  (_ bv48 8) (select  stdin (_ bv14 32) ) ) ) (=  (_ bv57 8) (select  stdin (_ bv15 32) ) ) ) (=  (_ bv48 8) (select  stdin (_ bv16 32) ) ) ) (=  (_ bv48 8) (select  stdin (_ bv17 32) ) ) ) (=  false (=  (_ bv48 8) ?B3 ) ) ) (=  false (bvult  (_ bv48 32) ((_ zero_extend 16)  ((_ zero_extend 8)  ?B3 ) ) ) ) ) (=  (_ bv48 8) (select  stdin (_ bv20 32) ) ) ) (=  (_ bv48 8) (select  stdin (_ bv21 32) ) ) ) (=  (_ bv57 8) (select  stdin (_ bv22 32) ) ) ) (=  false (=  (_ bv48 8) ?B6 ) ) ) (=  false (bvult  (_ bv48 32) ((_ zero_extend 16)  ((_ zero_extend 8)  ?B6 ) ) ) ) ) (=  (_ bv48 8) (select  stdin (_ bv24 32) ) ) ) (=  false (=  (_ bv48 8) ?B1 ) ) ) (bvult  (_ bv48 32) ?B11 ) ) (=  false (=  (_ bv57 8) ?B1 ) ) ) (=  false (bvult  (_ bv57 32) ?B11 ) ) ) (=  (_ bv48 8) (select  stdin (_ bv26 32) ) ) ) (=  false (=  (_ bv48 8) ?B7 ) ) ) (bvult  (_ bv48 32) ?B13 ) ) (=  false (=  (_ bv57 8) ?B7 ) ) ) (=  false (bvult  (_ bv57 32) ?B13 ) ) ) (=  (_ bv48 8) (select  stdin (_ bv28 32) ) ) ) (=  (_ bv48 8) (select  stdin (_ bv29 32) ) ) ) (=  (_ bv48 8) (select  stdin (_ bv30 32) ) ) ) (=  false (=  (_ bv48 8) ?B2 ) ) ) (bvult  (_ bv48 32) ?B12 ) ) (=  false (=  (_ bv57 8) ?B2 ) ) ) (=  false (bvult  (_ bv57 32) ?B12 ) ) ) (=  (_ bv48 8) (select  stdin (_ bv32 32) ) ) ) (=  false (=  (_ bv48 8) ?B8 ) ) ) (bvult  (_ bv48 32) ?B14 ) ) (=  false (=  (_ bv57 8) ?B8 ) ) ) (bvult  (_ bv57 32) ?B14 ) ) (=  false (=  (_ bv70 8) ?B8 ) ) ) (bvult  (_ bv70 32) ?B14 ) ) (=  false (=  (_ bv48 8) ?B5 ) ) ) (=  false (bvult  (_ bv48 32) ((_ zero_extend 16)  ((_ zero_extend 8)  ?B5 ) ) ) ) ) (=  false (=  (_ bv48 8) ?B4 ) ) ) (=  false (bvult  (_ bv48 32) ((_ zero_extend 16)  ((_ zero_extend 8)  ?B4 ) ) ) ) ) ) ) )</div><div class="line">(check-sat)</div><div class="line">(exit)</div></pre></td></tr></table></figure>
-<h1 id="Solution-With-Z3"><a href="#Solution-With-Z3" class="headerlink" title="Solution With Z3"></a>Solution With Z3</h1><p>Since there is no choice, I read all the disassembly. After some twists and turn, I realized that:</p>
+<h1 id="Solution-with-Z3"><a href="#Solution-with-Z3" class="headerlink" title="Solution with Z3"></a>Solution with Z3</h1><p>Since there is no choice, I read all the disassembly. After some twists and turn, I realized that:</p>
 <ul>
 <li>Pepperidge Farm checks character codes against transformed <code>0x20</code> bytes values.</li>
 <li><code>0x8247(x, y)</code> returns <code>x * 100 + y</code>.</li>
@@ -119,6 +230,8 @@
       <category term="reversing" scheme="http://ntddk.github.io/tags/reversing/"/>
     
       <category term="symbolic execution" scheme="http://ntddk.github.io/tags/symbolic-execution/"/>
+    
+      <category term="program synthesis" scheme="http://ntddk.github.io/tags/program-synthesis/"/>
     
   </entry>
   
@@ -324,7 +437,7 @@
     <link href="http://ntddk.github.io/2017/08/24/z3py-link-collection/"/>
     <id>http://ntddk.github.io/2017/08/24/z3py-link-collection/</id>
     <published>2017-08-24T14:59:59.000Z</published>
-    <updated>2017-11-17T03:25:14.798Z</updated>
+    <updated>2017-12-14T07:41:43.645Z</updated>
     
     <content type="html"><![CDATA[<p>　なにもかも忘れかけている．</p>
 <h1 id="はじめに"><a href="#はじめに" class="headerlink" title="はじめに"></a>はじめに</h1><p>　z3pyはSMTソルバ<a href="https://github.com/Z3Prover/z3" target="_blank" rel="external">Z3</a>のPythonバインディング．たとえば</p>
@@ -428,7 +541,7 @@
     
       <category term="symbolic execution" scheme="http://ntddk.github.io/tags/symbolic-execution/"/>
     
-      <category term="algorithm" scheme="http://ntddk.github.io/tags/algorithm/"/>
+      <category term="optimization" scheme="http://ntddk.github.io/tags/optimization/"/>
     
   </entry>
   
@@ -782,7 +895,7 @@
     <link href="http://ntddk.github.io/2016/12/04/yakiniku-optimization/"/>
     <id>http://ntddk.github.io/2016/12/04/yakiniku-optimization/</id>
     <published>2016-12-04T14:59:59.000Z</published>
-    <updated>2017-03-13T08:51:03.000Z</updated>
+    <updated>2017-12-14T07:41:34.313Z</updated>
     
     <content type="html"><![CDATA[<p>　本稿は<a href="http://www.adventar.org/calendars/1413" target="_blank" rel="external">SFC-RG Advent Calendar 2016</a>の4日目である．</p>
 <h1 id="はじめに"><a href="#はじめに" class="headerlink" title="はじめに"></a>はじめに</h1><p>　あなたは研究の中間発表を終えて，今晩何を食べようか考えている．たしかに準備不足ではあったけれど，研究の前提をいまいち解さないファカルティの高飛車な質問にはうんざりしたし，今日くらいはパーッと気分転換したいものだ．そういうわけで，あなたは⊿館を飛び出して焼肉 ざんまい 湘南台店に行くことにした．</p>
@@ -1443,7 +1556,7 @@
     <link href="http://ntddk.github.io/2016/03/26/neural-image-caption-generator-twitter-bot/"/>
     <id>http://ntddk.github.io/2016/03/26/neural-image-caption-generator-twitter-bot/</id>
     <published>2016-03-25T15:30:00.000Z</published>
-    <updated>2016-07-08T08:51:14.000Z</updated>
+    <updated>2017-12-14T07:40:54.601Z</updated>
     
     <content type="html"><![CDATA[<p><center><br><a class="twitter-timeline" href="https://twitter.com/img2cap" data-widget-id="713361832895860739" target="_blank" rel="external">@img2capさんのツイート</a></center></p>
 <script>!function(d,s,id){var js,fjs=d.getElementsByTagName(s)[0],p=/^http:/.test(d.location)?'http':'https';if(!d.getElementById(id)){js=d.createElement(s);js.id=id;js.src=p+"://platform.twitter.com/widgets.js";fjs.parentNode.insertBefore(js,fjs);}}(document,"script","twitter-wjs");</script>
@@ -1478,8 +1591,6 @@
     
       <category term="machine learning" scheme="http://ntddk.github.io/tags/machine-learning/"/>
     
-      <category term="neural network" scheme="http://ntddk.github.io/tags/neural-network/"/>
-    
   </entry>
   
   <entry>
@@ -1487,7 +1598,7 @@
     <link href="http://ntddk.github.io/2016/03/21/book-guide-for-computational-neuroscience/"/>
     <id>http://ntddk.github.io/2016/03/21/book-guide-for-computational-neuroscience/</id>
     <published>2016-03-20T15:30:00.000Z</published>
-    <updated>2016-07-08T08:51:43.000Z</updated>
+    <updated>2017-12-14T07:40:23.725Z</updated>
     
     <content type="html"><![CDATA[<p>　読書メモ．</p>
 <h1 id="はじめに"><a href="#はじめに" class="headerlink" title="はじめに"></a>はじめに</h1><p>　人間の脳を模したニューラルネットの手法，<ruby>深層学習<rt>ディープラーニング</rt></ruby>がめざましい成果を挙げている–といった謳い文句をよく目にする．だが機械学習の専門書を紐解いても出てくるのはロジスティック回帰のお化けばかり．<br>　われらがPRMLのニューラルネットを扱う章にはこうある．</p>
@@ -1556,8 +1667,6 @@
     
       <category term="machine learning" scheme="http://ntddk.github.io/tags/machine-learning/"/>
     
-      <category term="neural network" scheme="http://ntddk.github.io/tags/neural-network/"/>
-    
   </entry>
   
   <entry>
@@ -1565,7 +1674,7 @@
     <link href="http://ntddk.github.io/2016/03/02/sushi-and-memorized-recursion/"/>
     <id>http://ntddk.github.io/2016/03/02/sushi-and-memorized-recursion/</id>
     <published>2016-03-02T06:30:00.000Z</published>
-    <updated>2016-03-02T07:24:52.000Z</updated>
+    <updated>2017-12-14T07:41:58.077Z</updated>
     
     <content type="html"><![CDATA[<p>　わざわざブログに書くほどでもないことから書いていかないとなまるので書く．</p>
 <h1 id="はじめに"><a href="#はじめに" class="headerlink" title="はじめに"></a>はじめに</h1><p>　寿司 虚空編[1]第2話で登場したアッカーマン関数というかS変換を実装する．</p>
@@ -1606,7 +1715,7 @@
     </summary>
     
     
-      <category term="algorithm" scheme="http://ntddk.github.io/tags/algorithm/"/>
+      <category term="optimization" scheme="http://ntddk.github.io/tags/optimization/"/>
     
   </entry>
   
@@ -1666,7 +1775,7 @@
     <link href="http://ntddk.github.io/2015/12/19/generating-thesis-titles-with-rnnlm/"/>
     <id>http://ntddk.github.io/2015/12/19/generating-thesis-titles-with-rnnlm/</id>
     <published>2015-12-19T14:45:00.000Z</published>
-    <updated>2017-11-19T05:15:48.744Z</updated>
+    <updated>2017-12-14T07:40:39.717Z</updated>
     
     <content type="html"><![CDATA[<p>　本稿は<a href="http://www.adventar.org/calendars/1053" target="_blank" rel="external">慶應義塾大学SFC村井&amp;徳田研 Advent Calendar 2015</a>の19日目である．</p>
 <h1 id="TL-DR"><a href="#TL-DR" class="headerlink" title="TL;DR:"></a>TL;DR:</h1><p>　村井研・徳田研の卒論・修論・博論アーカイブから過去の論文タイトルを収集し，RNNLM（Recurrent Neural Network Language Model, 再帰型ニューラルネット言語モデル）[1]を用いて論文タイトルを自動生成する．</p>
@@ -1715,8 +1824,6 @@
     
     
       <category term="machine learning" scheme="http://ntddk.github.io/tags/machine-learning/"/>
-    
-      <category term="neural network" scheme="http://ntddk.github.io/tags/neural-network/"/>
     
   </entry>
   
@@ -1799,60 +1906,6 @@
       <category term="symbolic execution" scheme="http://ntddk.github.io/tags/symbolic-execution/"/>
     
       <category term="taint analysis" scheme="http://ntddk.github.io/tags/taint-analysis/"/>
-    
-  </entry>
-  
-  <entry>
-    <title>コラッツの問題を用いた難読化は脅威なのか</title>
-    <link href="http://ntddk.github.io/2015/11/09/is-linear-obfuscation-a-threat/"/>
-    <id>http://ntddk.github.io/2015/11/09/is-linear-obfuscation-a-threat/</id>
-    <published>2015-11-09T08:30:00.000Z</published>
-    <updated>2015-11-09T08:27:51.000Z</updated>
-    
-    <content type="html"><![CDATA[<h1 id="TL-DR"><a href="#TL-DR" class="headerlink" title="TL;DR:"></a>TL;DR:</h1><p>　ソフトウェアの多くは外部からの入力に依存する実行パス（trigger-based code）をもつ．<br>　これを記号的実行（symbolic execution, シンボリック実行）などの解析手法から隠蔽する手法として，コラッツの問題を用いた線型難読化（linear obfuscation）がある[1]．<br>　本稿ではしかし，線型難読化されたコードはコンパイラ最適化によってある程度除去できることを示す．</p>
-<h1 id="コラッツの問題"><a href="#コラッツの問題" class="headerlink" title="コラッツの問題"></a>コラッツの問題</h1><p>　コラッツの問題は数論の未解決問題のひとつである．<br>　任意の1でない自然数nに対して，nが偶数ならば2で割り，nが奇数ならば3倍して1を足す．この操作を繰り返していくと，どのような自然数nから出発しても，有限回の操作のうちに必ず1に到達する．<br>　この定理は経験則的に正しいと考えられているが，いまだ証明はなされていない．</p>
-<h1 id="線型難読化"><a href="#線型難読化" class="headerlink" title="線型難読化"></a>線型難読化</h1><p>　たとえば次のプログラム<code>tr.c</code>は外部からの入力に依存する実行パスをもつ．</p>
-<figure class="highlight c"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div></pre></td><td class="code"><pre><div class="line"><span class="comment">// tr.c</span></div><div class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;stdio.h&gt;</span></span></div><div class="line"></div><div class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">(<span class="keyword">int</span> argc, <span class="keyword">char</span> *argv[])</span></span></div><div class="line">&#123;</div><div class="line">    <span class="keyword">int</span> x=argc;</div><div class="line">    <span class="keyword">if</span>(x==<span class="number">2</span>)</div><div class="line">        <span class="built_in">printf</span>(<span class="string">"triggered!\n"</span>);</div><div class="line"></div><div class="line">    <span class="keyword">return</span> <span class="number">0</span>;</div><div class="line">&#125;</div></pre></td></tr></table></figure>
-<p>　LLVM bitcodeレベルでの<code>tr.c</code>の制御フローグラフは次のようになる．</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div></pre></td><td class="code"><pre><div class="line"># clang -emit-llvm -c -g tr.c</div><div class="line"># opt tr.bc -dot-cfg &gt; /dev/null</div><div class="line"># dot -Tpng cfg.main.dot &gt; tr.png</div></pre></td></tr></table></figure>
-<p><img src="/image/tr.png"></p>
-<p>　この単純なプログラムにたいして，コラッツの問題にもとづくループを挿入する．</p>
-<figure class="highlight c"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div><div class="line">22</div><div class="line">23</div><div class="line">24</div></pre></td><td class="code"><pre><div class="line"><span class="comment">// tr2.c</span></div><div class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;stdio.h&gt;</span></span></div><div class="line"></div><div class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">(<span class="keyword">int</span> argc, <span class="keyword">char</span> *argv[])</span></span></div><div class="line">&#123;</div><div class="line">    <span class="keyword">int</span> x = argc;</div><div class="line">    <span class="keyword">int</span> y = x + <span class="number">1000</span>;</div><div class="line"></div><div class="line">    <span class="keyword">while</span>(y &gt; <span class="number">1</span>)</div><div class="line">    &#123;</div><div class="line">        <span class="keyword">if</span>(y % <span class="number">2</span> == <span class="number">1</span>)</div><div class="line">            y = <span class="number">3</span> * y + <span class="number">1</span>;</div><div class="line">        <span class="keyword">else</span></div><div class="line">            y = y / <span class="number">2</span>;</div><div class="line"></div><div class="line">        <span class="keyword">if</span>((x - y &gt; <span class="number">0</span>)&amp;&amp;(x + y &lt; <span class="number">4</span>))</div><div class="line">        &#123;</div><div class="line">            <span class="built_in">printf</span>(<span class="string">"triggered!\n"</span>);</div><div class="line">            <span class="keyword">break</span>;</div><div class="line">        &#125;</div><div class="line">    &#125;</div><div class="line"></div><div class="line">    <span class="keyword">return</span> <span class="number">0</span>;</div><div class="line">&#125;</div></pre></td></tr></table></figure>
-<p>　変数<code>y</code>は必ず1に到達する，いわば偽の変数である．<br>　難読化された<code>tr2.c</code>の制御フローグラフは次のようになる．</p>
-<p><img src="/image/tr2.png"></p>
-<p>　ループが挿入されたことによって実行パスが複雑化していることが見て取れる．</p>
-<h1 id="記号的実行"><a href="#記号的実行" class="headerlink" title="記号的実行"></a>記号的実行</h1><p>　では，線型難読化がどれほど記号的実行にたいして効力をもつか見てみよう．<br>　今回はLLVM bitcodeを扱う記号的実行ツール<a href="klee.github.io">KLEE</a>を用いる．<br>　まず次のコードを解析対象のソースに追記する必要がある．これは，変数<code>x</code>にたいして記号的実行を適用するという意味である．</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div></pre></td><td class="code"><pre><div class="line">@@ -3,6 +3,7 @@</div><div class="line"> int main(int argc, char *argv[])</div><div class="line"> &#123;</div><div class="line">     int x=argc;</div><div class="line">+    klee_make_symbolic(&amp;x, sizeof(x), &quot;x&quot;);</div><div class="line">     if(x==2)</div><div class="line">         printf(&quot;triggered!\n&quot;);</div></pre></td></tr></table></figure>
-<p>　次に，LLVM bitcodeを生成する．</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div></pre></td><td class="code"><pre><div class="line"># clang -emit-llvm -c -g tr.c</div><div class="line">tr.c:6:5: warning: implicit declaration of function &apos;klee_make_symbolic&apos; is</div><div class="line">      invalid in C99 [-Wimplicit-function-declaration]</div><div class="line">    klee_make_symbolic(&amp;x, sizeof(x), &quot;x&quot;);</div><div class="line">    ^</div><div class="line">1 warning generated.</div></pre></td></tr></table></figure>
-<p>　警告が出るが，気にしてはいけない．この関数呼び出しがKLEEにトラップされることになるのだ．<br>　ソースコードのないマルウェアなどを分析するにあたっては，IDAなどのデコンパイラでソースを出力し，型情報やシグナルハンドラなどの記述を整えたのち上記のようなコードを挿入するか，あるいはS2EやPANDAといった動的解析環境を頼ることになるだろう．<br>　それはさておき，KLEEを動かしてみよう．少し前までKLEEをビルドして動かすのはとても面倒だったが，いまではDocker Imageが提供されている．</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div></pre></td><td class="code"><pre><div class="line"># sudo docker pull klee/klee</div><div class="line"># sudo docker run --rm -ti klee/klee</div></pre></td></tr></table></figure>
-<p>　線型難読化をおこなう前の<code>tr.c</code>について記号的実行をおこなった結果を示す．</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div></pre></td><td class="code"><pre><div class="line">klee@4d625535c122:~$ time klee tr.bc</div><div class="line">KLEE: output directory is &quot;/home/klee/klee-out-1&quot;</div><div class="line">KLEE: WARNING: undefined reference to function: printf</div><div class="line">KLEE: WARNING ONCE: calling external: printf(39707328)</div><div class="line">triggered!</div><div class="line"></div><div class="line">KLEE: done: total instructions = 17</div><div class="line">KLEE: done: completed paths = 2</div><div class="line">KLEE: done: generated tests = 2</div><div class="line"></div><div class="line">real    0m0.032s</div><div class="line">user    0m0.009s</div><div class="line">sys     0m0.012s</div></pre></td></tr></table></figure>
-<p>　パスは2つしか存在しないため，32msecで解析が終わっている．<br>　ならば，線型難読化を施した後の<code>tr2.c</code>についてはどうか．</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div></pre></td><td class="code"><pre><div class="line">klee@4d625535c122:~$ time klee tr2.bc</div><div class="line">KLEE: output directory is &quot;/home/klee/klee-out-2&quot;</div><div class="line">KLEE: WARNING: undefined reference to function: printf</div><div class="line">KLEE: WARNING ONCE: calling external: printf(49859696)</div><div class="line">triggered!</div><div class="line">triggered!</div><div class="line">triggered!</div><div class="line">triggered!</div><div class="line">triggered!</div><div class="line">...</div><div class="line"></div><div class="line">KLEE: done: total instructions = 285809</div><div class="line">KLEE: done: completed paths = 158</div><div class="line">KLEE: done: generated tests = 158</div><div class="line"></div><div class="line">real    6m11.933s</div><div class="line">user    3m56.240s</div><div class="line">sys     2m14.245s</div></pre></td></tr></table></figure>
-<p>　さきほどに比べ，実行パスは158に増加し，解析に11622.9倍（！）もの時間がかかっている．<br>　今回の単純なプログラムでさえこのようになるならば，複数の入出力に依存する実行パスに線型難読化が施されたらどうなることか．</p>
-<h1 id="コンパイラ最適化"><a href="#コンパイラ最適化" class="headerlink" title="コンパイラ最適化"></a>コンパイラ最適化</h1><p>　難読化とはえてしてコンパイラ最適化の逆写像である．<br>　KLEEがLLVMにもとづいているということもあって，LLVMの最適化が線型難読化を除去できるかどうか興味をもった．検証してみよう．</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div></pre></td><td class="code"><pre><div class="line"># opt -O3 tr2.bc -o tr3.bc</div></pre></td></tr></table></figure>
-<p>　<code>-O3</code>をもって最適化した後の制御フローグラフは次のようになる．</p>
-<p><img src="/image/tr3.png"></p>
-<p>　最初の<code>tr.c</code>ほどではないが，いくらか単純になっていることがわかる．<code>printf()</code>も<code>puts()</code>に変換されている．<br>　では，実行パスは減少しているだろうか．記号的実行をおこなった結果は次の通り．</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div></pre></td><td class="code"><pre><div class="line">klee@4d625535c122:~$ time klee tr3.bc</div><div class="line">KLEE: output directory is &quot;/home/klee/klee-out-4&quot;</div><div class="line">KLEE: WARNING: undefined reference to function: puts</div><div class="line">KLEE: WARNING ONCE: calling external: puts(32090720)</div><div class="line">triggered!</div><div class="line">triggered!</div><div class="line">triggered!</div><div class="line">triggered!</div><div class="line">triggered!</div><div class="line">triggered!</div><div class="line">triggered!</div><div class="line">triggered!</div><div class="line">triggered!</div><div class="line"></div><div class="line">KLEE: done: total instructions = 3383</div><div class="line">KLEE: done: completed paths = 10</div><div class="line">KLEE: done: generated tests = 10</div><div class="line"></div><div class="line">real    0m2.845s</div><div class="line">user    0m2.490s</div><div class="line">sys     0m0.357s</div></pre></td></tr></table></figure>
-<p>　実行パスは10とさきほどの<code>tr2.c</code>よりも減少している．実行時間は<code>tr.c</code>の88.9倍であった．</p>
-<h1 id="おわりに"><a href="#おわりに" class="headerlink" title="おわりに"></a>おわりに</h1><p>　線型難読化は脅威ではないことがわかった–少なくとも提唱者の思惑ほどには．<br>　塵も積もれば山となるように，線型難読化を多数の箇所に施せばその効力は増すだろう．しかしそれはクラスタリングなどの手法で対処される可能性を高めるだけである．もちろん，どれほどの範囲で難読化を適用すれば効果的かという閾値を探ることに価値はある．<br>　LLVMの<code>-O3</code>最適化は複数の最適化パスを組み合わせ，再帰的に適用することによっておこなわれる．どのパスが線型難読化の除去にもっとも寄与しているか調べてみるとおもしろいかもしれない（やる気がない）．</p>
-<h1 id="参考文献"><a href="#参考文献" class="headerlink" title="参考文献"></a>参考文献</h1><ul>
-<li>[1]Zhi Wang, Jiang Ming, Chunfu Jia, Debin Gao, “<a href="http://flyer.sis.smu.edu.sg/esorics11.pdf" target="_blank" rel="external">Linear Obfuscation to Combat Symbolic Execution[PDF]</a>,” Proceedings of the 16th European Conference on Research in Computer Security(ESORICS’11), pp.210-226, 2011.</li>
-</ul>
-]]></content>
-    
-    <summary type="html">
-    
-      &lt;h1 id=&quot;TL-DR&quot;&gt;&lt;a href=&quot;#TL-DR&quot; class=&quot;headerlink&quot; title=&quot;TL;DR:&quot;&gt;&lt;/a&gt;TL;DR:&lt;/h1&gt;&lt;p&gt;　ソフトウェアの多くは外部からの入力に依存する実行パス（trigger-based code）をもつ．&lt;br&gt;　
-    
-    </summary>
-    
-    
-      <category term="symbolic execution" scheme="http://ntddk.github.io/tags/symbolic-execution/"/>
     
   </entry>
   

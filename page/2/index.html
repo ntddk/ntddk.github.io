@@ -50,6 +50,50 @@
       <div class="outer">
         <section id="main">
   
+    <article id="post-suppress-switching-ime-on-xming" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    
+      <header class="article-header">
+        
+  
+    <a class="article-title" href="/2016/11/06/suppress-switching-ime-on-xming/">Xmingによる入力言語の切り替えを防ぐ</a>
+  
+
+      </header>
+    
+    <time class="article-date" datetime="2016-11-06T09:40:00.000Z" itemprop="datePublished">11-06-2016</time>
+    
+  </div>
+  <div class="article-inner">
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h1 id="Xming"><a href="#Xming" class="headerlink" title="Xming"></a>Xming</h1><p>　<a href="http://www.straightrunning.com/XmingNotes/" target="_blank" rel="external">Xming</a>はWindows向けX Window System実装で，WindowsでX11 Forwardingをする場合のデファクトスタンダード．さて，日本語版のWindowsでXmingを利用していると，時折勝手に入力言語が英語に変わってしまうことがある．でまあOSSなのでソースコードを書き換えればいいんだけど，バイナリを読んだほうが早そう，ということでそのようにした．</p>
+<h1 id="原因"><a href="#原因" class="headerlink" title="原因"></a>原因</h1><p>　IDA Proでキーボード関連のAPIの呼び出し元を眺めると，LoadKeyboardLayoutのロケールID引数を英語 (0x0409) に設定していることがわかる．これを日本語 (0x0411) にすればよい．</p>
+<p><img src="/image/xming/1.png" width="100%" height="100%"></p>
+<p>　素直に.rdataセクションに載っているので，そのまま書き換えられる．</p>
+<p><img src="/image/xming/2.png" width="100%" height="100%"></p>
+<p>　紀元前のバイナリパッチ方式で書くと下記の通り：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div></pre></td><td class="code"><pre><div class="line">19AFAA: 30 31</div><div class="line">19AFAB: 39 31</div><div class="line">19AFB5: 55 4A</div><div class="line">19AFB6: 53 50</div></pre></td></tr></table></figure>
+<p>　はい．</p>
+<h1 id="追記-2016-11-07"><a href="#追記-2016-11-07" class="headerlink" title="追記 (2016.11.07)"></a>追記 (2016.11.07)</h1><p>　XmingのバージョンはPublic Domain Releases 6.9.0.31で，より新しい有償版で修正されているのかどうかは知らない．で，6.9.0.31の当該ソースコード (<code>xc/programs/Xserver/hw/xwin/winconfig.c</code>) にはなにやら不吉なコメントが記されているが，見なかったことにする．うちの環境では，レジストリ設定でCaps LockをCtrlに入れ替えてるし．</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div></pre></td><td class="code"><pre><div class="line"><span class="keyword">if</span> (keyboardType == <span class="number">7</span>)</div><div class="line">  &#123;</div><div class="line">    <span class="comment">/* Japanese layouts have problems with key event messages</span></div><div class="line">       such as the lack of WM_KEYUP for Caps Lock key.</div><div class="line">       Loading US layout fixes this problem. */</div><div class="line">    <span class="keyword">if</span> (LoadKeyboardLayout(<span class="string">"00000409"</span>, KLF_ACTIVATE) != <span class="literal">NULL</span>)</div><div class="line">      winMsg (X_INFO, <span class="string">"Loading US keyboard layout.\n"</span>);</div><div class="line">    <span class="keyword">else</span></div><div class="line">      winMsg (X_ERROR, <span class="string">"LoadKeyboardLaout failed.\n"</span>);</div><div class="line">  &#125;</div></pre></td></tr></table></figure>
+<p>　ご自身の責任でやっていってください．</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://ntddk.github.io/2016/11/06/suppress-switching-ime-on-xming/" data-id="cjbiq70sc001d8w7tatd0pxxk" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/reversing/">reversing</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
     <article id="post-angr-afl-driller" class="article article-type-post" itemscope itemprop="blogPost">
   <div class="article-meta">
     
@@ -108,7 +152,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://ntddk.github.io/2016/08/27/angr-afl-driller/" data-id="cjab6b5r40005as7thzpttusf" class="article-share-link">Share</a>
+      <a data-url="http://ntddk.github.io/2016/08/27/angr-afl-driller/" data-id="cjbiq70ru00068w7tholrxtpe" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/exploitation/">exploitation</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/symbolic-execution/">symbolic execution</a></li></ul>
@@ -165,7 +209,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://ntddk.github.io/2016/07/09/unicorn-internals-python/" data-id="cjab6b5s8002bas7t0qt1l4e3" class="article-share-link">Share</a>
+      <a data-url="http://ntddk.github.io/2016/07/09/unicorn-internals-python/" data-id="cjbiq70sl001s8w7t5ubevmlz" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/dynamic-binary-translation/">dynamic binary translation</a></li></ul>
@@ -251,7 +295,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://ntddk.github.io/2016/06/29/cyber-security-in-israel/" data-id="cjab6b5ro0015as7tad34w194" class="article-share-link">Share</a>
+      <a data-url="http://ntddk.github.io/2016/06/29/cyber-security-in-israel/" data-id="cjbiq70s4000r8w7t2rb4rg01" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/intelligence/">intelligence</a></li></ul>
@@ -306,10 +350,10 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://ntddk.github.io/2016/03/26/neural-image-caption-generator-twitter-bot/" data-id="cjab6b5rq0019as7tjsi7dbzj" class="article-share-link">Share</a>
+      <a data-url="http://ntddk.github.io/2016/03/26/neural-image-caption-generator-twitter-bot/" data-id="cjbiq70s700108w7tpnvvaq1b" class="article-share-link">Share</a>
       
       
-  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/machine-learning/">machine learning</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/neural-network/">neural network</a></li></ul>
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/machine-learning/">machine learning</a></li></ul>
 
     </footer>
   </div>
@@ -394,10 +438,10 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://ntddk.github.io/2016/03/21/book-guide-for-computational-neuroscience/" data-id="cjab6b5rm000zas7tilxuql3s" class="article-share-link">Share</a>
+      <a data-url="http://ntddk.github.io/2016/03/21/book-guide-for-computational-neuroscience/" data-id="cjbiq70rz000h8w7tfhq7al9y" class="article-share-link">Share</a>
       
       
-  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/machine-learning/">machine learning</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/neural-network/">neural network</a></li></ul>
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/machine-learning/">machine learning</a></li></ul>
 
     </footer>
   </div>
@@ -456,10 +500,10 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://ntddk.github.io/2016/03/02/sushi-and-memorized-recursion/" data-id="cjab6b5rv001nas7tds15e50i" class="article-share-link">Share</a>
+      <a data-url="http://ntddk.github.io/2016/03/02/sushi-and-memorized-recursion/" data-id="cjbiq70se001i8w7t7iepxt7c" class="article-share-link">Share</a>
       
       
-  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/algorithm/">algorithm</a></li></ul>
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/optimization/">optimization</a></li></ul>
 
     </footer>
   </div>
@@ -519,7 +563,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://ntddk.github.io/2016/01/08/controlling-rolling-spider-with-leap-motion-cylon-js/" data-id="cjab6b5rn0013as7tasowwkh3" class="article-share-link">Share</a>
+      <a data-url="http://ntddk.github.io/2016/01/08/controlling-rolling-spider-with-leap-motion-cylon-js/" data-id="cjbiq70s0000j8w7tp0ilaodm" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/drone/">drone</a></li></ul>
@@ -589,10 +633,10 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://ntddk.github.io/2015/12/19/generating-thesis-titles-with-rnnlm/" data-id="cjab6b5rq001bas7tovvbdu28" class="article-share-link">Share</a>
+      <a data-url="http://ntddk.github.io/2015/12/19/generating-thesis-titles-with-rnnlm/" data-id="cjbiq70s6000w8w7t3geqcfcp" class="article-share-link">Share</a>
       
       
-  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/machine-learning/">machine learning</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/neural-network/">neural network</a></li></ul>
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/machine-learning/">machine learning</a></li></ul>
 
     </footer>
   </div>
@@ -681,77 +725,10 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://ntddk.github.io/2015/12/11/autoprobe/" data-id="cjab6b5r50008as7t30wx5bwo" class="article-share-link">Share</a>
+      <a data-url="http://ntddk.github.io/2015/12/11/autoprobe/" data-id="cjbiq70rv00078w7tt34hy274" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/symbolic-execution/">symbolic execution</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/taint-analysis/">taint analysis</a></li></ul>
-
-    </footer>
-  </div>
-  
-</article>
-
-
-  
-    <article id="post-is-linear-obfuscation-a-threat" class="article article-type-post" itemscope itemprop="blogPost">
-  <div class="article-meta">
-    
-      <header class="article-header">
-        
-  
-    <a class="article-title" href="/2015/11/09/is-linear-obfuscation-a-threat/">コラッツの問題を用いた難読化は脅威なのか</a>
-  
-
-      </header>
-    
-    <time class="article-date" datetime="2015-11-09T08:30:00.000Z" itemprop="datePublished">11-09-2015</time>
-    
-  </div>
-  <div class="article-inner">
-    <div class="article-entry" itemprop="articleBody">
-      
-        <h1 id="TL-DR"><a href="#TL-DR" class="headerlink" title="TL;DR:"></a>TL;DR:</h1><p>　ソフトウェアの多くは外部からの入力に依存する実行パス（trigger-based code）をもつ．<br>　これを記号的実行（symbolic execution, シンボリック実行）などの解析手法から隠蔽する手法として，コラッツの問題を用いた線型難読化（linear obfuscation）がある[1]．<br>　本稿ではしかし，線型難読化されたコードはコンパイラ最適化によってある程度除去できることを示す．</p>
-<h1 id="コラッツの問題"><a href="#コラッツの問題" class="headerlink" title="コラッツの問題"></a>コラッツの問題</h1><p>　コラッツの問題は数論の未解決問題のひとつである．<br>　任意の1でない自然数nに対して，nが偶数ならば2で割り，nが奇数ならば3倍して1を足す．この操作を繰り返していくと，どのような自然数nから出発しても，有限回の操作のうちに必ず1に到達する．<br>　この定理は経験則的に正しいと考えられているが，いまだ証明はなされていない．</p>
-<h1 id="線型難読化"><a href="#線型難読化" class="headerlink" title="線型難読化"></a>線型難読化</h1><p>　たとえば次のプログラム<code>tr.c</code>は外部からの入力に依存する実行パスをもつ．</p>
-<figure class="highlight c"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div></pre></td><td class="code"><pre><div class="line"><span class="comment">// tr.c</span></div><div class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;stdio.h&gt;</span></span></div><div class="line"></div><div class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">(<span class="keyword">int</span> argc, <span class="keyword">char</span> *argv[])</span></span></div><div class="line">&#123;</div><div class="line">    <span class="keyword">int</span> x=argc;</div><div class="line">    <span class="keyword">if</span>(x==<span class="number">2</span>)</div><div class="line">        <span class="built_in">printf</span>(<span class="string">"triggered!\n"</span>);</div><div class="line"></div><div class="line">    <span class="keyword">return</span> <span class="number">0</span>;</div><div class="line">&#125;</div></pre></td></tr></table></figure>
-<p>　LLVM bitcodeレベルでの<code>tr.c</code>の制御フローグラフは次のようになる．</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div></pre></td><td class="code"><pre><div class="line"># clang -emit-llvm -c -g tr.c</div><div class="line"># opt tr.bc -dot-cfg &gt; /dev/null</div><div class="line"># dot -Tpng cfg.main.dot &gt; tr.png</div></pre></td></tr></table></figure>
-<p><img src="/image/tr.png"></p>
-<p>　この単純なプログラムにたいして，コラッツの問題にもとづくループを挿入する．</p>
-<figure class="highlight c"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div><div class="line">22</div><div class="line">23</div><div class="line">24</div></pre></td><td class="code"><pre><div class="line"><span class="comment">// tr2.c</span></div><div class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;stdio.h&gt;</span></span></div><div class="line"></div><div class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">(<span class="keyword">int</span> argc, <span class="keyword">char</span> *argv[])</span></span></div><div class="line">&#123;</div><div class="line">    <span class="keyword">int</span> x = argc;</div><div class="line">    <span class="keyword">int</span> y = x + <span class="number">1000</span>;</div><div class="line"></div><div class="line">    <span class="keyword">while</span>(y &gt; <span class="number">1</span>)</div><div class="line">    &#123;</div><div class="line">        <span class="keyword">if</span>(y % <span class="number">2</span> == <span class="number">1</span>)</div><div class="line">            y = <span class="number">3</span> * y + <span class="number">1</span>;</div><div class="line">        <span class="keyword">else</span></div><div class="line">            y = y / <span class="number">2</span>;</div><div class="line"></div><div class="line">        <span class="keyword">if</span>((x - y &gt; <span class="number">0</span>)&amp;&amp;(x + y &lt; <span class="number">4</span>))</div><div class="line">        &#123;</div><div class="line">            <span class="built_in">printf</span>(<span class="string">"triggered!\n"</span>);</div><div class="line">            <span class="keyword">break</span>;</div><div class="line">        &#125;</div><div class="line">    &#125;</div><div class="line"></div><div class="line">    <span class="keyword">return</span> <span class="number">0</span>;</div><div class="line">&#125;</div></pre></td></tr></table></figure>
-<p>　変数<code>y</code>は必ず1に到達する，いわば偽の変数である．<br>　難読化された<code>tr2.c</code>の制御フローグラフは次のようになる．</p>
-<p><img src="/image/tr2.png"></p>
-<p>　ループが挿入されたことによって実行パスが複雑化していることが見て取れる．</p>
-<h1 id="記号的実行"><a href="#記号的実行" class="headerlink" title="記号的実行"></a>記号的実行</h1><p>　では，線型難読化がどれほど記号的実行にたいして効力をもつか見てみよう．<br>　今回はLLVM bitcodeを扱う記号的実行ツール<a href="klee.github.io">KLEE</a>を用いる．<br>　まず次のコードを解析対象のソースに追記する必要がある．これは，変数<code>x</code>にたいして記号的実行を適用するという意味である．</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div></pre></td><td class="code"><pre><div class="line">@@ -3,6 +3,7 @@</div><div class="line"> int main(int argc, char *argv[])</div><div class="line"> &#123;</div><div class="line">     int x=argc;</div><div class="line">+    klee_make_symbolic(&amp;x, sizeof(x), &quot;x&quot;);</div><div class="line">     if(x==2)</div><div class="line">         printf(&quot;triggered!\n&quot;);</div></pre></td></tr></table></figure>
-<p>　次に，LLVM bitcodeを生成する．</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div></pre></td><td class="code"><pre><div class="line"># clang -emit-llvm -c -g tr.c</div><div class="line">tr.c:6:5: warning: implicit declaration of function &apos;klee_make_symbolic&apos; is</div><div class="line">      invalid in C99 [-Wimplicit-function-declaration]</div><div class="line">    klee_make_symbolic(&amp;x, sizeof(x), &quot;x&quot;);</div><div class="line">    ^</div><div class="line">1 warning generated.</div></pre></td></tr></table></figure>
-<p>　警告が出るが，気にしてはいけない．この関数呼び出しがKLEEにトラップされることになるのだ．<br>　ソースコードのないマルウェアなどを分析するにあたっては，IDAなどのデコンパイラでソースを出力し，型情報やシグナルハンドラなどの記述を整えたのち上記のようなコードを挿入するか，あるいはS2EやPANDAといった動的解析環境を頼ることになるだろう．<br>　それはさておき，KLEEを動かしてみよう．少し前までKLEEをビルドして動かすのはとても面倒だったが，いまではDocker Imageが提供されている．</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div></pre></td><td class="code"><pre><div class="line"># sudo docker pull klee/klee</div><div class="line"># sudo docker run --rm -ti klee/klee</div></pre></td></tr></table></figure>
-<p>　線型難読化をおこなう前の<code>tr.c</code>について記号的実行をおこなった結果を示す．</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div></pre></td><td class="code"><pre><div class="line">klee@4d625535c122:~$ time klee tr.bc</div><div class="line">KLEE: output directory is &quot;/home/klee/klee-out-1&quot;</div><div class="line">KLEE: WARNING: undefined reference to function: printf</div><div class="line">KLEE: WARNING ONCE: calling external: printf(39707328)</div><div class="line">triggered!</div><div class="line"></div><div class="line">KLEE: done: total instructions = 17</div><div class="line">KLEE: done: completed paths = 2</div><div class="line">KLEE: done: generated tests = 2</div><div class="line"></div><div class="line">real    0m0.032s</div><div class="line">user    0m0.009s</div><div class="line">sys     0m0.012s</div></pre></td></tr></table></figure>
-<p>　パスは2つしか存在しないため，32msecで解析が終わっている．<br>　ならば，線型難読化を施した後の<code>tr2.c</code>についてはどうか．</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div></pre></td><td class="code"><pre><div class="line">klee@4d625535c122:~$ time klee tr2.bc</div><div class="line">KLEE: output directory is &quot;/home/klee/klee-out-2&quot;</div><div class="line">KLEE: WARNING: undefined reference to function: printf</div><div class="line">KLEE: WARNING ONCE: calling external: printf(49859696)</div><div class="line">triggered!</div><div class="line">triggered!</div><div class="line">triggered!</div><div class="line">triggered!</div><div class="line">triggered!</div><div class="line">...</div><div class="line"></div><div class="line">KLEE: done: total instructions = 285809</div><div class="line">KLEE: done: completed paths = 158</div><div class="line">KLEE: done: generated tests = 158</div><div class="line"></div><div class="line">real    6m11.933s</div><div class="line">user    3m56.240s</div><div class="line">sys     2m14.245s</div></pre></td></tr></table></figure>
-<p>　さきほどに比べ，実行パスは158に増加し，解析に11622.9倍（！）もの時間がかかっている．<br>　今回の単純なプログラムでさえこのようになるならば，複数の入出力に依存する実行パスに線型難読化が施されたらどうなることか．</p>
-<h1 id="コンパイラ最適化"><a href="#コンパイラ最適化" class="headerlink" title="コンパイラ最適化"></a>コンパイラ最適化</h1><p>　難読化とはえてしてコンパイラ最適化の逆写像である．<br>　KLEEがLLVMにもとづいているということもあって，LLVMの最適化が線型難読化を除去できるかどうか興味をもった．検証してみよう．</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div></pre></td><td class="code"><pre><div class="line"># opt -O3 tr2.bc -o tr3.bc</div></pre></td></tr></table></figure>
-<p>　<code>-O3</code>をもって最適化した後の制御フローグラフは次のようになる．</p>
-<p><img src="/image/tr3.png"></p>
-<p>　最初の<code>tr.c</code>ほどではないが，いくらか単純になっていることがわかる．<code>printf()</code>も<code>puts()</code>に変換されている．<br>　では，実行パスは減少しているだろうか．記号的実行をおこなった結果は次の通り．</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div></pre></td><td class="code"><pre><div class="line">klee@4d625535c122:~$ time klee tr3.bc</div><div class="line">KLEE: output directory is &quot;/home/klee/klee-out-4&quot;</div><div class="line">KLEE: WARNING: undefined reference to function: puts</div><div class="line">KLEE: WARNING ONCE: calling external: puts(32090720)</div><div class="line">triggered!</div><div class="line">triggered!</div><div class="line">triggered!</div><div class="line">triggered!</div><div class="line">triggered!</div><div class="line">triggered!</div><div class="line">triggered!</div><div class="line">triggered!</div><div class="line">triggered!</div><div class="line"></div><div class="line">KLEE: done: total instructions = 3383</div><div class="line">KLEE: done: completed paths = 10</div><div class="line">KLEE: done: generated tests = 10</div><div class="line"></div><div class="line">real    0m2.845s</div><div class="line">user    0m2.490s</div><div class="line">sys     0m0.357s</div></pre></td></tr></table></figure>
-<p>　実行パスは10とさきほどの<code>tr2.c</code>よりも減少している．実行時間は<code>tr.c</code>の88.9倍であった．</p>
-<h1 id="おわりに"><a href="#おわりに" class="headerlink" title="おわりに"></a>おわりに</h1><p>　線型難読化は脅威ではないことがわかった–少なくとも提唱者の思惑ほどには．<br>　塵も積もれば山となるように，線型難読化を多数の箇所に施せばその効力は増すだろう．しかしそれはクラスタリングなどの手法で対処される可能性を高めるだけである．もちろん，どれほどの範囲で難読化を適用すれば効果的かという閾値を探ることに価値はある．<br>　LLVMの<code>-O3</code>最適化は複数の最適化パスを組み合わせ，再帰的に適用することによっておこなわれる．どのパスが線型難読化の除去にもっとも寄与しているか調べてみるとおもしろいかもしれない（やる気がない）．</p>
-<h1 id="参考文献"><a href="#参考文献" class="headerlink" title="参考文献"></a>参考文献</h1><ul>
-<li>[1]Zhi Wang, Jiang Ming, Chunfu Jia, Debin Gao, “<a href="http://flyer.sis.smu.edu.sg/esorics11.pdf" target="_blank" rel="external">Linear Obfuscation to Combat Symbolic Execution[PDF]</a>,” Proceedings of the 16th European Conference on Research in Computer Security(ESORICS’11), pp.210-226, 2011.</li>
-</ul>
-
-      
-    </div>
-    <footer class="article-footer">
-      <a data-url="http://ntddk.github.io/2015/11/09/is-linear-obfuscation-a-threat/" data-id="cjab6b5rn0011as7t18k731eq" class="article-share-link">Share</a>
-      
-      
-  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/symbolic-execution/">symbolic execution</a></li></ul>
 
     </footer>
   </div>
