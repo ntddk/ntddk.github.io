@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+  <title>Archives: 2018 | 一生あとで読んでろ</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="description" content="技術ブログ">
+<meta property="og:type" content="website">
+<meta property="og:title" content="一生あとで読んでろ">
+<meta property="og:url" content="http://ntddk.github.io/archives/2018/index.html">
+<meta property="og:site_name" content="一生あとで読んでろ">
+<meta property="og:description" content="技術ブログ">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="一生あとで読んでろ">
+<meta name="twitter:description" content="技術ブログ">
+  
+  
+  <link href="//fonts.googleapis.com/css?family=Ubuntu" rel="stylesheet" type="text/css">
+  <link rel="stylesheet" href="/css/style.css">
+  
+</head>
+<body>
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/" id="logo">一生あとで読んでろ</a>
+      </h1>
+      
+        <h2 id="subtitle-wrap">
+          <a href="/" id="subtitle">技術ブログ</a>
+        </h2>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="sub-nav">
+        
+          <a id="nav-home-icon" class="nav-icon" href="/"></a>
+        
+          <a id="nav-about-icon" class="nav-icon" href="/about"></a>
+        
+        
+      </nav>
+    </div>
+  </div>
+</header>
+      <div class="outer">
+        <section id="main">
+  
+    <article id="post-def-con-ctf-qualifier-2018-round-up" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    
+      <header class="article-header">
+        
+  
+    <a class="article-title" href="/2018/05/14/def-con-ctf-qualifier-2018-round-up/">DEF CON CTF Qualifier 2018 Round-up</a>
+  
+
+      </header>
+    
+    <time class="article-date" datetime="2018-05-14T11:00:00.000Z" itemprop="datePublished">05-14-2018</time>
+    
+  </div>
+  <div class="article-inner">
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p>This is too brief to be called write-up. But I’m tired …</p>
+<h1 id="Introduction"><a href="#Introduction" class="headerlink" title="Introduction"></a>Introduction</h1><p>I’ve participated in DEF CON CTF Qualifier 2018 as a member of a certain team, ignominious 40th place. But somehow I solved 3 tasks:</p>
+<ul>
+<li>ELF Crumble</li>
+<li>babypwn1805</li>
+<li>elastic cloud compute (memory) corruption</li>
+</ul>
+<p>I write down my impressions.</p>
+<h1 id="ELF-Crumble"><a href="#ELF-Crumble" class="headerlink" title="ELF Crumble"></a>ELF Crumble</h1><p>This is a task to combine and execute 8 binary fragments correctly. I wrote damn brute-force solver for this, 脳が死んでいるので．</p>
+<h1 id="babypwn1805"><a href="#babypwn1805" class="headerlink" title="babypwn1805"></a>babypwn1805</h1><p>A blind pwn task. I accidentally found offset <code>-0x38</code> to the GOT entry of <code>read</code>. Then I wrote the probabilistic solver.</p>
+<h1 id="elastic-cloud-compute-memory-corruption"><a href="#elastic-cloud-compute-memory-corruption" class="headerlink" title="elastic cloud compute (memory) corruption"></a>elastic cloud compute (memory) corruption</h1><p>A VM escape task.</p>
+<p>We were given <code>qemu-system-x86_64</code> binary with vulnerable PCI device namely <code>ooo</code>.　Notable functions are as follows:</p>
+<table>
+<thead>
+<tr>
+<th>function</th>
+<th>description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>sub_6E61F4</code></td>
+<td>correspond to <code>ooo_mmio_write</code></td>
+</tr>
+<tr>
+<td><code>sub_6E613C</code></td>
+<td>correspond to <code>ooo_mmio_read</code></td>
+</tr>
+<tr>
+<td><code>sub_6E64A5</code></td>
+<td>invokes <code>system(&quot;cat ./flag&quot;)</code></td>
+</tr>
+</tbody>
+</table>
+<p>What matters is use-after-free vulnerability in:</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div><div class="line">22</div><div class="line">23</div><div class="line">24</div><div class="line">25</div><div class="line">26</div><div class="line">27</div><div class="line">28</div><div class="line">29</div><div class="line">30</div><div class="line">31</div><div class="line">32</div></pre></td><td class="code"><pre><div class="line"><span class="comment">//----- (00000000006E61F4) ----------------------------------------------------</span></div><div class="line"><span class="keyword">void</span> __<span class="function">fastcall <span class="title">sub_6E61F4</span><span class="params">(__int64 opaque, __int64 addr, __int64 value, <span class="keyword">unsigned</span> <span class="keyword">int</span> size)</span></span></div><div class="line">&#123;</div><div class="line">  <span class="keyword">unsigned</span> <span class="keyword">int</span> cmd; <span class="comment">// eax</span></div><div class="line">...</div><div class="line"></div><div class="line">  *(_QWORD *)&amp;n[<span class="number">4</span>] = value;</div><div class="line">  cmd = ((<span class="keyword">unsigned</span> <span class="keyword">int</span>)addr &amp; <span class="number">0xF00000</span>) &gt;&gt; <span class="number">20</span>;</div><div class="line">  <span class="keyword">switch</span> ( cmd )</div><div class="line">  &#123;</div><div class="line">    <span class="keyword">case</span> <span class="number">1u</span>:</div><div class="line">          <span class="built_in">free</span>(qword_1317940[((<span class="keyword">unsigned</span> <span class="keyword">int</span>)addr &amp; <span class="number">0xF0000</span>) &gt;&gt; <span class="number">16</span>]);</div><div class="line">          <span class="keyword">break</span>;</div><div class="line">    <span class="keyword">case</span> <span class="number">2u</span>:</div><div class="line">          v12 = ((<span class="keyword">unsigned</span> <span class="keyword">int</span>)addr &amp; <span class="number">0xF0000</span>) &gt;&gt; <span class="number">16</span>;</div><div class="line">          v8 = addr;</div><div class="line">          <span class="built_in">memcpy</span>((<span class="keyword">char</span> *)qword_1317940[v12] + (<span class="keyword">signed</span> __int16)addr, &amp;n[<span class="number">4</span>], size);</div><div class="line">          <span class="keyword">break</span>;</div><div class="line">    <span class="keyword">case</span> <span class="number">0u</span>:</div><div class="line">          idx = ((<span class="keyword">unsigned</span> <span class="keyword">int</span>)addr &amp; <span class="number">0xF0000</span>) &gt;&gt; <span class="number">16</span>;</div><div class="line">          <span class="keyword">if</span> ( idx == <span class="number">15</span> )</div><div class="line">          &#123;</div><div class="line">                <span class="keyword">for</span> ( i = <span class="number">0</span>; i &lt;= <span class="number">14</span>; ++i )</div><div class="line">                  qword_1317940[i] = <span class="built_in">malloc</span>(<span class="number">8L</span>L * *(_QWORD *)&amp;n[<span class="number">4</span>]);</div><div class="line">          &#125;</div><div class="line">          <span class="keyword">else</span></div><div class="line">          &#123;</div><div class="line">                qword_1317940[idx] = <span class="built_in">malloc</span>(<span class="number">8L</span>L * *(_QWORD *)&amp;n[<span class="number">4</span>]);</div><div class="line">          &#125;</div><div class="line">      <span class="keyword">break</span>;</div><div class="line">  &#125;</div><div class="line">&#125;</div></pre></td></tr></table></figure>
+<p>With the clue of the chunk offset on <code>0x1317940</code>, now we can overwrite <code>malloc@GOT</code> to <code>sub_6E64A5</code> by fastbin attack, in particular using <code>devmem</code>.</p>
+<p>I stayed up all night for this. I was tired but it was fun. I used these past write-ups as a reference when solving this task:</p>
+<ul>
+<li><a href="https://kitctf.de/writeups/hitb2017/babyqemu" target="_blank" rel="external">HITB GSEC 2017: babyqemu</a></li>
+<li><a href="https://blog.eadom.net/writeups/qemu-escape-vm-escape-from-0ctf-2017-finals-writeup/" target="_blank" rel="external">QEMU Escape — vm_escape from 0CTF 2017 Finals Writeup - Eadom’s Blog</a></li>
+</ul>
+<p>Thanks authors!</p>
+<h1 id="Last-Words"><a href="#Last-Words" class="headerlink" title="Last Words"></a>Last Words</h1><p>Other tasks I had wanted to solve are:</p>
+<ul>
+<li>flagsifier</li>
+<li>TechSupport</li>
+<li>smcauth</li>
+</ul>
+<p>This year DEFCON’s organizer has changed from LegitBS to OOO (Order of the-Overflow). OOO seems to have the purpose of connecting academic research and CTF. I support this philosophy, but this competition was not perfect. My impressions are summarized as follows:</p>
+<table>
+<thead>
+<tr>
+<th>Pros</th>
+<th>Cons</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Meritocratic rev/pwn. Brand-new topics i.e. blockchain, neural network, reversing of Rust binary.</td>
+<td>Many guessing tasks. Some incredible, old-fashioned tasks. In particular, sbva and ghettohackers: Throwback are quite bad.</td>
+</tr>
+</tbody>
+</table>
+<p>Anyway, I’m looking forward to that next year.</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://ntddk.github.io/2018/05/14/def-con-ctf-qualifier-2018-round-up/" data-id="cjh5009vb0000ir7t4rr4p0ks" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/exploitation/">exploitation</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/reversing/">reversing</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+  
+</section>
+        
+      </div>
+      <footer id="footer">
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      &copy; 2018 ntddk<br>
+      <a href="https://github.com/ntddk/hexo-theme-jathena" target="_blank">JAthena</a> by <a href="https://ntddk.github.io" target="_blank">ntddk</a> | Powered by <a href="https://hexo.io/" target="_blank">Hexo</a>
+    </div>
+  </div>
+</footer>
+
+    </div>
+    
+
+<script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+
+
+  <link rel="stylesheet" href="/fancybox/jquery.fancybox.css">
+  <script src="/fancybox/jquery.fancybox.pack.js"></script>
+
+
+<script src="/js/script.js"></script>
+  </div>
+</body>
+</html>

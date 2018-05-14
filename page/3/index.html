@@ -50,6 +50,98 @@
       <div class="outer">
         <section id="main">
   
+    <article id="post-autoprobe" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    
+      <header class="article-header">
+        
+  
+    <a class="article-title" href="/2015/12/11/autoprobe/">マルウェアの動的解析に基づくC&amp;Cサーバの探索</a>
+  
+
+      </header>
+    
+    <time class="article-date" datetime="2015-12-11T03:00:00.000Z" itemprop="datePublished">12-11-2015</time>
+    
+  </div>
+  <div class="article-inner">
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p>　本稿は<a href="http://www.adventar.org/calendars/784" target="_blank" rel="external">情報セキュリティ系論文紹介 Advent Calendar 2015</a>の11日目である．</p>
+<h1 id="TL-DR"><a href="#TL-DR" class="headerlink" title="TL;DR:"></a>TL;DR:</h1><p>　テイント解析（taint analysis）やプログラムスライシング（program slicing），記号的実行（symbolic execution）やファジング（fuzzing）といったバイナリ解析技術を総動員して，マルウェアが通信するC&amp;Cサーバのフィンガープリントを<strong>C&amp;Cサーバと通信せずとも</strong>生成する手法–AUTOPROBE[1]を紹介する．</p>
+<h1 id="背景"><a href="#背景" class="headerlink" title="背景"></a>背景</h1><p>　マルウェアによるサイバー犯罪はC&amp;Cサーバやコンフィグファイルの配布元，二次検体の配布元など様々な悪性サーバ（malicious server）からなるインフラによって支えられている．攻撃者はこれらの悪性サーバを頻繁に閉鎖・移転させて対策から逃れようとする．とりわけ攻撃者の命令を送信してマルウェアの動作を決定するC&amp;Cサーバはその後の攻撃の起点となるため早期発見が望ましい．したがって不審なサーバがC&amp;Cサーバかどうか判定するフィンガープリントが必要となる．<br>　しかしながら従来のフィンガープリント生成手法にはC&amp;Cサーバとの長期的な通信を前提としている[2]，サーバとして動作するマルウェアを前提としている[3]といった問題点があった．</p>
+<h1 id="問題定義"><a href="#問題定義" class="headerlink" title="問題定義"></a>問題定義</h1><p>　あるマルウェアのファミリFに属する検体Pを入力として受け取り，Fが用いるC&amp;Cサーバのフィンガープリントφを出力することがAUTOPROBEの目的である．C&amp;Cサーバ側のコードは参照できず，マルウェアの検体はシンボル情報やソースコードを含んでいなくともよい．またマルウェアは複数のリクエストをC&amp;Cサーバに送信するものとする．</p>
+<h1 id="提案手法"><a href="#提案手法" class="headerlink" title="提案手法"></a>提案手法</h1><p>　あるサーバにマルウェアと同様のリクエストを送って，マルウェアがコマンドとして解釈できるレスポンスが返ってきたら，そのサーバは疑いようもなくC&amp;Cサーバである–AUTOPROBEの鍵となる発想は至極単純だ．<br>　AUTOPROBEは検体の命令・API・システムコールの実行を–おそらくQEMUによって–トレースし，リクエストを生成する処理とレスポンスをハンドルする処理をそれぞれマルウェアから抽出する．つづいて前者によって不審なサーバに対するリクエストを生成し，後者によってレスポンスをハンドルする．レスポンスハンドリングの可否をもってフィンガープリントとするから，その処理の抽出さえできれば不審なサーバがC&amp;Cサーバかどうか判定するまで実際のC&amp;Cサーバと通信する必要はない–でもどうやって？</p>
+<h2 id="リクエスト生成"><a href="#リクエスト生成" class="headerlink" title="リクエスト生成"></a>リクエスト生成</h2><p>　マルウェアの多くは時間や擬似乱数，OS情報などの環境依存の値によって動作を変更する．たとえばWin32/LoadMoney.AFはレジストリキーの有無によって送信するリクエストを変更する．</p>
+<p><img src="/image/autoprobe/win32_loadmoney.af.png" width="50%" height="50%"></p>
+<p>　不審なサーバがC&amp;Cサーバかどうか判定するためには攻撃者の期待するリクエストをより多く送信しより多くレスポンスを得たい．そこでAUTOPROBEは以下のアルゴリズムにしたがって複数の実行トレースを得る．これは条件分岐の度に直前のシステムコールを参照する，ある種の深さ優先探索として実装される．</p>
+<p><img src="/image/autoprobe/request.png" width="50%" height="50%"></p>
+<p>　さらにAUTOPROBEはトレースをスライスし，システムコールの結果に依存する値を環境依存の値として決定論的な値・定数と区別する．ここで環境依存の値を書き換えれば攻撃者の期待するリクエストを送信できるようになる．また環境依存の値に影響するシステムコールの戻り値に時間，IPアドレス，擬似乱数，OS情報など200種類のラベルを設定しているとのことだ．</p>
+<h2 id="レスポンスハンドリング"><a href="#レスポンスハンドリング" class="headerlink" title="レスポンスハンドリング"></a>レスポンスハンドリング</h2><p>　生成したリクエストをC&amp;Cサーバに送信してレスポンスを得たら，AUTOPROBEはレスポンスの各バイトを記号値として扱い，実行トレースから検体の分岐制約を充足する解およびスライスθ<sub>1</sub>を得る．ここで探索の終了条件は<code>closesocket</code>や<code>exitprocess</code>に到達した場合，データを受信してから50個の条件分岐にわたってそのデータを参照するものが存在しない場合である．つづいてレスポンスとして正しく解釈できない値を検体に与え，実行トレースから分岐制約を充足する解およびスライスθ<sub>2</sub>を得る．ここでηは以下の式によって得られる実行経路の類似度である．</p>
+<p><img src="/image/autoprobe/slice.png" width="50%" height="50%"></p>
+<p>　bnとfnはそれぞれ各スライスに含まれるユニークなコードブロックとシステムコールの数を示す．AUTOPROBEはηが閾値10を下回ればレスポンスを正しく解釈していない実行経路とみなしてスライスを破棄し，上回れば別々のハンドラであるとしてそれぞれの分岐制約をフィンガープリントとして保持する．たとえばこんなふうに．</p>
+<p><img src="/image/autoprobe/equations.png" width="50%" height="50%"></p>
+<p>　C&amp;Cサーバからレスポンスを得られなければ，AUTOPROBEは記号的実行とファジング，フラグレジスタの書き換えによる強制実行（forced execution）を併用してレスポンスに依存する実行経路を探索する．</p>
+<p><img src="/image/autoprobe/response.png" width="55%" height="55%"></p>
+<p>　このファジングでは検体にランダム値を与えるが，検体が用いるアルゴリズムがHTTPなど既知のものであればエラーメッセージのハンドラを起点に探索する．<br>　AUTOPROBEはこのように探索したレスポンスのハンドラをフィンガープリントとするが，期待されるレスポンスが得られずさきほどのアルゴリズムによって探索した場合は以下のようにC&amp;Cサーバの尤もらしさを算出する．</p>
+<p><img src="/image/autoprobe/score.png" width="50%" height="50%"></p>
+<h1 id="評価"><a href="#評価" class="headerlink" title="評価"></a>評価</h1><p>　論文ではふたつのデータセットを用いてAUTOPROBEの性能を評価している．ひとつはSality, ZeroAccess, Ramnit, Bamital, Taidoorを含む37ファミリ10亜種計370検体．もうひとつはネットワーク通信の特徴量に基づいてフィンガープリントを生成する既存研究–CYBERPROBE[2]で用いられた19ファミリ． “which have been kindly provided to us by the authors of CYBERPROBE”って書いてるけどAUTOPROBEと同じメンバーじゃねえか．<br>　検体の実行時間は5分．</p>
+<h2 id="リクエスト生成-1"><a href="#リクエスト生成-1" class="headerlink" title="リクエスト生成"></a>リクエスト生成</h2><p>　まずはリクエストの生成から．可能であればC&amp;Cサーバとの接続をともなうがAlexaトップ10,000サイトは除外している．ここでAUTOPROBEはC&amp;Cサーバに接続せずとも検体のバイナリを分析してCYBERPROBEと同様の結果を得ている．</p>
+<p><img src="/image/autoprobe/request_eval.png"></p>
+<p>　AUTOPROBEはふたつのデータセットに含まれる56ファミリのトレースから105のリクエストを生成した．生成にかかった時間は平均13.2分．リクエストはすべてHTTPであったとのこと．</p>
+<h2 id="レスポンスハンドリング-1"><a href="#レスポンスハンドリング-1" class="headerlink" title="レスポンスハンドリング"></a>レスポンスハンドリング</h2><p>　生成したリクエストのうち76件がC&amp;Cサーバからのレスポンスを引き出した．さらにAUTOPROBEは<code>HTTP 200</code>レスポンスコードを含む同数のランダムなレスポンスを生成し，検体に与えた．これはレスポンスハンドリングの可否によって検体の異なる挙動を確認したいためだ．結果として76件のテストケース中71件（93％）で検体は異なる挙動を示した–<strong>期待される受信データを得たマルウェアは一般に10以上のシステムコールと50以上のコードブロックを実行する</strong>．残りの5件はC&amp;Cサーバではなかった．つまりAUTOPROBEはマルウェアの通信先がC&amp;Cサーバかどうか正しく判定できている．</p>
+<h2 id="ケーススタディ"><a href="#ケーススタディ" class="headerlink" title="ケーススタディ"></a>ケーススタディ</h2><p>　たとえばBamitalのリクエストはファイル名・<code>GetVersionEx</code>によって得たOS情報・DGA (domain generation algorithm) によって生成したホスト名を含んでいた．AUTOPROBEはこれらの値が依存するシステムコールを得ている．</p>
+<p><img src="/image/autoprobe/bamital.png" width="50%" height="50%"></p>
+<p>　C&amp;Cサーバと接続せずとも<code>HTTP/1.1 200 OK</code>を与えればBamitalのハンドラは分析できるとのこと．<br>　また標的型攻撃に用いられるTaidoorのリクエストは<code>GetAdaptersInfo</code>によって得たMACアドレスに依存する値を含んでいた．これによってTaidoorのC&amp;Cサーバは感染端末のみで動作するレスポンスを送信していたようだ．<br>　ドライブバイダウンロード検体であるSalityのC&amp;Cサーバは<code>spm/s_tasks.php</code>, <code>logos_s.gif</code>, <code>231013_d.exe</code>というファイルをレスポンスに含んでいた．AUTOPROBEはこれらのファイルの存在するサーバをSalityのC&amp;Cサーバとみなす．などなど．</p>
+<h2 id="限定的な探索"><a href="#限定的な探索" class="headerlink" title="限定的な探索"></a>限定的な探索</h2><p>　Malware Domain Listに含まれる9,500アドレスの近傍/24サブネット・2.6Mアドレスのスキャン結果．</p>
+<p><img src="/image/autoprobe/localized.png" width="60%" height="60%"></p>
+<p>　VirusTotal, Malware Domain List, そしてURLQueryに発見されていないC&amp;Cサーバを特定できている．</p>
+<h2 id="インターネット全体の探索"><a href="#インターネット全体の探索" class="headerlink" title="インターネット全体の探索"></a>インターネット全体の探索</h2><p>　ここではBGPからインターネット全体をスキャンし，7,100万ものHTTPサーバを発見している．</p>
+<p><img src="/image/autoprobe/horizontal.png"></p>
+<p>　このうちマルウェア3ファミリのC&amp;Cサーバをどれだけ発見できるかCYBERPROBEと比較した結果．</p>
+<p><img src="/image/autoprobe/comparison.png"></p>
+<p>　CYBERPROBEが40件のC&amp;Cサーバを特定しているのにたいしてAUTOPROBEは54件のC&amp;Cサーバを特定している．<br>　高度化するマルウェアが通信内容を難読化・秘匿する傾向にあることを鑑みると，CYBERPROBEのようにネットワーク通信の特徴量を用いる手法よりもAUTOPROBEのようにバイナリ解析を応用した手法こそ吟味されるべきだろう．</p>
+<h1 id="感想"><a href="#感想" class="headerlink" title="感想"></a>感想</h1><p>　AUTOPROBEは折しも私が昨年度のインターンシップでほとんど同じようなテーマに取り組んでいたとき発表された．テイント解析のソースを受信データではなくシステムコールの結果に設定することで，リクエストのセマンティクスを復元しようとするAUTOPROBEの発想は野心的であり，さまざまなバイナリ解析技術を結集して未知のC&amp;Cサーバを発見する手際は鮮やかというほかない．<br>　私は来年書くことになる卒業論文のテーマとして，インターネット接続のない閉環境におけるマルウェアの分析に本手法を応用できないか検討している．Ryzhykら[4]はデバイスドライバと環境（デバイスおよびOS）との相互作用を有限オートマトンを用いて表現し，デバイスドライバを半自動的に合成する手法を提案している．問題領域は異なるがこうした手法も検討したい．</p>
+<h1 id="用語解説"><a href="#用語解説" class="headerlink" title="用語解説"></a>用語解説</h1><ul>
+<li>テイント解析<ul>
+<li>任意のデータに設定したタグをルールにしたがって伝搬させることで，データ間の依存関係を分析する手法</li>
+</ul>
+</li>
+<li>プログラムスライシング<ul>
+<li>任意のデータに依存する処理部分をプログラムから抽出する手法</li>
+</ul>
+</li>
+<li>記号的実行<ul>
+<li>プログラムの分岐条件を充足論理問題とし，制約を充足する解を得る手法</li>
+</ul>
+</li>
+<li>ファジング<ul>
+<li>開発者が意図しない入力を自動生成してプログラムに与えることで脆弱性を顕在化させる手法</li>
+</ul>
+</li>
+</ul>
+<h1 id="参考文献"><a href="#参考文献" class="headerlink" title="参考文献"></a>参考文献</h1><ul>
+<li>[1] Zhaoyan Xu, Antonio Nappa, Robert Baykov, Guangliang Yang, Juan Caballero, and Guofei Gu, “<a href="http://www.cs.wm.edu/~ksun/csci780-f14/papers/AutoProbe-CCS14.pdf" target="_blank" rel="external">AUTOPROBE: Towards Automatic Active Malicious Server Probing Using Dynamic Binary Analysis[PDF]</a>,” In Proc. of the 21st ACM Conference on Computer and Communications Security (CCS’14), 2014.</li>
+<li>[2] Antonio Nappa, Zhaoyan Xu, M. Zubair Rafique, Juan Caballero, and Guofei Gu, “<a href="http://faculty.cs.tamu.edu/guofei/paper/CyberProbe_NDSS14.pdf" target="_blank" rel="external">Cyberprobe: Towards Internet-Scale Active Detection of Malicious Servers[PDF]</a>,” In Network and Distributed System Security Symposium (NDSS’14), 2014.</li>
+<li>[3] Zhaoyan Xu, Lingfeng Chen, Guofei Gu, and Christopher Kruegel, “<a href="http://dl.acm.org/citation.cfm?id=2382257" target="_blank" rel="external">Peerpress: Utilizing Enemies’ P2P Strength against Them</a>,” In ACM Conference on Computer and Communications Security (CCS’12), 2012.</li>
+<li>[4] Leonid Ryzhyk, Adam Walker, John Keys, Alexander Legg, Arun Raghunath, Michael Stumm, and Mona Vij, “<a href="https://www.usenix.org/conference/osdi14/technical-sessions/presentation/ryzhyk" target="_blank" rel="external">User-Guided Device Driver Synthesis</a>,” In Proc. of the 11th USENIX Conference on Operating Systems Design and Implementation (OSDI’14), 2014.</li>
+</ul>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://ntddk.github.io/2015/12/11/autoprobe/" data-id="cjbiq70rv00078w7tt34hy274" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/symbolic-execution/">symbolic execution</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/taint-analysis/">taint analysis</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
     <article id="post-is-linear-obfuscation-a-threat" class="article article-type-post" itemscope itemprop="blogPost">
   <div class="article-meta">
     
@@ -705,50 +797,6 @@
 
 
   
-    <article id="post-sandbox-transparency" class="article article-type-post" itemscope itemprop="blogPost">
-  <div class="article-meta">
-    
-      <header class="article-header">
-        
-  
-    <a class="article-title" href="/2015/01/23/sandbox-transparency/">サンドボックスの透明性</a>
-  
-
-      </header>
-    
-    <time class="article-date" datetime="2015-01-23T14:45:59.000Z" itemprop="datePublished">01-23-2015</time>
-    
-  </div>
-  <div class="article-inner">
-    <div class="article-entry" itemprop="articleBody">
-      
-        <h1 id="VMI"><a href="#VMI" class="headerlink" title="VMI"></a>VMI</h1><p>仮想マシンモニタからゲストのリソースを監視・制御する技術をVMI(Virtual Machine Introspection)という．<br>その発祥は2003年に遡る．当時はハニーポットの研究が盛んな時期であり，VMIは仮想マシンにおける侵入検知を実現する手法として提案された．これはマルウェア解析の自動化に応用されており，仮想マシンモニタによるサンドボックスを構築し，VMIによってマルウェアの挙動を監視するというアプローチが一般的となっている．<br>さて，VMIにおける問題点にセマンティックギャップというものがある．原義は高級言語とハードウェアとの乖離であるが，OSと同じ粒度で情報を取得することのできるゲスト内部(in-the-box)とハードウェアの粒度で情報を取得することしかできないゲスト外部(out-of-the-box)の乖離という意味でも援用される．</p>
-<h1 id="Transparent-Sandbox"><a href="#Transparent-Sandbox" class="headerlink" title="Transparent Sandbox"></a>Transparent Sandbox</h1><p>セマンティックギャップを解決する方法として，ゲスト内部にエージェントを挿入し，仮想マシンモニタに情報を送信するというアプローチが考えられる．<br>だがマルウェア解析において，ゲスト内部にエージェントを挿入することは，自らの姿を曝け出していることにほかならない．ファイルやサービス名，フックによって変化するAPIの挙動といったものは，マルウェアがエージェントと同じ権限で動作する限り避けられない．そもそも仮想マシンモニタは特権を有していたところで<code>RDTSC</code>や<code>ICEBP</code>などの命令，あるいはハードウェア名やIDTといった要素から検出される可能性を孕んでいる．そのため，ゲスト内部にエージェントを挿入することは，仮想マシンモニタがマルウェアから検出される可能性を高めることに繋がる．フォレンジックにおける完全性(integrity)のためにも，ゲスト内部にエージェントを挿入すべきではないと私は考える．<br>この議論に関して，マルウェアから検出されない仮想マシンモニタをtransparent sandbox（透明なサンドボックス？）といい，仮想マシンモニタの検出を試みるマルウェアをevasive malwareという．<br>ではどのような仮想マシンモニタがより「透明」に近いのか．</p>
-<h1 id="仮想マシンモニタの歴史"><a href="#仮想マシンモニタの歴史" class="headerlink" title="仮想マシンモニタの歴史"></a>仮想マシンモニタの歴史</h1><p>ここでPopekとGoldbergの仮想化要件に立ち返ると，ベアメタルな仮想マシンモニタは等価性(equivalence)，資源管理(resource control)，効率性(efficiency)の三原則を実現しており，なおかつユーザセンシティブ命令が特権命令でなければならない．センシティブ命令かつ特権命令でなければ，例外によって仮想マシンモニタに通知することができないためである．<br>だが，以前のx86アーキテクチャはこの要件を満たしていなかった．そこで，ニ種類の解決方法が編み出された．<br>一つ目はバイナリ変換(binary translation)による完全仮想化である．これはソフトウェアで命令をエミュレートする手法で，QEMUやVMwareが該当する．QEMUは全ての命令を中間コードに変換するのに対し，VMwareはPopekとGoldbergの仮想化要件を満たさない命令をライブラリ呼び出しに変換する．<br>二つ目は準仮想化である．これはPopekとGoldbergの仮想化要件を満たさない命令に差し掛かると仮想マシンモニタに通知されるようゲストOSのカーネルを修正する手法で，Xenが該当する．<br>ではバイナリ変換による完全仮想化とカーネル書き換えによる準仮想化のどちらがより「透明」に近いのか．<br>その前にIntel VT-xについて考えなければならない．Intel VT-xはCPUのモード切り替えによってセンシティブ命令かつ特権命令でない命令のトラップを実現する拡張機能である．すなわちPopekとGoldbergの仮想化要件を満たすハードウェア側からのアプローチである．これにより準仮想化カーネルの必要はなくなった．エージェントの挿入が「透明」性に関わるのと同様，カーネルの書き換えは仮想マシンモニタを検出する手掛かりとなる．<br>そのためマルウェア解析においては，バイナリ変換による完全仮想化か，Intel VT-xによる完全仮想化が前提となる．なおKVMはIntel Vt-xを前提としているが，部分的にQEMUを用いている．<br>ではどちらの手法がより「透明」に近いのか．</p>
-<h1 id="バイナリ変換とIntel-VT-x"><a href="#バイナリ変換とIntel-VT-x" class="headerlink" title="バイナリ変換とIntel VT-x"></a>バイナリ変換とIntel VT-x</h1><p>Christopher KruegelはWineのようなシステムコール単位のエミュレーションあるいはフックは情報量として不十分であり，またIntel VT-xによる完全仮想化はRedPillのようなアプローチで検出可能であることから，バイナリ変換による完全仮想化すなわちQEMUを支持している．<br>システムコール単位の監視は<code>IsDebuggerPresent</code>のようなカーネルモードに遷移せず構造体を参照するだけの処理を見逃してしまう．システムコールのフックを用いた研究や製品は多数存在するが，それらは不完全である．この点で私は氏と意見を一にするが，バイナリ変換がより「透明」に近いかどうかは検討の余地があるだろう．寧ろ氏は実行パスの拡張がより容易に行えるがゆえにバイナリ変換を支持しているのだろうということは読み取れるが，氏がチーフサイエンティストを務めるLastlineの製品がQEMUをベースとしていることもあり，些かポジショントークのようにも感じられる．<br>このような論調でバイナリ変換とIntel VT-xを二項対立の図式に落とし込んでいる論文が数多く見られる．しかし，どちらがより「透明」に近いのかという議論はナンセンスであろう．<br>ゲスト内部にエージェントを挿入することで，果たして本当にマルウェアから検出されやすくなるのかと言うと，それは飽くまで可能性でしかない．だがゲスト内部にエージェントを挿入しないという選択で，その問題は検討項目から外すことができる．一方で，バイナリ変換であるという理由でIntel VT-xを用いた仮想マシンモニタよりも検出されにくいといったことはない．逆もまた然りである．<br>そしてそもそも，ネットワーク経由で仮想マシンモニタを検出するという手法がある以上，完全に「透明」なサンドボックスは実現不可能であるとされる．<br>ゆえにそれぞれのアプローチについて「透明」性の他にもメリット・デメリットを検討し，なおかつ両者を接合するようなシステムこそが望ましい．</p>
-<h1 id="参考文献"><a href="#参考文献" class="headerlink" title="参考文献"></a>参考文献</h1><ul>
-<li>Tal Garfinkel, Mendel Rosenblu,<br>“<a href="http://suif.stanford.edu/papers/vmi-ndss03.pdf" target="_blank" rel="external">A Virtual Machine Introspection Based Architecture for Intrusion Detection[PDF]</a>,”<br>Proceedings of the 10th Annual Network and Distributed System Security Symposium, pp. 191–206, SD, USA, 2003.</li>
-<li>Gerald J. Popek, Robert P. Goldberg,<br>“<a href="http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.141.4815&amp;rep=rep1&amp;type=pdf" target="_blank" rel="external">Formal Requirements for Virtualizable Third Generation Architectures[PDF]</a>,”<br>Communications of the ACM CACM Homepage archive, Vol. 17, Issue. 7, pp. 412-421, NY, USA, 1974.</li>
-<li>John Scott Robin, Cynthia E. Irvine,<br>“<a href="http://www.cse.psu.edu/~bhuvan/teaching/spring06/papers/analysis-pentium.pdf" target="_blank" rel="external">Analysis of the Intel Pentium’s Ability to Support a Secure Virtual Machine Monitor[PDF]</a>,”<br>Proceedings of the 9th conference on USENIX Security Symposium, Vol. 9, pp. 10-10, CA, USA, 2000.</li>
-<li>Christopher Kruegel,<br>“<a href="https://www.blackhat.com/docs/us-14/materials/us-14-Kruegel-Full-System-Emulation-Achieving-Successful-Automated-Dynamic-Analysis-Of-Evasive-Malware-WP.pdf" target="_blank" rel="external">Full System Emulation: Achieving Successful Automated Dynamic Analysis of Evasive Malware[PDF]</a>,”<br>Black Hat USA, 2014.</li>
-<li>Tal Garfinkel, Keith Adams, Andrew Warfield and Jason Franklin,<br>“<a href="http://www.cs.cmu.edu/~jfrankli/hotos07/vmm_detection_hotos07.pdf" target="_blank" rel="external">Compatibility is Not Transparency: VMM Detection Myths and Realities[PDF]</a>,”<br>Proceedings of the 11th USENIX workshop on Hot topics in operating systems, No. 6, CA, USA, 2007.</li>
-</ul>
-
-      
-    </div>
-    <footer class="article-footer">
-      <a data-url="http://ntddk.github.io/2015/01/23/sandbox-transparency/" data-id="cjbiq70sb001a8w7t8ff2uvrx" class="article-share-link">Share</a>
-      
-      
-  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/dynamic-binary-translation/">dynamic binary translation</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/virtual-machine-introspection/">virtual machine introspection</a></li></ul>
-
-    </footer>
-  </div>
-  
-</article>
-
-
-  
   
     <nav id="page-nav">
       <a class="extend prev" rel="prev" href="/page/2/">&laquo; Prev</a><a class="page-number" href="/">1</a><a class="page-number" href="/page/2/">2</a><span class="page-number current">3</span><a class="page-number" href="/page/4/">4</a><a class="extend next" rel="next" href="/page/4/">Next &raquo;</a>
@@ -761,7 +809,7 @@
   
   <div class="outer">
     <div id="footer-info" class="inner">
-      &copy; 2017 ntddk<br>
+      &copy; 2018 ntddk<br>
       <a href="https://github.com/ntddk/hexo-theme-jathena" target="_blank">JAthena</a> by <a href="https://ntddk.github.io" target="_blank">ntddk</a> | Powered by <a href="https://hexo.io/" target="_blank">Hexo</a>
     </div>
   </div>

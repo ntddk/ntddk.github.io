@@ -50,6 +50,104 @@
       <div class="outer">
         <section id="main">
   
+    <article id="post-def-con-ctf-qualifier-2018-round-up" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    
+      <header class="article-header">
+        
+  
+    <a class="article-title" href="/2018/05/14/def-con-ctf-qualifier-2018-round-up/">DEF CON CTF Qualifier 2018 Round-up</a>
+  
+
+      </header>
+    
+    <time class="article-date" datetime="2018-05-14T11:00:00.000Z" itemprop="datePublished">05-14-2018</time>
+    
+  </div>
+  <div class="article-inner">
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p>This is too brief to be called write-up. But I’m tired …</p>
+<h1 id="Introduction"><a href="#Introduction" class="headerlink" title="Introduction"></a>Introduction</h1><p>I’ve participated in DEF CON CTF Qualifier 2018 as a member of a certain team, ignominious 40th place. But somehow I solved 3 tasks:</p>
+<ul>
+<li>ELF Crumble</li>
+<li>babypwn1805</li>
+<li>elastic cloud compute (memory) corruption</li>
+</ul>
+<p>I write down my impressions.</p>
+<h1 id="ELF-Crumble"><a href="#ELF-Crumble" class="headerlink" title="ELF Crumble"></a>ELF Crumble</h1><p>This is a task to combine and execute 8 binary fragments correctly. I wrote damn brute-force solver for this, 脳が死んでいるので．</p>
+<h1 id="babypwn1805"><a href="#babypwn1805" class="headerlink" title="babypwn1805"></a>babypwn1805</h1><p>A blind pwn task. I accidentally found offset <code>-0x38</code> to the GOT entry of <code>read</code>. Then I wrote the probabilistic solver.</p>
+<h1 id="elastic-cloud-compute-memory-corruption"><a href="#elastic-cloud-compute-memory-corruption" class="headerlink" title="elastic cloud compute (memory) corruption"></a>elastic cloud compute (memory) corruption</h1><p>A VM escape task.</p>
+<p>We were given <code>qemu-system-x86_64</code> binary with vulnerable PCI device namely <code>ooo</code>.　Notable functions are as follows:</p>
+<table>
+<thead>
+<tr>
+<th>function</th>
+<th>description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>sub_6E61F4</code></td>
+<td>correspond to <code>ooo_mmio_write</code></td>
+</tr>
+<tr>
+<td><code>sub_6E613C</code></td>
+<td>correspond to <code>ooo_mmio_read</code></td>
+</tr>
+<tr>
+<td><code>sub_6E64A5</code></td>
+<td>invokes <code>system(&quot;cat ./flag&quot;)</code></td>
+</tr>
+</tbody>
+</table>
+<p>What matters is use-after-free vulnerability in:</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div><div class="line">22</div><div class="line">23</div><div class="line">24</div><div class="line">25</div><div class="line">26</div><div class="line">27</div><div class="line">28</div><div class="line">29</div><div class="line">30</div><div class="line">31</div><div class="line">32</div></pre></td><td class="code"><pre><div class="line"><span class="comment">//----- (00000000006E61F4) ----------------------------------------------------</span></div><div class="line"><span class="keyword">void</span> __<span class="function">fastcall <span class="title">sub_6E61F4</span><span class="params">(__int64 opaque, __int64 addr, __int64 value, <span class="keyword">unsigned</span> <span class="keyword">int</span> size)</span></span></div><div class="line">&#123;</div><div class="line">  <span class="keyword">unsigned</span> <span class="keyword">int</span> cmd; <span class="comment">// eax</span></div><div class="line">...</div><div class="line"></div><div class="line">  *(_QWORD *)&amp;n[<span class="number">4</span>] = value;</div><div class="line">  cmd = ((<span class="keyword">unsigned</span> <span class="keyword">int</span>)addr &amp; <span class="number">0xF00000</span>) &gt;&gt; <span class="number">20</span>;</div><div class="line">  <span class="keyword">switch</span> ( cmd )</div><div class="line">  &#123;</div><div class="line">    <span class="keyword">case</span> <span class="number">1u</span>:</div><div class="line">          <span class="built_in">free</span>(qword_1317940[((<span class="keyword">unsigned</span> <span class="keyword">int</span>)addr &amp; <span class="number">0xF0000</span>) &gt;&gt; <span class="number">16</span>]);</div><div class="line">          <span class="keyword">break</span>;</div><div class="line">    <span class="keyword">case</span> <span class="number">2u</span>:</div><div class="line">          v12 = ((<span class="keyword">unsigned</span> <span class="keyword">int</span>)addr &amp; <span class="number">0xF0000</span>) &gt;&gt; <span class="number">16</span>;</div><div class="line">          v8 = addr;</div><div class="line">          <span class="built_in">memcpy</span>((<span class="keyword">char</span> *)qword_1317940[v12] + (<span class="keyword">signed</span> __int16)addr, &amp;n[<span class="number">4</span>], size);</div><div class="line">          <span class="keyword">break</span>;</div><div class="line">    <span class="keyword">case</span> <span class="number">0u</span>:</div><div class="line">          idx = ((<span class="keyword">unsigned</span> <span class="keyword">int</span>)addr &amp; <span class="number">0xF0000</span>) &gt;&gt; <span class="number">16</span>;</div><div class="line">          <span class="keyword">if</span> ( idx == <span class="number">15</span> )</div><div class="line">          &#123;</div><div class="line">                <span class="keyword">for</span> ( i = <span class="number">0</span>; i &lt;= <span class="number">14</span>; ++i )</div><div class="line">                  qword_1317940[i] = <span class="built_in">malloc</span>(<span class="number">8L</span>L * *(_QWORD *)&amp;n[<span class="number">4</span>]);</div><div class="line">          &#125;</div><div class="line">          <span class="keyword">else</span></div><div class="line">          &#123;</div><div class="line">                qword_1317940[idx] = <span class="built_in">malloc</span>(<span class="number">8L</span>L * *(_QWORD *)&amp;n[<span class="number">4</span>]);</div><div class="line">          &#125;</div><div class="line">      <span class="keyword">break</span>;</div><div class="line">  &#125;</div><div class="line">&#125;</div></pre></td></tr></table></figure>
+<p>With the clue of the chunk offset on <code>0x1317940</code>, now we can overwrite <code>malloc@GOT</code> to <code>sub_6E64A5</code> by fastbin attack, in particular using <code>devmem</code>.</p>
+<p>I stayed up all night for this. I was tired but it was fun. I used these past write-ups as a reference when solving this task:</p>
+<ul>
+<li><a href="https://kitctf.de/writeups/hitb2017/babyqemu" target="_blank" rel="external">HITB GSEC 2017: babyqemu</a></li>
+<li><a href="https://blog.eadom.net/writeups/qemu-escape-vm-escape-from-0ctf-2017-finals-writeup/" target="_blank" rel="external">QEMU Escape — vm_escape from 0CTF 2017 Finals Writeup - Eadom’s Blog</a></li>
+</ul>
+<p>Thanks authors!</p>
+<h1 id="Last-Words"><a href="#Last-Words" class="headerlink" title="Last Words"></a>Last Words</h1><p>Other tasks I had wanted to solve are:</p>
+<ul>
+<li>flagsifier</li>
+<li>TechSupport</li>
+<li>smcauth</li>
+</ul>
+<p>This year DEFCON’s organizer has changed from LegitBS to OOO (Order of the-Overflow). OOO seems to have the purpose of connecting academic research and CTF. I support this philosophy, but this competition was not perfect. My impressions are summarized as follows:</p>
+<table>
+<thead>
+<tr>
+<th>Pros</th>
+<th>Cons</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Meritocratic rev/pwn. Brand-new topics i.e. blockchain, neural network, reversing of Rust binary.</td>
+<td>Many guessing tasks. Some incredible, old-fashioned tasks. In particular, sbva and ghettohackers: Throwback are quite bad.</td>
+</tr>
+</tbody>
+</table>
+<p>Anyway, I’m looking forward to that next year.</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://ntddk.github.io/2018/05/14/def-con-ctf-qualifier-2018-round-up/" data-id="cjh5009vb0000ir7t4rr4p0ks" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/exploitation/">exploitation</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/reversing/">reversing</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
     <article id="post-paper-gestalt-revisited-a-case-study-on-computer-security-conferences" class="article article-type-post" itemscope itemprop="blogPost">
   <div class="article-meta">
     
@@ -351,7 +449,7 @@
       <header class="article-header">
         
   
-    <a class="article-title" href="/2017/11/23/backward-program-slicing-with-idapython-and-triton/">Backward Program Slicing With IDAPython and Triton</a>
+    <a class="article-title" href="/2017/11/23/backward-program-slicing-with-idapython-and-triton/">Backward Program Slicing with IDAPython and Triton</a>
   
 
       </header>
@@ -368,7 +466,7 @@
 <p>Starting from a subset of a program’s behavior, slicing reduces that program to a minimal form which still produces that behavior. The reduced program, called a “slice”, is an independent program guaranteed to faithfully represent the original program within the domain of the specified subset of behavior.</p>
 </blockquote>
 <p>Kudos to Jonathan Salwan, we can easily apply backward program slicing to binary analysis process with minor modification of <a href="https://github.com/JonathanSalwan/Triton/blob/master/src/examples/python/backward_slicing.py" target="_blank" rel="external"><code>backward_slicing.py</code></a> and <a href="https://github.com/JonathanSalwan/Triton/blob/master/src/examples/python/proving_opaque_predicates.py" target="_blank" rel="external"><code>proving_opaque_predicates.py</code></a>. I wrote a simple, tiny glue between Triton and IDA Pro:</p>
-<figure class="highlight python"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div><div class="line">22</div><div class="line">23</div><div class="line">24</div><div class="line">25</div><div class="line">26</div><div class="line">27</div><div class="line">28</div><div class="line">29</div><div class="line">30</div><div class="line">31</div><div class="line">32</div><div class="line">33</div><div class="line">34</div><div class="line">35</div><div class="line">36</div><div class="line">37</div><div class="line">38</div><div class="line">39</div><div class="line">40</div><div class="line">41</div><div class="line">42</div><div class="line">43</div><div class="line">44</div><div class="line">45</div><div class="line">46</div><div class="line">47</div><div class="line">48</div><div class="line">49</div><div class="line">50</div><div class="line">51</div><div class="line">52</div><div class="line">53</div><div class="line">54</div><div class="line">55</div><div class="line">56</div><div class="line">57</div><div class="line">58</div><div class="line">59</div><div class="line">60</div><div class="line">61</div><div class="line">62</div><div class="line">63</div><div class="line">64</div><div class="line">65</div><div class="line">66</div></pre></td><td class="code"><pre><div class="line"><span class="comment">#!/usr/bin/env python</span></div><div class="line"><span class="comment">#coding: utf-8</span></div><div class="line"></div><div class="line"><span class="keyword">from</span> idc <span class="keyword">import</span> *</div><div class="line"><span class="keyword">from</span> idaapi <span class="keyword">import</span> *</div><div class="line"><span class="keyword">from</span> triton <span class="keyword">import</span> *</div><div class="line"></div><div class="line">ctx = TritonContext()</div><div class="line">regs = &#123;</div><div class="line">        <span class="string">'eax'</span>: REG.X86.EAX,</div><div class="line">        <span class="string">'ebx'</span>: REG.X86.EBX,</div><div class="line">        <span class="string">'ecx'</span>: REG.X86.ECX,</div><div class="line">        <span class="string">'edx'</span>: REG.X86.EDX,</div><div class="line">        &#125;</div><div class="line"></div><div class="line"><span class="function"><span class="keyword">def</span> <span class="title">symbolization_init</span><span class="params">()</span>:</span></div><div class="line">    Triton.convertRegisterToSymbolicVariable(Triton.registers.eax)</div><div class="line">    Triton.convertRegisterToSymbolicVariable(Triton.registers.ebx)</div><div class="line">    Triton.convertRegisterToSymbolicVariable(Triton.registers.ecx)</div><div class="line">    Triton.convertRegisterToSymbolicVariable(Triton.registers.edx)</div><div class="line">    <span class="keyword">return</span></div><div class="line"></div><div class="line"><span class="function"><span class="keyword">def</span> <span class="title">opaque_predicate_detection</span><span class="params">(pc)</span>:</span></div><div class="line">    ctx.setArchitecture(ARCH.X86)</div><div class="line">    ctx.setAstRepresentationMode(AST_REPRESENTATION.PYTHON)</div><div class="line">    symbolization_init()</div><div class="line">    ast_ctx = ctx.getAstContext()</div><div class="line"></div><div class="line">    <span class="keyword">while</span> <span class="keyword">True</span>:</div><div class="line">        instruction = Instruction()</div><div class="line">        instruction.setAddress(pc)</div><div class="line">        opcode = GetManyBytes(pc, ItemSize(pc)) <span class="comment"># Disassemble with IDA Pro</span></div><div class="line">        instruction.setOpcode(opcode)</div><div class="line"></div><div class="line">        ctx.processing(instruction) <span class="comment"># Emulate instruction without Pintool</span></div><div class="line"></div><div class="line">        <span class="keyword">for</span> se <span class="keyword">in</span> instruction.getSymbolicExpressions():</div><div class="line">            se.setComment(str(instruction))</div><div class="line"></div><div class="line">        <span class="keyword">if</span> str(instruction.getDisassembly()).split()[<span class="number">0</span>] == <span class="string">'cmp'</span>: <span class="comment"># if instruction.isCompare():</span></div><div class="line">            reg = str(instruction.getOperands()[<span class="number">0</span>]).split(<span class="string">':'</span>)[<span class="number">0</span>] <span class="comment"># Get first operand</span></div><div class="line">            <span class="keyword">if</span> reg <span class="keyword">in</span> regs:</div><div class="line">                Expr = ctx.getSymbolicRegisters()[regs[reg]]</div><div class="line">                slicing = ctx.sliceExpressions(Expr)</div><div class="line">                <span class="keyword">for</span> k, v <span class="keyword">in</span> sorted(slicing.items()):</div><div class="line">                    <span class="keyword">print</span> v.getComment()</div><div class="line">                <span class="keyword">print</span> instruction</div><div class="line">        <span class="keyword">elif</span> instruction.isBranch():</div><div class="line">            <span class="keyword">print</span> instruction</div><div class="line">            <span class="keyword">if</span> instruction.isConditionTaken():</div><div class="line">                <span class="keyword">print</span> <span class="string">'branch will taken'</span></div><div class="line">            <span class="keyword">else</span>:</div><div class="line">                <span class="keyword">print</span> <span class="string">'branch will not taken'</span></div><div class="line"></div><div class="line">            <span class="keyword">break</span></div><div class="line"></div><div class="line">        pc = NextHead(pc)</div><div class="line"></div><div class="line">    <span class="keyword">print</span> <span class="string">'-'</span> * <span class="number">50</span></div><div class="line"></div><div class="line"><span class="function"><span class="keyword">def</span> <span class="title">main</span><span class="params">()</span>:</span></div><div class="line">    ea = ScreenEA() <span class="comment"># Get address corresponding to cursor</span></div><div class="line">    opaque_predicate_detection(ea) </div><div class="line"></div><div class="line"><span class="keyword">if</span> __name__ == <span class="string">'__main__'</span>:</div><div class="line">    view = main()</div></pre></td></tr></table></figure>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div><div class="line">22</div><div class="line">23</div><div class="line">24</div><div class="line">25</div><div class="line">26</div><div class="line">27</div><div class="line">28</div><div class="line">29</div><div class="line">30</div><div class="line">31</div><div class="line">32</div><div class="line">33</div><div class="line">34</div><div class="line">35</div><div class="line">36</div><div class="line">37</div><div class="line">38</div><div class="line">39</div><div class="line">40</div><div class="line">41</div><div class="line">42</div><div class="line">43</div><div class="line">44</div><div class="line">45</div><div class="line">46</div><div class="line">47</div><div class="line">48</div><div class="line">49</div><div class="line">50</div><div class="line">51</div><div class="line">52</div><div class="line">53</div><div class="line">54</div><div class="line">55</div><div class="line">56</div><div class="line">57</div><div class="line">58</div><div class="line">59</div><div class="line">60</div><div class="line">61</div><div class="line">62</div><div class="line">63</div><div class="line">64</div><div class="line">65</div><div class="line">66</div></pre></td><td class="code"><pre><div class="line"><span class="comment">#!/usr/bin/env python</span></div><div class="line"><span class="comment">#coding: utf-8</span></div><div class="line"></div><div class="line"><span class="keyword">from</span> idc <span class="keyword">import</span> *</div><div class="line"><span class="keyword">from</span> idaapi <span class="keyword">import</span> *</div><div class="line"><span class="keyword">from</span> triton <span class="keyword">import</span> *</div><div class="line"></div><div class="line">ctx = TritonContext()</div><div class="line">regs = &#123;</div><div class="line">        <span class="string">'eax'</span>: REG.X86.EAX,</div><div class="line">        <span class="string">'ebx'</span>: REG.X86.EBX,</div><div class="line">        <span class="string">'ecx'</span>: REG.X86.ECX,</div><div class="line">        <span class="string">'edx'</span>: REG.X86.EDX,</div><div class="line">        &#125;</div><div class="line"></div><div class="line"><span class="function"><span class="keyword">def</span> <span class="title">symbolization_init</span><span class="params">()</span>:</span></div><div class="line">    ctx.convertRegisterToSymbolicVariable(ctx.registers.eax)</div><div class="line">    ctx.convertRegisterToSymbolicVariable(ctx.registers.ebx)</div><div class="line">    ctx.convertRegisterToSymbolicVariable(ctx.registers.ecx)</div><div class="line">    ctx.convertRegisterToSymbolicVariable(ctx.registers.edx)</div><div class="line">    <span class="keyword">return</span></div><div class="line"></div><div class="line"><span class="function"><span class="keyword">def</span> <span class="title">opaque_predicate_detection</span><span class="params">(pc)</span>:</span></div><div class="line">    ctx.setArchitecture(ARCH.X86)</div><div class="line">    ctx.setAstRepresentationMode(AST_REPRESENTATION.PYTHON)</div><div class="line">    symbolization_init()</div><div class="line">    ast_ctx = ctx.getAstContext()</div><div class="line"></div><div class="line">    <span class="keyword">while</span> <span class="keyword">True</span>:</div><div class="line">        instruction = Instruction()</div><div class="line">        instruction.setAddress(pc)</div><div class="line">        opcode = GetManyBytes(pc, ItemSize(pc)) <span class="comment"># Disassemble with IDA Pro</span></div><div class="line">        instruction.setOpcode(opcode)</div><div class="line"></div><div class="line">        ctx.processing(instruction) <span class="comment"># Emulate instruction without Pintool</span></div><div class="line"></div><div class="line">        <span class="keyword">for</span> se <span class="keyword">in</span> instruction.getSymbolicExpressions():</div><div class="line">            se.setComment(str(instruction))</div><div class="line"></div><div class="line">        <span class="keyword">if</span> str(instruction.getDisassembly()).split()[<span class="number">0</span>] == <span class="string">'cmp'</span>: <span class="comment"># if instruction.isCompare():</span></div><div class="line">            reg = str(instruction.getOperands()[<span class="number">0</span>]).split(<span class="string">':'</span>)[<span class="number">0</span>] <span class="comment"># Get first operand</span></div><div class="line">            <span class="keyword">if</span> reg <span class="keyword">in</span> regs:</div><div class="line">                Expr = ctx.getSymbolicRegisters()[regs[reg]]</div><div class="line">                slicing = ctx.sliceExpressions(Expr)</div><div class="line">                <span class="keyword">for</span> k, v <span class="keyword">in</span> sorted(slicing.items()):</div><div class="line">                    <span class="keyword">print</span> v.getComment()</div><div class="line">                <span class="keyword">print</span> instruction</div><div class="line">        <span class="keyword">elif</span> instruction.isBranch():</div><div class="line">            <span class="keyword">print</span> instruction</div><div class="line">            <span class="keyword">if</span> instruction.isConditionTaken():</div><div class="line">                <span class="keyword">print</span> <span class="string">'branch will taken'</span></div><div class="line">            <span class="keyword">else</span>:</div><div class="line">                <span class="keyword">print</span> <span class="string">'branch will not taken'</span></div><div class="line"></div><div class="line">            <span class="keyword">break</span></div><div class="line"></div><div class="line">        pc = NextHead(pc)</div><div class="line"></div><div class="line">    <span class="keyword">print</span> <span class="string">'-'</span> * <span class="number">50</span></div><div class="line"></div><div class="line"><span class="function"><span class="keyword">def</span> <span class="title">main</span><span class="params">()</span>:</span></div><div class="line">    ea = ScreenEA() <span class="comment"># Get address corresponding to cursor</span></div><div class="line">    opaque_predicate_detection(ea) </div><div class="line"></div><div class="line"><span class="keyword">if</span> __name__ == <span class="string">'__main__'</span>:</div><div class="line">    view = main()</div></pre></td></tr></table></figure>
 <h1 id="Showcase"><a href="#Showcase" class="headerlink" title="Showcase"></a>Showcase</h1><p>The snippet extracts subset of program which is relevant to branch condition. We can run this from <code>File -&gt; Script file</code> in IDA Pro menu.</p>
 <h2 id="Conditional-Branch"><a href="#Conditional-Branch" class="headerlink" title="Conditional Branch"></a>Conditional Branch</h2><figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div></pre></td><td class="code"><pre><div class="line">.text:004074DD     loc_4074DD:</div><div class="line">.text:004074DD 040 mov     dword ptr [edi+18h], 0Ah</div><div class="line">.text:004074E4 040 mov     dword ptr [edi+14h], 0</div><div class="line">.text:004074EB 040 mov     word ptr [edi+8], 8235h</div><div class="line">.text:004074F1 040 mov     dword ptr [edi+0Ch], 3E8h</div><div class="line">.text:004074F8 040 mov     dword ptr [edi+10h], 0BB8h</div><div class="line">.text:004074FF 040 sub     esp, 4</div><div class="line">.text:00407502 044 mov     [esp+40h+Memory], 0B8h ; Size        ; cursor</div><div class="line">.text:00407509 044 call    ??2@YAPAXI@Z    ; operator new(uint)</div><div class="line">.text:0040750E 044 add     esp, 4</div><div class="line">.text:00407511 040 mov     [esi+18h], eax</div><div class="line">.text:00407514 040 mov     eax, dword_591EE4</div><div class="line">.text:00407519 040 mov     ecx, dword_591EE0</div><div class="line">.text:0040751F 040 imul    eax, eax</div><div class="line">.text:00407522 040 imul    edx, eax, 7</div><div class="line">.text:00407525 040 dec     edx</div><div class="line">.text:00407526 040 mov     eax, ecx</div><div class="line">.text:00407528 040 imul    eax, eax</div><div class="line">.text:0040752B 040 cmp     edx, eax</div><div class="line">.text:0040752D 040 jz      short loc_407538</div></pre></td></tr></table></figure>
 <p>becomes:</p>
@@ -1356,138 +1454,6 @@
 
 
   
-    <article id="post-kdd-cup-99-data" class="article article-type-post" itemscope itemprop="blogPost">
-  <div class="article-meta">
-    
-      <header class="article-header">
-        
-  
-    <a class="article-title" href="/2016/11/23/kdd-cup-99-data/">KDD Cup 99 Dataおぼえがき</a>
-  
-
-      </header>
-    
-    <time class="article-date" datetime="2016-11-22T21:50:00.000Z" itemprop="datePublished">11-23-2016</time>
-    
-  </div>
-  <div class="article-inner">
-    <div class="article-entry" itemprop="articleBody">
-      
-        <h1 id="はじめに"><a href="#はじめに" class="headerlink" title="はじめに"></a>はじめに</h1><p>　サイバーセキュリティに携わる者なら一度くらいはKDD Cup 99 Dataなるデータセットの名を耳にしたことがあるのではないだろうか．KDD Cupは国際会議SIGKDDによるデータマイニングのコンペで，KDD Cup 99 Dataはそのためのネットワーク侵入検知にまつわるデータ．正常通信と攻撃を分類するタスクが与えられた．<br>　見てみよう．</p>
-<h1 id="データセットの構成"><a href="#データセットの構成" class="headerlink" title="データセットの構成"></a>データセットの構成</h1><p>　データは現在，カリフォルニア大学アーバイン校によって<a href="http://archive.ics.uci.edu/ml/databases/kddcup99/kddcup99.html" target="_blank" rel="external">配布</a>されている．<br>　それぞれのファイル内容は下記の通り：</p>
-<table>
-<thead>
-<tr>
-<th>ファイル名</th>
-<th>ファイル内容</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>kddcup.data</td>
-<td>フルデータ</td>
-</tr>
-<tr>
-<td>kddcup.data_10_percent</td>
-<td>フルデータの10%を抽出した学習用データ</td>
-</tr>
-<tr>
-<td>corrected</td>
-<td>正常・攻撃のラベル付けがなされた評価用データ</td>
-</tr>
-<tr>
-<td>kddcup.testdata.unlabeled</td>
-<td>正常・攻撃のラベル付けがなされていないデータ</td>
-</tr>
-<tr>
-<td>kddcup.testdata.unlabeled_10_percent</td>
-<td>正常・攻撃のラベル付けがなされていないデータの10%サブセット</td>
-</tr>
-<tr>
-<td>kddcup.newtestdata_10_percent_unlabeled</td>
-<td>正常・攻撃のラベル付けがなされていないデータの10%サブセット</td>
-</tr>
-</tbody>
-</table>
-<p>　ファイルの中身はこんな調子：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div></pre></td><td class="code"><pre><div class="line">$ wget -r -l 1 http://kdd.ics.uci.edu/databases/kddcup99/</div><div class="line">$ gunzip -r kdd.ics.uci.edu/kddcup99</div><div class="line">$ ln -s kdd.ics.uci.edu/databases/kddcup99 kddcup99</div><div class="line">$ head -5 kddcup99/kddcup.data</div><div class="line">0,tcp,http,SF,215,45076,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,1,1,0.00,0.00,0.00,0.00,1.00,0.00,0.00,0,0,0.00,0.00,0.00,0.00,0.00,0.00,0.00,0.00,normal.</div><div class="line">0,tcp,http,SF,162,4528,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,2,2,0.00,0.00,0.00,0.00,1.00,0.00,0.00,1,1,1.00,0.00,1.00,0.00,0.00,0.00,0.00,0.00,normal.</div><div class="line">0,tcp,http,SF,236,1228,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,1,1,0.00,0.00,0.00,0.00,1.00,0.00,0.00,2,2,1.00,0.00,0.50,0.00,0.00,0.00,0.00,0.00,normal.</div><div class="line">0,tcp,http,SF,233,2032,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,2,2,0.00,0.00,0.00,0.00,1.00,0.00,0.00,3,3,1.00,0.00,0.33,0.00,0.00,0.00,0.00,0.00,normal.</div><div class="line">0,tcp,http,SF,239,486,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,3,3,0.00,0.00,0.00,0.00,1.00,0.00,0.00,4,4,1.00,0.00,0.25,0.00,0.00,0.00,0.00,0.00,normal.</div></pre></td></tr></table></figure>
-<p>　これは，ファイルの特徴をカンマ区切りで列挙したもの．列に特徴名を振れば，pandas（や，scikit-learn）での扱いも楽．</p>
-<figure class="highlight python"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div></pre></td><td class="code"><pre><div class="line"><span class="meta">&gt;&gt;&gt; </span><span class="keyword">import</span> pandas</div><div class="line"><span class="meta">&gt;&gt;&gt; </span></div><div class="line"><span class="meta">&gt;&gt;&gt; </span>col_names = [<span class="string">"duration"</span>,<span class="string">"protocol_type"</span>,<span class="string">"service"</span>,<span class="string">"flag"</span>,<span class="string">"src_bytes"</span>,</div><div class="line"><span class="meta">... </span>   <span class="string">"dst_bytes"</span>,<span class="string">"land"</span>,<span class="string">"wrong_fragment"</span>,<span class="string">"urgent"</span>,<span class="string">"hot"</span>,<span class="string">"num_failed_logins"</span>,</div><div class="line"><span class="meta">... </span>   <span class="string">"logged_in"</span>,<span class="string">"num_compromised"</span>,<span class="string">"root_shell"</span>,<span class="string">"su_attempted"</span>,<span class="string">"num_root"</span>,</div><div class="line"><span class="meta">... </span>   <span class="string">"num_file_creations"</span>,<span class="string">"num_shells"</span>,<span class="string">"num_access_files"</span>,<span class="string">"num_outbound_cmds"</span>,</div><div class="line"><span class="meta">... </span>   <span class="string">"is_host_login"</span>,<span class="string">"is_guest_login"</span>,<span class="string">"count"</span>,<span class="string">"srv_count"</span>,<span class="string">"serror_rate"</span>,</div><div class="line"><span class="meta">... </span>   <span class="string">"srv_serror_rate"</span>,<span class="string">"rerror_rate"</span>,<span class="string">"srv_rerror_rate"</span>,<span class="string">"same_srv_rate"</span>,</div><div class="line"><span class="meta">... </span>   <span class="string">"diff_srv_rate"</span>,<span class="string">"srv_diff_host_rate"</span>,<span class="string">"dst_host_count"</span>,<span class="string">"dst_host_srv_count"</span>,</div><div class="line"><span class="meta">... </span>   <span class="string">"dst_host_same_srv_rate"</span>,<span class="string">"dst_host_diff_srv_rate"</span>,<span class="string">"dst_host_same_src_port_rate"</span>,</div><div class="line"><span class="meta">... </span>   <span class="string">"dst_host_srv_diff_host_rate"</span>,<span class="string">"dst_host_serror_rate"</span>,<span class="string">"dst_host_srv_serror_rate"</span>,</div><div class="line"><span class="meta">... </span>   <span class="string">"dst_host_rerror_rate"</span>,<span class="string">"dst_host_srv_rerror_rate"</span>,<span class="string">"label"</span>]</div><div class="line"><span class="meta">&gt;&gt;&gt; </span></div><div class="line"><span class="meta">&gt;&gt;&gt; </span>kdd_data_10percent = pandas.read_csv(<span class="string">"kddcup99/kddcup.data_10_percent"</span>, header=<span class="keyword">None</span>, names = col_names)</div></pre></td></tr></table></figure>
-<p>　学習用データは通常データ，22種類の攻撃データの計23種類のデータからなる．評価用データは，学習用データに加えて17種類の攻撃データを含んでいる．これらの攻撃は4つのクラスに大別される：</p>
-<table>
-<thead>
-<tr>
-<th>クラス</th>
-<th>説明</th>
-<th>サブクラス</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Normal</td>
-<td>通常のコネクション</td>
-<td>normal</td>
-</tr>
-<tr>
-<td>Probe</td>
-<td>攻撃対象の探索・調査</td>
-<td>ipsweep, nmap, postsweep, satan, mscan, saint</td>
-</tr>
-<tr>
-<td>DoS</td>
-<td>DoS攻撃</td>
-<td>back, land, neptune, pod, smurf, teardrop, mailbomb, apache2, processtable, udpstorm</td>
-</tr>
-<tr>
-<td>U2R</td>
-<td>ローカルマシンからrootへの許可されていないアクセス</td>
-<td>buffer.overflow, localmodule, perl, rootkit, httptunnel, xterm, ps, worm</td>
-</tr>
-<tr>
-<td>R2L</td>
-<td>リモートマシンからの許可されていないアクセス</td>
-<td>ftp_write, guess_passwd, imap, multihop, phf, spy, warezclient, warezmaster, snmpgetattack, snmpguess, xsnoop, named, sendmail, sqlattack, xlock</td>
-</tr>
-</tbody>
-</table>
-<p>　サブクラス名から古臭さがにじんでいるが，データセットは近年の研究でも広く用いられているものだ．まあ単純に同規模の新しいデータセットがないからだろう．<br>　だいたいの論文は<code>kddcup.data_10_percent</code>を用いて学習し，<code>corrected</code>を用いて評価するという流れになっている．<br>　ところで，このデータセットに付随したタスクは正常通信と攻撃の二値（まあ多値分類になりはするが）分類だが，これは異常検知とどう違うのだろうか．<a href="https://www.amazon.co.jp/dp/B018K6C99U/" target="_blank" rel="external">ものの本</a>によると，二値分類はベイズ決定則（条件付き分布<span>$p(x|y=1)p(y=1)$</span><!-- Has MathJax -->と<span>$p(x|y=0)p(y=0)$</span><!-- Has MathJax -->の比が1を超えたら異常と判定），異常検知はネイマン・ピアソン決定則（<span>$p(x|y=1)$</span><!-- Has MathJax -->と<span>$p(x|y=0)$</span><!-- Has MathJax -->の比がある閾値を超えたら異常と判定）にもとづいている．ここで，異常検知問題ではほとんどつねに<span>$p(y=1)&lt;&lt;p(y=0)$</span><!-- Has MathJax -->であるため，ベイズ決定則は異常判定を強く抑制する．そういうわけで，標本の割合を吟味して二値分類器の閾値をスライドさせていくことが重要となってくるらしい．</p>
-<h1 id="データセット形式への変換"><a href="#データセット形式への変換" class="headerlink" title="データセット形式への変換"></a>データセット形式への変換</h1><p>　<a href="https://github.com/inigoperona/tcpdump2gureKDDCup99" target="_blank" rel="external">tcpdump2gureKDDCup99</a>は，<a href="https://github.com/bro/bro" target="_blank" rel="external">Bro IDS</a>のプラグインとして，おなじみのpcapファイルをKDD Cup 99 Dataのフォーマットに変換してくれる．Bro IDSはSnortには及ばずともそこそこ由緒あるIDSで，GitHubリポジトリは<a href="https://code.gov/#/explore-code/agencies/DOE" target="_blank" rel="external">米国政府公式のリポジトリリスト</a>にも掲載されている．<br>　まずBro IDSをインストールする．</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div></pre></td><td class="code"><pre><div class="line">$ sudo apt-get install cmake make gcc g++ flex bison libpcap-dev libssl-dev python-dev swig zlib1g-dev</div><div class="line">$ git clone --recursive git://git.bro.org/bro</div><div class="line">$ cd bro</div><div class="line">$ ./configure</div><div class="line">$ make -j4</div><div class="line">$ sudo make install</div></pre></td></tr></table></figure>
-<p>　私はpyenvからインストールしたPython 2.7.11を常用しているのだが，Bro IDSをmakeするには<code>CFLAGS=&quot;-fPIC&quot; pyenv install 2.7.11</code>のように共有ライブラリ用のオプションをつけてPythonを再インストールする必要があった．<br>　さてWireshark公式が公開している<a href="https://wiki.wireshark.org/SampleCaptures" target="_blank" rel="external">サンプルデータ</a>をKDD Cup 99 Dataの形式に変換してみる．</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div></pre></td><td class="code"><pre><div class="line">$ cd</div><div class="line">$ git clone git@github.com:inigoperona/tcpdump2gureKDDCup99</div><div class="line">$ gcc tcpdump2gureKDDCup99/trafAld.c -o tcpdump2gureKDDCup99/trafAld.out</div><div class="line">$ wget &quot;https://wiki.wireshark.org/SampleCaptures?action=AttachFile&amp;do=get&amp;target=zlip-1.pcap&quot; -O zlip-1.pcap</div><div class="line">$ bro -r zlip-1.pcap tcpdump2gureKDDCup99/darpa2gurekddcup.bro &gt; conn.list</div><div class="line">$ cat conn.list</div><div class="line">1 955453631.643199 1024 53 10.0.0.1 146.84.28.88 0.000000 udp 53 S0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0</div><div class="line">$ sort -n conn.list &gt; conn_sort.list</div><div class="line">$ tcpdump2gureKDDCup99/trafAld.out conn_sort.list</div><div class="line">$ cat trafAld.list</div><div class="line">1 955453631.643199 1024 53 10.0.0.1 146.84.28.88 0.000000 udp 53 S0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0 0 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000</div></pre></td></tr></table></figure>
-<p>　pcapファイルをPythonで分析したければそのまま（scapyや）pandasに突っ込むだろうけど，KDD Cup 99 Dataと比較したい場合には使えるかも．</p>
-<h1 id="おわりに"><a href="#おわりに" class="headerlink" title="おわりに"></a>おわりに</h1><p>　名前は聞くけど触ったことないなということで．やらなければならない作業が進まないとこういう現実逃避が捗る捗る．</p>
-<h1 id="参考文献"><a href="#参考文献" class="headerlink" title="参考文献"></a>参考文献</h1><ul>
-<li>H. G. Kayacık, et al. <a href="https://web.cs.dal.ca/~zincir/bildiri/pst05-gnm.pdf" target="_blank" rel="external">Selecting Features for Intrusion Detection: A Feature Relevance Analysis on KDD 99 Intrusion Detection Datasets[PDF]</a>. PST. 2005.<ul>
-<li>この特徴に注意しようねという論文</li>
-</ul>
-</li>
-<li>高橋，et al. <a href="https://ipsj.ixsq.nii.ac.jp/ej/index.php?active_action=repository_view_main_item_detail&amp;page_id=13&amp;block_id=8&amp;item_id=146854&amp;item_no=1" target="_blank" rel="external">KDD CUP 99 Data Set を用いた異なる学習データによる機械学習アルゴリズムの評価</a>．CSS. pp. 457-464. 2015.<ul>
-<li>WekaでランダムフォレストとSVMを試した論文．日本語で読めて便利</li>
-</ul>
-</li>
-<li><a href="https://github.com/jadianes/kdd-cup-99-spark" target="_blank" rel="external">jadianes/kdd-cup-99-spark: PySpark solution to the KDDCup9</a><ul>
-<li>iPython Notebookからscikit-learnとPySparkを用いてKDD Cup 99 Dataを分析するデモが試せて便利</li>
-</ul>
-</li>
-</ul>
-<p>　はい．</p>
-
-      
-    </div>
-    <footer class="article-footer">
-      <a data-url="http://ntddk.github.io/2016/11/23/kdd-cup-99-data/" data-id="cjbiq70s7000y8w7tlietr65k" class="article-share-link">Share</a>
-      
-      
-  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/machine-learning/">machine learning</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/network/">network</a></li></ul>
-
-    </footer>
-  </div>
-  
-</article>
-
-
-  
   
     <nav id="page-nav">
       <span class="page-number current">1</span><a class="page-number" href="/archives/page/2/">2</a><a class="page-number" href="/archives/page/3/">3</a><a class="page-number" href="/archives/page/4/">4</a><a class="extend next" rel="next" href="/archives/page/2/">Next &raquo;</a>
@@ -1500,7 +1466,7 @@
   
   <div class="outer">
     <div id="footer-info" class="inner">
-      &copy; 2017 ntddk<br>
+      &copy; 2018 ntddk<br>
       <a href="https://github.com/ntddk/hexo-theme-jathena" target="_blank">JAthena</a> by <a href="https://ntddk.github.io" target="_blank">ntddk</a> | Powered by <a href="https://hexo.io/" target="_blank">Hexo</a>
     </div>
   </div>

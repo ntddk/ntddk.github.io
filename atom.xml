@@ -5,7 +5,7 @@
   <link href="/atom.xml" rel="self"/>
   
   <link href="http://ntddk.github.io/"/>
-  <updated>2017-12-23T15:12:33.787Z</updated>
+  <updated>2018-05-17T12:35:52.499Z</updated>
   <id>http://ntddk.github.io/</id>
   
   <author>
@@ -14,6 +14,94 @@
   </author>
   
   <generator uri="http://hexo.io/">Hexo</generator>
+  
+  <entry>
+    <title>DEF CON CTF Qualifier 2018 Round-up</title>
+    <link href="http://ntddk.github.io/2018/05/14/def-con-ctf-qualifier-2018-round-up/"/>
+    <id>http://ntddk.github.io/2018/05/14/def-con-ctf-qualifier-2018-round-up/</id>
+    <published>2018-05-14T11:00:00.000Z</published>
+    <updated>2018-05-17T12:35:52.499Z</updated>
+    
+    <content type="html"><![CDATA[<p>This is too brief to be called write-up. But I’m tired …</p>
+<h1 id="Introduction"><a href="#Introduction" class="headerlink" title="Introduction"></a>Introduction</h1><p>I’ve participated in DEF CON CTF Qualifier 2018 as a member of a certain team, ignominious 40th place. But somehow I solved 3 tasks:</p>
+<ul>
+<li>ELF Crumble</li>
+<li>babypwn1805</li>
+<li>elastic cloud compute (memory) corruption</li>
+</ul>
+<p>I write down my impressions.</p>
+<h1 id="ELF-Crumble"><a href="#ELF-Crumble" class="headerlink" title="ELF Crumble"></a>ELF Crumble</h1><p>This is a task to combine and execute 8 binary fragments correctly. I wrote damn brute-force solver for this, 脳が死んでいるので．</p>
+<h1 id="babypwn1805"><a href="#babypwn1805" class="headerlink" title="babypwn1805"></a>babypwn1805</h1><p>A blind pwn task. I accidentally found offset <code>-0x38</code> to the GOT entry of <code>read</code>. Then I wrote the probabilistic solver.</p>
+<h1 id="elastic-cloud-compute-memory-corruption"><a href="#elastic-cloud-compute-memory-corruption" class="headerlink" title="elastic cloud compute (memory) corruption"></a>elastic cloud compute (memory) corruption</h1><p>A VM escape task.</p>
+<p>We were given <code>qemu-system-x86_64</code> binary with vulnerable PCI device namely <code>ooo</code>.　Notable functions are as follows:</p>
+<table>
+<thead>
+<tr>
+<th>function</th>
+<th>description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>sub_6E61F4</code></td>
+<td>correspond to <code>ooo_mmio_write</code></td>
+</tr>
+<tr>
+<td><code>sub_6E613C</code></td>
+<td>correspond to <code>ooo_mmio_read</code></td>
+</tr>
+<tr>
+<td><code>sub_6E64A5</code></td>
+<td>invokes <code>system(&quot;cat ./flag&quot;)</code></td>
+</tr>
+</tbody>
+</table>
+<p>What matters is use-after-free vulnerability in:</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div><div class="line">22</div><div class="line">23</div><div class="line">24</div><div class="line">25</div><div class="line">26</div><div class="line">27</div><div class="line">28</div><div class="line">29</div><div class="line">30</div><div class="line">31</div><div class="line">32</div></pre></td><td class="code"><pre><div class="line"><span class="comment">//----- (00000000006E61F4) ----------------------------------------------------</span></div><div class="line"><span class="keyword">void</span> __<span class="function">fastcall <span class="title">sub_6E61F4</span><span class="params">(__int64 opaque, __int64 addr, __int64 value, <span class="keyword">unsigned</span> <span class="keyword">int</span> size)</span></span></div><div class="line">&#123;</div><div class="line">  <span class="keyword">unsigned</span> <span class="keyword">int</span> cmd; <span class="comment">// eax</span></div><div class="line">...</div><div class="line"></div><div class="line">  *(_QWORD *)&amp;n[<span class="number">4</span>] = value;</div><div class="line">  cmd = ((<span class="keyword">unsigned</span> <span class="keyword">int</span>)addr &amp; <span class="number">0xF00000</span>) &gt;&gt; <span class="number">20</span>;</div><div class="line">  <span class="keyword">switch</span> ( cmd )</div><div class="line">  &#123;</div><div class="line">    <span class="keyword">case</span> <span class="number">1u</span>:</div><div class="line">          <span class="built_in">free</span>(qword_1317940[((<span class="keyword">unsigned</span> <span class="keyword">int</span>)addr &amp; <span class="number">0xF0000</span>) &gt;&gt; <span class="number">16</span>]);</div><div class="line">          <span class="keyword">break</span>;</div><div class="line">    <span class="keyword">case</span> <span class="number">2u</span>:</div><div class="line">          v12 = ((<span class="keyword">unsigned</span> <span class="keyword">int</span>)addr &amp; <span class="number">0xF0000</span>) &gt;&gt; <span class="number">16</span>;</div><div class="line">          v8 = addr;</div><div class="line">          <span class="built_in">memcpy</span>((<span class="keyword">char</span> *)qword_1317940[v12] + (<span class="keyword">signed</span> __int16)addr, &amp;n[<span class="number">4</span>], size);</div><div class="line">          <span class="keyword">break</span>;</div><div class="line">    <span class="keyword">case</span> <span class="number">0u</span>:</div><div class="line">          idx = ((<span class="keyword">unsigned</span> <span class="keyword">int</span>)addr &amp; <span class="number">0xF0000</span>) &gt;&gt; <span class="number">16</span>;</div><div class="line">          <span class="keyword">if</span> ( idx == <span class="number">15</span> )</div><div class="line">          &#123;</div><div class="line">                <span class="keyword">for</span> ( i = <span class="number">0</span>; i &lt;= <span class="number">14</span>; ++i )</div><div class="line">                  qword_1317940[i] = <span class="built_in">malloc</span>(<span class="number">8L</span>L * *(_QWORD *)&amp;n[<span class="number">4</span>]);</div><div class="line">          &#125;</div><div class="line">          <span class="keyword">else</span></div><div class="line">          &#123;</div><div class="line">                qword_1317940[idx] = <span class="built_in">malloc</span>(<span class="number">8L</span>L * *(_QWORD *)&amp;n[<span class="number">4</span>]);</div><div class="line">          &#125;</div><div class="line">      <span class="keyword">break</span>;</div><div class="line">  &#125;</div><div class="line">&#125;</div></pre></td></tr></table></figure>
+<p>With the clue of the chunk offset on <code>0x1317940</code>, now we can overwrite <code>malloc@GOT</code> to <code>sub_6E64A5</code> by fastbin attack, in particular using <code>devmem</code>.</p>
+<p>I stayed up all night for this. I was tired but it was fun. I used these past write-ups as a reference when solving this task:</p>
+<ul>
+<li><a href="https://kitctf.de/writeups/hitb2017/babyqemu" target="_blank" rel="external">HITB GSEC 2017: babyqemu</a></li>
+<li><a href="https://blog.eadom.net/writeups/qemu-escape-vm-escape-from-0ctf-2017-finals-writeup/" target="_blank" rel="external">QEMU Escape — vm_escape from 0CTF 2017 Finals Writeup - Eadom’s Blog</a></li>
+</ul>
+<p>Thanks authors!</p>
+<h1 id="Last-Words"><a href="#Last-Words" class="headerlink" title="Last Words"></a>Last Words</h1><p>Other tasks I had wanted to solve are:</p>
+<ul>
+<li>flagsifier</li>
+<li>TechSupport</li>
+<li>smcauth</li>
+</ul>
+<p>This year DEFCON’s organizer has changed from LegitBS to OOO (Order of the-Overflow). OOO seems to have the purpose of connecting academic research and CTF. I support this philosophy, but this competition was not perfect. My impressions are summarized as follows:</p>
+<table>
+<thead>
+<tr>
+<th>Pros</th>
+<th>Cons</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Meritocratic rev/pwn. Brand-new topics i.e. blockchain, neural network, reversing of Rust binary.</td>
+<td>Many guessing tasks. Some incredible, old-fashioned tasks. In particular, sbva and ghettohackers: Throwback are quite bad.</td>
+</tr>
+</tbody>
+</table>
+<p>Anyway, I’m looking forward to that next year.</p>
+]]></content>
+    
+    <summary type="html">
+    
+      &lt;p&gt;This is too brief to be called write-up. But I’m tired …&lt;/p&gt;
+&lt;h1 id=&quot;Introduction&quot;&gt;&lt;a href=&quot;#Introduction&quot; class=&quot;headerlink&quot; title=&quot;Intr
+    
+    </summary>
+    
+    
+      <category term="reversing" scheme="http://ntddk.github.io/tags/reversing/"/>
+    
+      <category term="exploitation" scheme="http://ntddk.github.io/tags/exploitation/"/>
+    
+  </entry>
   
   <entry>
     <title>Paper Gestalt Revisited: A Case Study on Computer Security Conferences</title>
@@ -279,11 +367,11 @@
   </entry>
   
   <entry>
-    <title>Backward Program Slicing With IDAPython and Triton</title>
+    <title>Backward Program Slicing with IDAPython and Triton</title>
     <link href="http://ntddk.github.io/2017/11/23/backward-program-slicing-with-idapython-and-triton/"/>
     <id>http://ntddk.github.io/2017/11/23/backward-program-slicing-with-idapython-and-triton/</id>
     <published>2017-11-22T16:30:00.000Z</published>
-    <updated>2017-11-22T16:30:19.537Z</updated>
+    <updated>2018-05-17T07:56:17.513Z</updated>
     
     <content type="html"><![CDATA[<h1 id="Introduction"><a href="#Introduction" class="headerlink" title="Introduction"></a>Introduction</h1><p>As you know, IDAPython is quite useful. And <a href="https://github.com/JonathanSalwan/Triton" target="_blank" rel="external">Triton</a> concolic execution engine has python binding. Then… why not integrate them? I tried to stand on the shoulders of giants.</p>
 <h1 id="Backward-Program-Slicing"><a href="#Backward-Program-Slicing" class="headerlink" title="Backward Program Slicing"></a>Backward Program Slicing</h1><p>Roughly speaking, program slicing is a method to extract subset of program which is relevant to given statement. Here is an excerpt from <a href="https://dl.acm.org/citation.cfm?id=802557" target="_blank" rel="external">M. Weiser. ICSE’81</a>:</p>
@@ -291,7 +379,7 @@
 <p>Starting from a subset of a program’s behavior, slicing reduces that program to a minimal form which still produces that behavior. The reduced program, called a “slice”, is an independent program guaranteed to faithfully represent the original program within the domain of the specified subset of behavior.</p>
 </blockquote>
 <p>Kudos to Jonathan Salwan, we can easily apply backward program slicing to binary analysis process with minor modification of <a href="https://github.com/JonathanSalwan/Triton/blob/master/src/examples/python/backward_slicing.py" target="_blank" rel="external"><code>backward_slicing.py</code></a> and <a href="https://github.com/JonathanSalwan/Triton/blob/master/src/examples/python/proving_opaque_predicates.py" target="_blank" rel="external"><code>proving_opaque_predicates.py</code></a>. I wrote a simple, tiny glue between Triton and IDA Pro:</p>
-<figure class="highlight python"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div><div class="line">22</div><div class="line">23</div><div class="line">24</div><div class="line">25</div><div class="line">26</div><div class="line">27</div><div class="line">28</div><div class="line">29</div><div class="line">30</div><div class="line">31</div><div class="line">32</div><div class="line">33</div><div class="line">34</div><div class="line">35</div><div class="line">36</div><div class="line">37</div><div class="line">38</div><div class="line">39</div><div class="line">40</div><div class="line">41</div><div class="line">42</div><div class="line">43</div><div class="line">44</div><div class="line">45</div><div class="line">46</div><div class="line">47</div><div class="line">48</div><div class="line">49</div><div class="line">50</div><div class="line">51</div><div class="line">52</div><div class="line">53</div><div class="line">54</div><div class="line">55</div><div class="line">56</div><div class="line">57</div><div class="line">58</div><div class="line">59</div><div class="line">60</div><div class="line">61</div><div class="line">62</div><div class="line">63</div><div class="line">64</div><div class="line">65</div><div class="line">66</div></pre></td><td class="code"><pre><div class="line"><span class="comment">#!/usr/bin/env python</span></div><div class="line"><span class="comment">#coding: utf-8</span></div><div class="line"></div><div class="line"><span class="keyword">from</span> idc <span class="keyword">import</span> *</div><div class="line"><span class="keyword">from</span> idaapi <span class="keyword">import</span> *</div><div class="line"><span class="keyword">from</span> triton <span class="keyword">import</span> *</div><div class="line"></div><div class="line">ctx = TritonContext()</div><div class="line">regs = &#123;</div><div class="line">        <span class="string">'eax'</span>: REG.X86.EAX,</div><div class="line">        <span class="string">'ebx'</span>: REG.X86.EBX,</div><div class="line">        <span class="string">'ecx'</span>: REG.X86.ECX,</div><div class="line">        <span class="string">'edx'</span>: REG.X86.EDX,</div><div class="line">        &#125;</div><div class="line"></div><div class="line"><span class="function"><span class="keyword">def</span> <span class="title">symbolization_init</span><span class="params">()</span>:</span></div><div class="line">    Triton.convertRegisterToSymbolicVariable(Triton.registers.eax)</div><div class="line">    Triton.convertRegisterToSymbolicVariable(Triton.registers.ebx)</div><div class="line">    Triton.convertRegisterToSymbolicVariable(Triton.registers.ecx)</div><div class="line">    Triton.convertRegisterToSymbolicVariable(Triton.registers.edx)</div><div class="line">    <span class="keyword">return</span></div><div class="line"></div><div class="line"><span class="function"><span class="keyword">def</span> <span class="title">opaque_predicate_detection</span><span class="params">(pc)</span>:</span></div><div class="line">    ctx.setArchitecture(ARCH.X86)</div><div class="line">    ctx.setAstRepresentationMode(AST_REPRESENTATION.PYTHON)</div><div class="line">    symbolization_init()</div><div class="line">    ast_ctx = ctx.getAstContext()</div><div class="line"></div><div class="line">    <span class="keyword">while</span> <span class="keyword">True</span>:</div><div class="line">        instruction = Instruction()</div><div class="line">        instruction.setAddress(pc)</div><div class="line">        opcode = GetManyBytes(pc, ItemSize(pc)) <span class="comment"># Disassemble with IDA Pro</span></div><div class="line">        instruction.setOpcode(opcode)</div><div class="line"></div><div class="line">        ctx.processing(instruction) <span class="comment"># Emulate instruction without Pintool</span></div><div class="line"></div><div class="line">        <span class="keyword">for</span> se <span class="keyword">in</span> instruction.getSymbolicExpressions():</div><div class="line">            se.setComment(str(instruction))</div><div class="line"></div><div class="line">        <span class="keyword">if</span> str(instruction.getDisassembly()).split()[<span class="number">0</span>] == <span class="string">'cmp'</span>: <span class="comment"># if instruction.isCompare():</span></div><div class="line">            reg = str(instruction.getOperands()[<span class="number">0</span>]).split(<span class="string">':'</span>)[<span class="number">0</span>] <span class="comment"># Get first operand</span></div><div class="line">            <span class="keyword">if</span> reg <span class="keyword">in</span> regs:</div><div class="line">                Expr = ctx.getSymbolicRegisters()[regs[reg]]</div><div class="line">                slicing = ctx.sliceExpressions(Expr)</div><div class="line">                <span class="keyword">for</span> k, v <span class="keyword">in</span> sorted(slicing.items()):</div><div class="line">                    <span class="keyword">print</span> v.getComment()</div><div class="line">                <span class="keyword">print</span> instruction</div><div class="line">        <span class="keyword">elif</span> instruction.isBranch():</div><div class="line">            <span class="keyword">print</span> instruction</div><div class="line">            <span class="keyword">if</span> instruction.isConditionTaken():</div><div class="line">                <span class="keyword">print</span> <span class="string">'branch will taken'</span></div><div class="line">            <span class="keyword">else</span>:</div><div class="line">                <span class="keyword">print</span> <span class="string">'branch will not taken'</span></div><div class="line"></div><div class="line">            <span class="keyword">break</span></div><div class="line"></div><div class="line">        pc = NextHead(pc)</div><div class="line"></div><div class="line">    <span class="keyword">print</span> <span class="string">'-'</span> * <span class="number">50</span></div><div class="line"></div><div class="line"><span class="function"><span class="keyword">def</span> <span class="title">main</span><span class="params">()</span>:</span></div><div class="line">    ea = ScreenEA() <span class="comment"># Get address corresponding to cursor</span></div><div class="line">    opaque_predicate_detection(ea) </div><div class="line"></div><div class="line"><span class="keyword">if</span> __name__ == <span class="string">'__main__'</span>:</div><div class="line">    view = main()</div></pre></td></tr></table></figure>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div><div class="line">22</div><div class="line">23</div><div class="line">24</div><div class="line">25</div><div class="line">26</div><div class="line">27</div><div class="line">28</div><div class="line">29</div><div class="line">30</div><div class="line">31</div><div class="line">32</div><div class="line">33</div><div class="line">34</div><div class="line">35</div><div class="line">36</div><div class="line">37</div><div class="line">38</div><div class="line">39</div><div class="line">40</div><div class="line">41</div><div class="line">42</div><div class="line">43</div><div class="line">44</div><div class="line">45</div><div class="line">46</div><div class="line">47</div><div class="line">48</div><div class="line">49</div><div class="line">50</div><div class="line">51</div><div class="line">52</div><div class="line">53</div><div class="line">54</div><div class="line">55</div><div class="line">56</div><div class="line">57</div><div class="line">58</div><div class="line">59</div><div class="line">60</div><div class="line">61</div><div class="line">62</div><div class="line">63</div><div class="line">64</div><div class="line">65</div><div class="line">66</div></pre></td><td class="code"><pre><div class="line"><span class="comment">#!/usr/bin/env python</span></div><div class="line"><span class="comment">#coding: utf-8</span></div><div class="line"></div><div class="line"><span class="keyword">from</span> idc <span class="keyword">import</span> *</div><div class="line"><span class="keyword">from</span> idaapi <span class="keyword">import</span> *</div><div class="line"><span class="keyword">from</span> triton <span class="keyword">import</span> *</div><div class="line"></div><div class="line">ctx = TritonContext()</div><div class="line">regs = &#123;</div><div class="line">        <span class="string">'eax'</span>: REG.X86.EAX,</div><div class="line">        <span class="string">'ebx'</span>: REG.X86.EBX,</div><div class="line">        <span class="string">'ecx'</span>: REG.X86.ECX,</div><div class="line">        <span class="string">'edx'</span>: REG.X86.EDX,</div><div class="line">        &#125;</div><div class="line"></div><div class="line"><span class="function"><span class="keyword">def</span> <span class="title">symbolization_init</span><span class="params">()</span>:</span></div><div class="line">    ctx.convertRegisterToSymbolicVariable(ctx.registers.eax)</div><div class="line">    ctx.convertRegisterToSymbolicVariable(ctx.registers.ebx)</div><div class="line">    ctx.convertRegisterToSymbolicVariable(ctx.registers.ecx)</div><div class="line">    ctx.convertRegisterToSymbolicVariable(ctx.registers.edx)</div><div class="line">    <span class="keyword">return</span></div><div class="line"></div><div class="line"><span class="function"><span class="keyword">def</span> <span class="title">opaque_predicate_detection</span><span class="params">(pc)</span>:</span></div><div class="line">    ctx.setArchitecture(ARCH.X86)</div><div class="line">    ctx.setAstRepresentationMode(AST_REPRESENTATION.PYTHON)</div><div class="line">    symbolization_init()</div><div class="line">    ast_ctx = ctx.getAstContext()</div><div class="line"></div><div class="line">    <span class="keyword">while</span> <span class="keyword">True</span>:</div><div class="line">        instruction = Instruction()</div><div class="line">        instruction.setAddress(pc)</div><div class="line">        opcode = GetManyBytes(pc, ItemSize(pc)) <span class="comment"># Disassemble with IDA Pro</span></div><div class="line">        instruction.setOpcode(opcode)</div><div class="line"></div><div class="line">        ctx.processing(instruction) <span class="comment"># Emulate instruction without Pintool</span></div><div class="line"></div><div class="line">        <span class="keyword">for</span> se <span class="keyword">in</span> instruction.getSymbolicExpressions():</div><div class="line">            se.setComment(str(instruction))</div><div class="line"></div><div class="line">        <span class="keyword">if</span> str(instruction.getDisassembly()).split()[<span class="number">0</span>] == <span class="string">'cmp'</span>: <span class="comment"># if instruction.isCompare():</span></div><div class="line">            reg = str(instruction.getOperands()[<span class="number">0</span>]).split(<span class="string">':'</span>)[<span class="number">0</span>] <span class="comment"># Get first operand</span></div><div class="line">            <span class="keyword">if</span> reg <span class="keyword">in</span> regs:</div><div class="line">                Expr = ctx.getSymbolicRegisters()[regs[reg]]</div><div class="line">                slicing = ctx.sliceExpressions(Expr)</div><div class="line">                <span class="keyword">for</span> k, v <span class="keyword">in</span> sorted(slicing.items()):</div><div class="line">                    <span class="keyword">print</span> v.getComment()</div><div class="line">                <span class="keyword">print</span> instruction</div><div class="line">        <span class="keyword">elif</span> instruction.isBranch():</div><div class="line">            <span class="keyword">print</span> instruction</div><div class="line">            <span class="keyword">if</span> instruction.isConditionTaken():</div><div class="line">                <span class="keyword">print</span> <span class="string">'branch will taken'</span></div><div class="line">            <span class="keyword">else</span>:</div><div class="line">                <span class="keyword">print</span> <span class="string">'branch will not taken'</span></div><div class="line"></div><div class="line">            <span class="keyword">break</span></div><div class="line"></div><div class="line">        pc = NextHead(pc)</div><div class="line"></div><div class="line">    <span class="keyword">print</span> <span class="string">'-'</span> * <span class="number">50</span></div><div class="line"></div><div class="line"><span class="function"><span class="keyword">def</span> <span class="title">main</span><span class="params">()</span>:</span></div><div class="line">    ea = ScreenEA() <span class="comment"># Get address corresponding to cursor</span></div><div class="line">    opaque_predicate_detection(ea) </div><div class="line"></div><div class="line"><span class="keyword">if</span> __name__ == <span class="string">'__main__'</span>:</div><div class="line">    view = main()</div></pre></td></tr></table></figure>
 <h1 id="Showcase"><a href="#Showcase" class="headerlink" title="Showcase"></a>Showcase</h1><p>The snippet extracts subset of program which is relevant to branch condition. We can run this from <code>File -&gt; Script file</code> in IDA Pro menu.</p>
 <h2 id="Conditional-Branch"><a href="#Conditional-Branch" class="headerlink" title="Conditional Branch"></a>Conditional Branch</h2><figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div></pre></td><td class="code"><pre><div class="line">.text:004074DD     loc_4074DD:</div><div class="line">.text:004074DD 040 mov     dword ptr [edi+18h], 0Ah</div><div class="line">.text:004074E4 040 mov     dword ptr [edi+14h], 0</div><div class="line">.text:004074EB 040 mov     word ptr [edi+8], 8235h</div><div class="line">.text:004074F1 040 mov     dword ptr [edi+0Ch], 3E8h</div><div class="line">.text:004074F8 040 mov     dword ptr [edi+10h], 0BB8h</div><div class="line">.text:004074FF 040 sub     esp, 4</div><div class="line">.text:00407502 044 mov     [esp+40h+Memory], 0B8h ; Size        ; cursor</div><div class="line">.text:00407509 044 call    ??2@YAPAXI@Z    ; operator new(uint)</div><div class="line">.text:0040750E 044 add     esp, 4</div><div class="line">.text:00407511 040 mov     [esi+18h], eax</div><div class="line">.text:00407514 040 mov     eax, dword_591EE4</div><div class="line">.text:00407519 040 mov     ecx, dword_591EE0</div><div class="line">.text:0040751F 040 imul    eax, eax</div><div class="line">.text:00407522 040 imul    edx, eax, 7</div><div class="line">.text:00407525 040 dec     edx</div><div class="line">.text:00407526 040 mov     eax, ecx</div><div class="line">.text:00407528 040 imul    eax, eax</div><div class="line">.text:0040752B 040 cmp     edx, eax</div><div class="line">.text:0040752D 040 jz      short loc_407538</div></pre></td></tr></table></figure>
 <p>becomes:</p>
@@ -1824,88 +1912,6 @@
     
     
       <category term="machine learning" scheme="http://ntddk.github.io/tags/machine-learning/"/>
-    
-  </entry>
-  
-  <entry>
-    <title>マルウェアの動的解析に基づくC&amp;Cサーバの探索</title>
-    <link href="http://ntddk.github.io/2015/12/11/autoprobe/"/>
-    <id>http://ntddk.github.io/2015/12/11/autoprobe/</id>
-    <published>2015-12-11T03:00:00.000Z</published>
-    <updated>2016-01-03T16:34:08.000Z</updated>
-    
-    <content type="html"><![CDATA[<p>　本稿は<a href="http://www.adventar.org/calendars/784" target="_blank" rel="external">情報セキュリティ系論文紹介 Advent Calendar 2015</a>の11日目である．</p>
-<h1 id="TL-DR"><a href="#TL-DR" class="headerlink" title="TL;DR:"></a>TL;DR:</h1><p>　テイント解析（taint analysis）やプログラムスライシング（program slicing），記号的実行（symbolic execution）やファジング（fuzzing）といったバイナリ解析技術を総動員して，マルウェアが通信するC&amp;Cサーバのフィンガープリントを<strong>C&amp;Cサーバと通信せずとも</strong>生成する手法–AUTOPROBE[1]を紹介する．</p>
-<h1 id="背景"><a href="#背景" class="headerlink" title="背景"></a>背景</h1><p>　マルウェアによるサイバー犯罪はC&amp;Cサーバやコンフィグファイルの配布元，二次検体の配布元など様々な悪性サーバ（malicious server）からなるインフラによって支えられている．攻撃者はこれらの悪性サーバを頻繁に閉鎖・移転させて対策から逃れようとする．とりわけ攻撃者の命令を送信してマルウェアの動作を決定するC&amp;Cサーバはその後の攻撃の起点となるため早期発見が望ましい．したがって不審なサーバがC&amp;Cサーバかどうか判定するフィンガープリントが必要となる．<br>　しかしながら従来のフィンガープリント生成手法にはC&amp;Cサーバとの長期的な通信を前提としている[2]，サーバとして動作するマルウェアを前提としている[3]といった問題点があった．</p>
-<h1 id="問題定義"><a href="#問題定義" class="headerlink" title="問題定義"></a>問題定義</h1><p>　あるマルウェアのファミリFに属する検体Pを入力として受け取り，Fが用いるC&amp;Cサーバのフィンガープリントφを出力することがAUTOPROBEの目的である．C&amp;Cサーバ側のコードは参照できず，マルウェアの検体はシンボル情報やソースコードを含んでいなくともよい．またマルウェアは複数のリクエストをC&amp;Cサーバに送信するものとする．</p>
-<h1 id="提案手法"><a href="#提案手法" class="headerlink" title="提案手法"></a>提案手法</h1><p>　あるサーバにマルウェアと同様のリクエストを送って，マルウェアがコマンドとして解釈できるレスポンスが返ってきたら，そのサーバは疑いようもなくC&amp;Cサーバである–AUTOPROBEの鍵となる発想は至極単純だ．<br>　AUTOPROBEは検体の命令・API・システムコールの実行を–おそらくQEMUによって–トレースし，リクエストを生成する処理とレスポンスをハンドルする処理をそれぞれマルウェアから抽出する．つづいて前者によって不審なサーバに対するリクエストを生成し，後者によってレスポンスをハンドルする．レスポンスハンドリングの可否をもってフィンガープリントとするから，その処理の抽出さえできれば不審なサーバがC&amp;Cサーバかどうか判定するまで実際のC&amp;Cサーバと通信する必要はない–でもどうやって？</p>
-<h2 id="リクエスト生成"><a href="#リクエスト生成" class="headerlink" title="リクエスト生成"></a>リクエスト生成</h2><p>　マルウェアの多くは時間や擬似乱数，OS情報などの環境依存の値によって動作を変更する．たとえばWin32/LoadMoney.AFはレジストリキーの有無によって送信するリクエストを変更する．</p>
-<p><img src="/image/autoprobe/win32_loadmoney.af.png" width="50%" height="50%"></p>
-<p>　不審なサーバがC&amp;Cサーバかどうか判定するためには攻撃者の期待するリクエストをより多く送信しより多くレスポンスを得たい．そこでAUTOPROBEは以下のアルゴリズムにしたがって複数の実行トレースを得る．これは条件分岐の度に直前のシステムコールを参照する，ある種の深さ優先探索として実装される．</p>
-<p><img src="/image/autoprobe/request.png" width="50%" height="50%"></p>
-<p>　さらにAUTOPROBEはトレースをスライスし，システムコールの結果に依存する値を環境依存の値として決定論的な値・定数と区別する．ここで環境依存の値を書き換えれば攻撃者の期待するリクエストを送信できるようになる．また環境依存の値に影響するシステムコールの戻り値に時間，IPアドレス，擬似乱数，OS情報など200種類のラベルを設定しているとのことだ．</p>
-<h2 id="レスポンスハンドリング"><a href="#レスポンスハンドリング" class="headerlink" title="レスポンスハンドリング"></a>レスポンスハンドリング</h2><p>　生成したリクエストをC&amp;Cサーバに送信してレスポンスを得たら，AUTOPROBEはレスポンスの各バイトを記号値として扱い，実行トレースから検体の分岐制約を充足する解およびスライスθ<sub>1</sub>を得る．ここで探索の終了条件は<code>closesocket</code>や<code>exitprocess</code>に到達した場合，データを受信してから50個の条件分岐にわたってそのデータを参照するものが存在しない場合である．つづいてレスポンスとして正しく解釈できない値を検体に与え，実行トレースから分岐制約を充足する解およびスライスθ<sub>2</sub>を得る．ここでηは以下の式によって得られる実行経路の類似度である．</p>
-<p><img src="/image/autoprobe/slice.png" width="50%" height="50%"></p>
-<p>　bnとfnはそれぞれ各スライスに含まれるユニークなコードブロックとシステムコールの数を示す．AUTOPROBEはηが閾値10を下回ればレスポンスを正しく解釈していない実行経路とみなしてスライスを破棄し，上回れば別々のハンドラであるとしてそれぞれの分岐制約をフィンガープリントとして保持する．たとえばこんなふうに．</p>
-<p><img src="/image/autoprobe/equations.png" width="50%" height="50%"></p>
-<p>　C&amp;Cサーバからレスポンスを得られなければ，AUTOPROBEは記号的実行とファジング，フラグレジスタの書き換えによる強制実行（forced execution）を併用してレスポンスに依存する実行経路を探索する．</p>
-<p><img src="/image/autoprobe/response.png" width="55%" height="55%"></p>
-<p>　このファジングでは検体にランダム値を与えるが，検体が用いるアルゴリズムがHTTPなど既知のものであればエラーメッセージのハンドラを起点に探索する．<br>　AUTOPROBEはこのように探索したレスポンスのハンドラをフィンガープリントとするが，期待されるレスポンスが得られずさきほどのアルゴリズムによって探索した場合は以下のようにC&amp;Cサーバの尤もらしさを算出する．</p>
-<p><img src="/image/autoprobe/score.png" width="50%" height="50%"></p>
-<h1 id="評価"><a href="#評価" class="headerlink" title="評価"></a>評価</h1><p>　論文ではふたつのデータセットを用いてAUTOPROBEの性能を評価している．ひとつはSality, ZeroAccess, Ramnit, Bamital, Taidoorを含む37ファミリ10亜種計370検体．もうひとつはネットワーク通信の特徴量に基づいてフィンガープリントを生成する既存研究–CYBERPROBE[2]で用いられた19ファミリ． “which have been kindly provided to us by the authors of CYBERPROBE”って書いてるけどAUTOPROBEと同じメンバーじゃねえか．<br>　検体の実行時間は5分．</p>
-<h2 id="リクエスト生成-1"><a href="#リクエスト生成-1" class="headerlink" title="リクエスト生成"></a>リクエスト生成</h2><p>　まずはリクエストの生成から．可能であればC&amp;Cサーバとの接続をともなうがAlexaトップ10,000サイトは除外している．ここでAUTOPROBEはC&amp;Cサーバに接続せずとも検体のバイナリを分析してCYBERPROBEと同様の結果を得ている．</p>
-<p><img src="/image/autoprobe/request_eval.png"></p>
-<p>　AUTOPROBEはふたつのデータセットに含まれる56ファミリのトレースから105のリクエストを生成した．生成にかかった時間は平均13.2分．リクエストはすべてHTTPであったとのこと．</p>
-<h2 id="レスポンスハンドリング-1"><a href="#レスポンスハンドリング-1" class="headerlink" title="レスポンスハンドリング"></a>レスポンスハンドリング</h2><p>　生成したリクエストのうち76件がC&amp;Cサーバからのレスポンスを引き出した．さらにAUTOPROBEは<code>HTTP 200</code>レスポンスコードを含む同数のランダムなレスポンスを生成し，検体に与えた．これはレスポンスハンドリングの可否によって検体の異なる挙動を確認したいためだ．結果として76件のテストケース中71件（93％）で検体は異なる挙動を示した–<strong>期待される受信データを得たマルウェアは一般に10以上のシステムコールと50以上のコードブロックを実行する</strong>．残りの5件はC&amp;Cサーバではなかった．つまりAUTOPROBEはマルウェアの通信先がC&amp;Cサーバかどうか正しく判定できている．</p>
-<h2 id="ケーススタディ"><a href="#ケーススタディ" class="headerlink" title="ケーススタディ"></a>ケーススタディ</h2><p>　たとえばBamitalのリクエストはファイル名・<code>GetVersionEx</code>によって得たOS情報・DGA (domain generation algorithm) によって生成したホスト名を含んでいた．AUTOPROBEはこれらの値が依存するシステムコールを得ている．</p>
-<p><img src="/image/autoprobe/bamital.png" width="50%" height="50%"></p>
-<p>　C&amp;Cサーバと接続せずとも<code>HTTP/1.1 200 OK</code>を与えればBamitalのハンドラは分析できるとのこと．<br>　また標的型攻撃に用いられるTaidoorのリクエストは<code>GetAdaptersInfo</code>によって得たMACアドレスに依存する値を含んでいた．これによってTaidoorのC&amp;Cサーバは感染端末のみで動作するレスポンスを送信していたようだ．<br>　ドライブバイダウンロード検体であるSalityのC&amp;Cサーバは<code>spm/s_tasks.php</code>, <code>logos_s.gif</code>, <code>231013_d.exe</code>というファイルをレスポンスに含んでいた．AUTOPROBEはこれらのファイルの存在するサーバをSalityのC&amp;Cサーバとみなす．などなど．</p>
-<h2 id="限定的な探索"><a href="#限定的な探索" class="headerlink" title="限定的な探索"></a>限定的な探索</h2><p>　Malware Domain Listに含まれる9,500アドレスの近傍/24サブネット・2.6Mアドレスのスキャン結果．</p>
-<p><img src="/image/autoprobe/localized.png" width="60%" height="60%"></p>
-<p>　VirusTotal, Malware Domain List, そしてURLQueryに発見されていないC&amp;Cサーバを特定できている．</p>
-<h2 id="インターネット全体の探索"><a href="#インターネット全体の探索" class="headerlink" title="インターネット全体の探索"></a>インターネット全体の探索</h2><p>　ここではBGPからインターネット全体をスキャンし，7,100万ものHTTPサーバを発見している．</p>
-<p><img src="/image/autoprobe/horizontal.png"></p>
-<p>　このうちマルウェア3ファミリのC&amp;Cサーバをどれだけ発見できるかCYBERPROBEと比較した結果．</p>
-<p><img src="/image/autoprobe/comparison.png"></p>
-<p>　CYBERPROBEが40件のC&amp;Cサーバを特定しているのにたいしてAUTOPROBEは54件のC&amp;Cサーバを特定している．<br>　高度化するマルウェアが通信内容を難読化・秘匿する傾向にあることを鑑みると，CYBERPROBEのようにネットワーク通信の特徴量を用いる手法よりもAUTOPROBEのようにバイナリ解析を応用した手法こそ吟味されるべきだろう．</p>
-<h1 id="感想"><a href="#感想" class="headerlink" title="感想"></a>感想</h1><p>　AUTOPROBEは折しも私が昨年度のインターンシップでほとんど同じようなテーマに取り組んでいたとき発表された．テイント解析のソースを受信データではなくシステムコールの結果に設定することで，リクエストのセマンティクスを復元しようとするAUTOPROBEの発想は野心的であり，さまざまなバイナリ解析技術を結集して未知のC&amp;Cサーバを発見する手際は鮮やかというほかない．<br>　私は来年書くことになる卒業論文のテーマとして，インターネット接続のない閉環境におけるマルウェアの分析に本手法を応用できないか検討している．Ryzhykら[4]はデバイスドライバと環境（デバイスおよびOS）との相互作用を有限オートマトンを用いて表現し，デバイスドライバを半自動的に合成する手法を提案している．問題領域は異なるがこうした手法も検討したい．</p>
-<h1 id="用語解説"><a href="#用語解説" class="headerlink" title="用語解説"></a>用語解説</h1><ul>
-<li>テイント解析<ul>
-<li>任意のデータに設定したタグをルールにしたがって伝搬させることで，データ間の依存関係を分析する手法</li>
-</ul>
-</li>
-<li>プログラムスライシング<ul>
-<li>任意のデータに依存する処理部分をプログラムから抽出する手法</li>
-</ul>
-</li>
-<li>記号的実行<ul>
-<li>プログラムの分岐条件を充足論理問題とし，制約を充足する解を得る手法</li>
-</ul>
-</li>
-<li>ファジング<ul>
-<li>開発者が意図しない入力を自動生成してプログラムに与えることで脆弱性を顕在化させる手法</li>
-</ul>
-</li>
-</ul>
-<h1 id="参考文献"><a href="#参考文献" class="headerlink" title="参考文献"></a>参考文献</h1><ul>
-<li>[1] Zhaoyan Xu, Antonio Nappa, Robert Baykov, Guangliang Yang, Juan Caballero, and Guofei Gu, “<a href="http://www.cs.wm.edu/~ksun/csci780-f14/papers/AutoProbe-CCS14.pdf" target="_blank" rel="external">AUTOPROBE: Towards Automatic Active Malicious Server Probing Using Dynamic Binary Analysis[PDF]</a>,” In Proc. of the 21st ACM Conference on Computer and Communications Security (CCS’14), 2014.</li>
-<li>[2] Antonio Nappa, Zhaoyan Xu, M. Zubair Rafique, Juan Caballero, and Guofei Gu, “<a href="http://faculty.cs.tamu.edu/guofei/paper/CyberProbe_NDSS14.pdf" target="_blank" rel="external">Cyberprobe: Towards Internet-Scale Active Detection of Malicious Servers[PDF]</a>,” In Network and Distributed System Security Symposium (NDSS’14), 2014.</li>
-<li>[3] Zhaoyan Xu, Lingfeng Chen, Guofei Gu, and Christopher Kruegel, “<a href="http://dl.acm.org/citation.cfm?id=2382257" target="_blank" rel="external">Peerpress: Utilizing Enemies’ P2P Strength against Them</a>,” In ACM Conference on Computer and Communications Security (CCS’12), 2012.</li>
-<li>[4] Leonid Ryzhyk, Adam Walker, John Keys, Alexander Legg, Arun Raghunath, Michael Stumm, and Mona Vij, “<a href="https://www.usenix.org/conference/osdi14/technical-sessions/presentation/ryzhyk" target="_blank" rel="external">User-Guided Device Driver Synthesis</a>,” In Proc. of the 11th USENIX Conference on Operating Systems Design and Implementation (OSDI’14), 2014.</li>
-</ul>
-]]></content>
-    
-    <summary type="html">
-    
-      &lt;p&gt;　本稿は&lt;a href=&quot;http://www.adventar.org/calendars/784&quot; target=&quot;_blank&quot; rel=&quot;external&quot;&gt;情報セキュリティ系論文紹介 Advent Calendar 2015&lt;/a&gt;の11日目である．&lt;/p&gt;
-&lt;h
-    
-    </summary>
-    
-    
-      <category term="symbolic execution" scheme="http://ntddk.github.io/tags/symbolic-execution/"/>
-    
-      <category term="taint analysis" scheme="http://ntddk.github.io/tags/taint-analysis/"/>
     
   </entry>
   

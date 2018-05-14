@@ -50,6 +50,138 @@
       <div class="outer">
         <section id="main">
   
+    <article id="post-kdd-cup-99-data" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    
+      <header class="article-header">
+        
+  
+    <a class="article-title" href="/2016/11/23/kdd-cup-99-data/">KDD Cup 99 Dataおぼえがき</a>
+  
+
+      </header>
+    
+    <time class="article-date" datetime="2016-11-22T21:50:00.000Z" itemprop="datePublished">11-23-2016</time>
+    
+  </div>
+  <div class="article-inner">
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h1 id="はじめに"><a href="#はじめに" class="headerlink" title="はじめに"></a>はじめに</h1><p>　サイバーセキュリティに携わる者なら一度くらいはKDD Cup 99 Dataなるデータセットの名を耳にしたことがあるのではないだろうか．KDD Cupは国際会議SIGKDDによるデータマイニングのコンペで，KDD Cup 99 Dataはそのためのネットワーク侵入検知にまつわるデータ．正常通信と攻撃を分類するタスクが与えられた．<br>　見てみよう．</p>
+<h1 id="データセットの構成"><a href="#データセットの構成" class="headerlink" title="データセットの構成"></a>データセットの構成</h1><p>　データは現在，カリフォルニア大学アーバイン校によって<a href="http://archive.ics.uci.edu/ml/databases/kddcup99/kddcup99.html" target="_blank" rel="external">配布</a>されている．<br>　それぞれのファイル内容は下記の通り：</p>
+<table>
+<thead>
+<tr>
+<th>ファイル名</th>
+<th>ファイル内容</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>kddcup.data</td>
+<td>フルデータ</td>
+</tr>
+<tr>
+<td>kddcup.data_10_percent</td>
+<td>フルデータの10%を抽出した学習用データ</td>
+</tr>
+<tr>
+<td>corrected</td>
+<td>正常・攻撃のラベル付けがなされた評価用データ</td>
+</tr>
+<tr>
+<td>kddcup.testdata.unlabeled</td>
+<td>正常・攻撃のラベル付けがなされていないデータ</td>
+</tr>
+<tr>
+<td>kddcup.testdata.unlabeled_10_percent</td>
+<td>正常・攻撃のラベル付けがなされていないデータの10%サブセット</td>
+</tr>
+<tr>
+<td>kddcup.newtestdata_10_percent_unlabeled</td>
+<td>正常・攻撃のラベル付けがなされていないデータの10%サブセット</td>
+</tr>
+</tbody>
+</table>
+<p>　ファイルの中身はこんな調子：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div></pre></td><td class="code"><pre><div class="line">$ wget -r -l 1 http://kdd.ics.uci.edu/databases/kddcup99/</div><div class="line">$ gunzip -r kdd.ics.uci.edu/kddcup99</div><div class="line">$ ln -s kdd.ics.uci.edu/databases/kddcup99 kddcup99</div><div class="line">$ head -5 kddcup99/kddcup.data</div><div class="line">0,tcp,http,SF,215,45076,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,1,1,0.00,0.00,0.00,0.00,1.00,0.00,0.00,0,0,0.00,0.00,0.00,0.00,0.00,0.00,0.00,0.00,normal.</div><div class="line">0,tcp,http,SF,162,4528,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,2,2,0.00,0.00,0.00,0.00,1.00,0.00,0.00,1,1,1.00,0.00,1.00,0.00,0.00,0.00,0.00,0.00,normal.</div><div class="line">0,tcp,http,SF,236,1228,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,1,1,0.00,0.00,0.00,0.00,1.00,0.00,0.00,2,2,1.00,0.00,0.50,0.00,0.00,0.00,0.00,0.00,normal.</div><div class="line">0,tcp,http,SF,233,2032,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,2,2,0.00,0.00,0.00,0.00,1.00,0.00,0.00,3,3,1.00,0.00,0.33,0.00,0.00,0.00,0.00,0.00,normal.</div><div class="line">0,tcp,http,SF,239,486,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,3,3,0.00,0.00,0.00,0.00,1.00,0.00,0.00,4,4,1.00,0.00,0.25,0.00,0.00,0.00,0.00,0.00,normal.</div></pre></td></tr></table></figure>
+<p>　これは，ファイルの特徴をカンマ区切りで列挙したもの．列に特徴名を振れば，pandas（や，scikit-learn）での扱いも楽．</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div></pre></td><td class="code"><pre><div class="line"><span class="meta">&gt;&gt;&gt; </span><span class="keyword">import</span> pandas</div><div class="line"><span class="meta">&gt;&gt;&gt; </span></div><div class="line"><span class="meta">&gt;&gt;&gt; </span>col_names = [<span class="string">"duration"</span>,<span class="string">"protocol_type"</span>,<span class="string">"service"</span>,<span class="string">"flag"</span>,<span class="string">"src_bytes"</span>,</div><div class="line"><span class="meta">... </span>   <span class="string">"dst_bytes"</span>,<span class="string">"land"</span>,<span class="string">"wrong_fragment"</span>,<span class="string">"urgent"</span>,<span class="string">"hot"</span>,<span class="string">"num_failed_logins"</span>,</div><div class="line"><span class="meta">... </span>   <span class="string">"logged_in"</span>,<span class="string">"num_compromised"</span>,<span class="string">"root_shell"</span>,<span class="string">"su_attempted"</span>,<span class="string">"num_root"</span>,</div><div class="line"><span class="meta">... </span>   <span class="string">"num_file_creations"</span>,<span class="string">"num_shells"</span>,<span class="string">"num_access_files"</span>,<span class="string">"num_outbound_cmds"</span>,</div><div class="line"><span class="meta">... </span>   <span class="string">"is_host_login"</span>,<span class="string">"is_guest_login"</span>,<span class="string">"count"</span>,<span class="string">"srv_count"</span>,<span class="string">"serror_rate"</span>,</div><div class="line"><span class="meta">... </span>   <span class="string">"srv_serror_rate"</span>,<span class="string">"rerror_rate"</span>,<span class="string">"srv_rerror_rate"</span>,<span class="string">"same_srv_rate"</span>,</div><div class="line"><span class="meta">... </span>   <span class="string">"diff_srv_rate"</span>,<span class="string">"srv_diff_host_rate"</span>,<span class="string">"dst_host_count"</span>,<span class="string">"dst_host_srv_count"</span>,</div><div class="line"><span class="meta">... </span>   <span class="string">"dst_host_same_srv_rate"</span>,<span class="string">"dst_host_diff_srv_rate"</span>,<span class="string">"dst_host_same_src_port_rate"</span>,</div><div class="line"><span class="meta">... </span>   <span class="string">"dst_host_srv_diff_host_rate"</span>,<span class="string">"dst_host_serror_rate"</span>,<span class="string">"dst_host_srv_serror_rate"</span>,</div><div class="line"><span class="meta">... </span>   <span class="string">"dst_host_rerror_rate"</span>,<span class="string">"dst_host_srv_rerror_rate"</span>,<span class="string">"label"</span>]</div><div class="line"><span class="meta">&gt;&gt;&gt; </span></div><div class="line"><span class="meta">&gt;&gt;&gt; </span>kdd_data_10percent = pandas.read_csv(<span class="string">"kddcup99/kddcup.data_10_percent"</span>, header=<span class="keyword">None</span>, names = col_names)</div></pre></td></tr></table></figure>
+<p>　学習用データは通常データ，22種類の攻撃データの計23種類のデータからなる．評価用データは，学習用データに加えて17種類の攻撃データを含んでいる．これらの攻撃は4つのクラスに大別される：</p>
+<table>
+<thead>
+<tr>
+<th>クラス</th>
+<th>説明</th>
+<th>サブクラス</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Normal</td>
+<td>通常のコネクション</td>
+<td>normal</td>
+</tr>
+<tr>
+<td>Probe</td>
+<td>攻撃対象の探索・調査</td>
+<td>ipsweep, nmap, postsweep, satan, mscan, saint</td>
+</tr>
+<tr>
+<td>DoS</td>
+<td>DoS攻撃</td>
+<td>back, land, neptune, pod, smurf, teardrop, mailbomb, apache2, processtable, udpstorm</td>
+</tr>
+<tr>
+<td>U2R</td>
+<td>ローカルマシンからrootへの許可されていないアクセス</td>
+<td>buffer.overflow, localmodule, perl, rootkit, httptunnel, xterm, ps, worm</td>
+</tr>
+<tr>
+<td>R2L</td>
+<td>リモートマシンからの許可されていないアクセス</td>
+<td>ftp_write, guess_passwd, imap, multihop, phf, spy, warezclient, warezmaster, snmpgetattack, snmpguess, xsnoop, named, sendmail, sqlattack, xlock</td>
+</tr>
+</tbody>
+</table>
+<p>　サブクラス名から古臭さがにじんでいるが，データセットは近年の研究でも広く用いられているものだ．まあ単純に同規模の新しいデータセットがないからだろう．<br>　だいたいの論文は<code>kddcup.data_10_percent</code>を用いて学習し，<code>corrected</code>を用いて評価するという流れになっている．<br>　ところで，このデータセットに付随したタスクは正常通信と攻撃の二値（まあ多値分類になりはするが）分類だが，これは異常検知とどう違うのだろうか．<a href="https://www.amazon.co.jp/dp/B018K6C99U/" target="_blank" rel="external">ものの本</a>によると，二値分類はベイズ決定則（条件付き分布<span>$p(x|y=1)p(y=1)$</span><!-- Has MathJax -->と<span>$p(x|y=0)p(y=0)$</span><!-- Has MathJax -->の比が1を超えたら異常と判定），異常検知はネイマン・ピアソン決定則（<span>$p(x|y=1)$</span><!-- Has MathJax -->と<span>$p(x|y=0)$</span><!-- Has MathJax -->の比がある閾値を超えたら異常と判定）にもとづいている．ここで，異常検知問題ではほとんどつねに<span>$p(y=1)&lt;&lt;p(y=0)$</span><!-- Has MathJax -->であるため，ベイズ決定則は異常判定を強く抑制する．そういうわけで，標本の割合を吟味して二値分類器の閾値をスライドさせていくことが重要となってくるらしい．</p>
+<h1 id="データセット形式への変換"><a href="#データセット形式への変換" class="headerlink" title="データセット形式への変換"></a>データセット形式への変換</h1><p>　<a href="https://github.com/inigoperona/tcpdump2gureKDDCup99" target="_blank" rel="external">tcpdump2gureKDDCup99</a>は，<a href="https://github.com/bro/bro" target="_blank" rel="external">Bro IDS</a>のプラグインとして，おなじみのpcapファイルをKDD Cup 99 Dataのフォーマットに変換してくれる．Bro IDSはSnortには及ばずともそこそこ由緒あるIDSで，GitHubリポジトリは<a href="https://code.gov/#/explore-code/agencies/DOE" target="_blank" rel="external">米国政府公式のリポジトリリスト</a>にも掲載されている．<br>　まずBro IDSをインストールする．</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div></pre></td><td class="code"><pre><div class="line">$ sudo apt-get install cmake make gcc g++ flex bison libpcap-dev libssl-dev python-dev swig zlib1g-dev</div><div class="line">$ git clone --recursive git://git.bro.org/bro</div><div class="line">$ cd bro</div><div class="line">$ ./configure</div><div class="line">$ make -j4</div><div class="line">$ sudo make install</div></pre></td></tr></table></figure>
+<p>　私はpyenvからインストールしたPython 2.7.11を常用しているのだが，Bro IDSをmakeするには<code>CFLAGS=&quot;-fPIC&quot; pyenv install 2.7.11</code>のように共有ライブラリ用のオプションをつけてPythonを再インストールする必要があった．<br>　さてWireshark公式が公開している<a href="https://wiki.wireshark.org/SampleCaptures" target="_blank" rel="external">サンプルデータ</a>をKDD Cup 99 Dataの形式に変換してみる．</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div></pre></td><td class="code"><pre><div class="line">$ cd</div><div class="line">$ git clone git@github.com:inigoperona/tcpdump2gureKDDCup99</div><div class="line">$ gcc tcpdump2gureKDDCup99/trafAld.c -o tcpdump2gureKDDCup99/trafAld.out</div><div class="line">$ wget &quot;https://wiki.wireshark.org/SampleCaptures?action=AttachFile&amp;do=get&amp;target=zlip-1.pcap&quot; -O zlip-1.pcap</div><div class="line">$ bro -r zlip-1.pcap tcpdump2gureKDDCup99/darpa2gurekddcup.bro &gt; conn.list</div><div class="line">$ cat conn.list</div><div class="line">1 955453631.643199 1024 53 10.0.0.1 146.84.28.88 0.000000 udp 53 S0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0</div><div class="line">$ sort -n conn.list &gt; conn_sort.list</div><div class="line">$ tcpdump2gureKDDCup99/trafAld.out conn_sort.list</div><div class="line">$ cat trafAld.list</div><div class="line">1 955453631.643199 1024 53 10.0.0.1 146.84.28.88 0.000000 udp 53 S0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0 0 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000</div></pre></td></tr></table></figure>
+<p>　pcapファイルをPythonで分析したければそのまま（scapyや）pandasに突っ込むだろうけど，KDD Cup 99 Dataと比較したい場合には使えるかも．</p>
+<h1 id="おわりに"><a href="#おわりに" class="headerlink" title="おわりに"></a>おわりに</h1><p>　名前は聞くけど触ったことないなということで．やらなければならない作業が進まないとこういう現実逃避が捗る捗る．</p>
+<h1 id="参考文献"><a href="#参考文献" class="headerlink" title="参考文献"></a>参考文献</h1><ul>
+<li>H. G. Kayacık, et al. <a href="https://web.cs.dal.ca/~zincir/bildiri/pst05-gnm.pdf" target="_blank" rel="external">Selecting Features for Intrusion Detection: A Feature Relevance Analysis on KDD 99 Intrusion Detection Datasets[PDF]</a>. PST. 2005.<ul>
+<li>この特徴に注意しようねという論文</li>
+</ul>
+</li>
+<li>高橋，et al. <a href="https://ipsj.ixsq.nii.ac.jp/ej/index.php?active_action=repository_view_main_item_detail&amp;page_id=13&amp;block_id=8&amp;item_id=146854&amp;item_no=1" target="_blank" rel="external">KDD CUP 99 Data Set を用いた異なる学習データによる機械学習アルゴリズムの評価</a>．CSS. pp. 457-464. 2015.<ul>
+<li>WekaでランダムフォレストとSVMを試した論文．日本語で読めて便利</li>
+</ul>
+</li>
+<li><a href="https://github.com/jadianes/kdd-cup-99-spark" target="_blank" rel="external">jadianes/kdd-cup-99-spark: PySpark solution to the KDDCup9</a><ul>
+<li>iPython Notebookからscikit-learnとPySparkを用いてKDD Cup 99 Dataを分析するデモが試せて便利</li>
+</ul>
+</li>
+</ul>
+<p>　はい．</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://ntddk.github.io/2016/11/23/kdd-cup-99-data/" data-id="cjbiq70s7000y8w7tlietr65k" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/machine-learning/">machine learning</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/network/">network</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
     <article id="post-suppress-switching-ime-on-xming" class="article article-type-post" itemscope itemprop="blogPost">
   <div class="article-meta">
     
@@ -645,98 +777,6 @@
 
 
   
-    <article id="post-autoprobe" class="article article-type-post" itemscope itemprop="blogPost">
-  <div class="article-meta">
-    
-      <header class="article-header">
-        
-  
-    <a class="article-title" href="/2015/12/11/autoprobe/">マルウェアの動的解析に基づくC&amp;Cサーバの探索</a>
-  
-
-      </header>
-    
-    <time class="article-date" datetime="2015-12-11T03:00:00.000Z" itemprop="datePublished">12-11-2015</time>
-    
-  </div>
-  <div class="article-inner">
-    <div class="article-entry" itemprop="articleBody">
-      
-        <p>　本稿は<a href="http://www.adventar.org/calendars/784" target="_blank" rel="external">情報セキュリティ系論文紹介 Advent Calendar 2015</a>の11日目である．</p>
-<h1 id="TL-DR"><a href="#TL-DR" class="headerlink" title="TL;DR:"></a>TL;DR:</h1><p>　テイント解析（taint analysis）やプログラムスライシング（program slicing），記号的実行（symbolic execution）やファジング（fuzzing）といったバイナリ解析技術を総動員して，マルウェアが通信するC&amp;Cサーバのフィンガープリントを<strong>C&amp;Cサーバと通信せずとも</strong>生成する手法–AUTOPROBE[1]を紹介する．</p>
-<h1 id="背景"><a href="#背景" class="headerlink" title="背景"></a>背景</h1><p>　マルウェアによるサイバー犯罪はC&amp;Cサーバやコンフィグファイルの配布元，二次検体の配布元など様々な悪性サーバ（malicious server）からなるインフラによって支えられている．攻撃者はこれらの悪性サーバを頻繁に閉鎖・移転させて対策から逃れようとする．とりわけ攻撃者の命令を送信してマルウェアの動作を決定するC&amp;Cサーバはその後の攻撃の起点となるため早期発見が望ましい．したがって不審なサーバがC&amp;Cサーバかどうか判定するフィンガープリントが必要となる．<br>　しかしながら従来のフィンガープリント生成手法にはC&amp;Cサーバとの長期的な通信を前提としている[2]，サーバとして動作するマルウェアを前提としている[3]といった問題点があった．</p>
-<h1 id="問題定義"><a href="#問題定義" class="headerlink" title="問題定義"></a>問題定義</h1><p>　あるマルウェアのファミリFに属する検体Pを入力として受け取り，Fが用いるC&amp;Cサーバのフィンガープリントφを出力することがAUTOPROBEの目的である．C&amp;Cサーバ側のコードは参照できず，マルウェアの検体はシンボル情報やソースコードを含んでいなくともよい．またマルウェアは複数のリクエストをC&amp;Cサーバに送信するものとする．</p>
-<h1 id="提案手法"><a href="#提案手法" class="headerlink" title="提案手法"></a>提案手法</h1><p>　あるサーバにマルウェアと同様のリクエストを送って，マルウェアがコマンドとして解釈できるレスポンスが返ってきたら，そのサーバは疑いようもなくC&amp;Cサーバである–AUTOPROBEの鍵となる発想は至極単純だ．<br>　AUTOPROBEは検体の命令・API・システムコールの実行を–おそらくQEMUによって–トレースし，リクエストを生成する処理とレスポンスをハンドルする処理をそれぞれマルウェアから抽出する．つづいて前者によって不審なサーバに対するリクエストを生成し，後者によってレスポンスをハンドルする．レスポンスハンドリングの可否をもってフィンガープリントとするから，その処理の抽出さえできれば不審なサーバがC&amp;Cサーバかどうか判定するまで実際のC&amp;Cサーバと通信する必要はない–でもどうやって？</p>
-<h2 id="リクエスト生成"><a href="#リクエスト生成" class="headerlink" title="リクエスト生成"></a>リクエスト生成</h2><p>　マルウェアの多くは時間や擬似乱数，OS情報などの環境依存の値によって動作を変更する．たとえばWin32/LoadMoney.AFはレジストリキーの有無によって送信するリクエストを変更する．</p>
-<p><img src="/image/autoprobe/win32_loadmoney.af.png" width="50%" height="50%"></p>
-<p>　不審なサーバがC&amp;Cサーバかどうか判定するためには攻撃者の期待するリクエストをより多く送信しより多くレスポンスを得たい．そこでAUTOPROBEは以下のアルゴリズムにしたがって複数の実行トレースを得る．これは条件分岐の度に直前のシステムコールを参照する，ある種の深さ優先探索として実装される．</p>
-<p><img src="/image/autoprobe/request.png" width="50%" height="50%"></p>
-<p>　さらにAUTOPROBEはトレースをスライスし，システムコールの結果に依存する値を環境依存の値として決定論的な値・定数と区別する．ここで環境依存の値を書き換えれば攻撃者の期待するリクエストを送信できるようになる．また環境依存の値に影響するシステムコールの戻り値に時間，IPアドレス，擬似乱数，OS情報など200種類のラベルを設定しているとのことだ．</p>
-<h2 id="レスポンスハンドリング"><a href="#レスポンスハンドリング" class="headerlink" title="レスポンスハンドリング"></a>レスポンスハンドリング</h2><p>　生成したリクエストをC&amp;Cサーバに送信してレスポンスを得たら，AUTOPROBEはレスポンスの各バイトを記号値として扱い，実行トレースから検体の分岐制約を充足する解およびスライスθ<sub>1</sub>を得る．ここで探索の終了条件は<code>closesocket</code>や<code>exitprocess</code>に到達した場合，データを受信してから50個の条件分岐にわたってそのデータを参照するものが存在しない場合である．つづいてレスポンスとして正しく解釈できない値を検体に与え，実行トレースから分岐制約を充足する解およびスライスθ<sub>2</sub>を得る．ここでηは以下の式によって得られる実行経路の類似度である．</p>
-<p><img src="/image/autoprobe/slice.png" width="50%" height="50%"></p>
-<p>　bnとfnはそれぞれ各スライスに含まれるユニークなコードブロックとシステムコールの数を示す．AUTOPROBEはηが閾値10を下回ればレスポンスを正しく解釈していない実行経路とみなしてスライスを破棄し，上回れば別々のハンドラであるとしてそれぞれの分岐制約をフィンガープリントとして保持する．たとえばこんなふうに．</p>
-<p><img src="/image/autoprobe/equations.png" width="50%" height="50%"></p>
-<p>　C&amp;Cサーバからレスポンスを得られなければ，AUTOPROBEは記号的実行とファジング，フラグレジスタの書き換えによる強制実行（forced execution）を併用してレスポンスに依存する実行経路を探索する．</p>
-<p><img src="/image/autoprobe/response.png" width="55%" height="55%"></p>
-<p>　このファジングでは検体にランダム値を与えるが，検体が用いるアルゴリズムがHTTPなど既知のものであればエラーメッセージのハンドラを起点に探索する．<br>　AUTOPROBEはこのように探索したレスポンスのハンドラをフィンガープリントとするが，期待されるレスポンスが得られずさきほどのアルゴリズムによって探索した場合は以下のようにC&amp;Cサーバの尤もらしさを算出する．</p>
-<p><img src="/image/autoprobe/score.png" width="50%" height="50%"></p>
-<h1 id="評価"><a href="#評価" class="headerlink" title="評価"></a>評価</h1><p>　論文ではふたつのデータセットを用いてAUTOPROBEの性能を評価している．ひとつはSality, ZeroAccess, Ramnit, Bamital, Taidoorを含む37ファミリ10亜種計370検体．もうひとつはネットワーク通信の特徴量に基づいてフィンガープリントを生成する既存研究–CYBERPROBE[2]で用いられた19ファミリ． “which have been kindly provided to us by the authors of CYBERPROBE”って書いてるけどAUTOPROBEと同じメンバーじゃねえか．<br>　検体の実行時間は5分．</p>
-<h2 id="リクエスト生成-1"><a href="#リクエスト生成-1" class="headerlink" title="リクエスト生成"></a>リクエスト生成</h2><p>　まずはリクエストの生成から．可能であればC&amp;Cサーバとの接続をともなうがAlexaトップ10,000サイトは除外している．ここでAUTOPROBEはC&amp;Cサーバに接続せずとも検体のバイナリを分析してCYBERPROBEと同様の結果を得ている．</p>
-<p><img src="/image/autoprobe/request_eval.png"></p>
-<p>　AUTOPROBEはふたつのデータセットに含まれる56ファミリのトレースから105のリクエストを生成した．生成にかかった時間は平均13.2分．リクエストはすべてHTTPであったとのこと．</p>
-<h2 id="レスポンスハンドリング-1"><a href="#レスポンスハンドリング-1" class="headerlink" title="レスポンスハンドリング"></a>レスポンスハンドリング</h2><p>　生成したリクエストのうち76件がC&amp;Cサーバからのレスポンスを引き出した．さらにAUTOPROBEは<code>HTTP 200</code>レスポンスコードを含む同数のランダムなレスポンスを生成し，検体に与えた．これはレスポンスハンドリングの可否によって検体の異なる挙動を確認したいためだ．結果として76件のテストケース中71件（93％）で検体は異なる挙動を示した–<strong>期待される受信データを得たマルウェアは一般に10以上のシステムコールと50以上のコードブロックを実行する</strong>．残りの5件はC&amp;Cサーバではなかった．つまりAUTOPROBEはマルウェアの通信先がC&amp;Cサーバかどうか正しく判定できている．</p>
-<h2 id="ケーススタディ"><a href="#ケーススタディ" class="headerlink" title="ケーススタディ"></a>ケーススタディ</h2><p>　たとえばBamitalのリクエストはファイル名・<code>GetVersionEx</code>によって得たOS情報・DGA (domain generation algorithm) によって生成したホスト名を含んでいた．AUTOPROBEはこれらの値が依存するシステムコールを得ている．</p>
-<p><img src="/image/autoprobe/bamital.png" width="50%" height="50%"></p>
-<p>　C&amp;Cサーバと接続せずとも<code>HTTP/1.1 200 OK</code>を与えればBamitalのハンドラは分析できるとのこと．<br>　また標的型攻撃に用いられるTaidoorのリクエストは<code>GetAdaptersInfo</code>によって得たMACアドレスに依存する値を含んでいた．これによってTaidoorのC&amp;Cサーバは感染端末のみで動作するレスポンスを送信していたようだ．<br>　ドライブバイダウンロード検体であるSalityのC&amp;Cサーバは<code>spm/s_tasks.php</code>, <code>logos_s.gif</code>, <code>231013_d.exe</code>というファイルをレスポンスに含んでいた．AUTOPROBEはこれらのファイルの存在するサーバをSalityのC&amp;Cサーバとみなす．などなど．</p>
-<h2 id="限定的な探索"><a href="#限定的な探索" class="headerlink" title="限定的な探索"></a>限定的な探索</h2><p>　Malware Domain Listに含まれる9,500アドレスの近傍/24サブネット・2.6Mアドレスのスキャン結果．</p>
-<p><img src="/image/autoprobe/localized.png" width="60%" height="60%"></p>
-<p>　VirusTotal, Malware Domain List, そしてURLQueryに発見されていないC&amp;Cサーバを特定できている．</p>
-<h2 id="インターネット全体の探索"><a href="#インターネット全体の探索" class="headerlink" title="インターネット全体の探索"></a>インターネット全体の探索</h2><p>　ここではBGPからインターネット全体をスキャンし，7,100万ものHTTPサーバを発見している．</p>
-<p><img src="/image/autoprobe/horizontal.png"></p>
-<p>　このうちマルウェア3ファミリのC&amp;Cサーバをどれだけ発見できるかCYBERPROBEと比較した結果．</p>
-<p><img src="/image/autoprobe/comparison.png"></p>
-<p>　CYBERPROBEが40件のC&amp;Cサーバを特定しているのにたいしてAUTOPROBEは54件のC&amp;Cサーバを特定している．<br>　高度化するマルウェアが通信内容を難読化・秘匿する傾向にあることを鑑みると，CYBERPROBEのようにネットワーク通信の特徴量を用いる手法よりもAUTOPROBEのようにバイナリ解析を応用した手法こそ吟味されるべきだろう．</p>
-<h1 id="感想"><a href="#感想" class="headerlink" title="感想"></a>感想</h1><p>　AUTOPROBEは折しも私が昨年度のインターンシップでほとんど同じようなテーマに取り組んでいたとき発表された．テイント解析のソースを受信データではなくシステムコールの結果に設定することで，リクエストのセマンティクスを復元しようとするAUTOPROBEの発想は野心的であり，さまざまなバイナリ解析技術を結集して未知のC&amp;Cサーバを発見する手際は鮮やかというほかない．<br>　私は来年書くことになる卒業論文のテーマとして，インターネット接続のない閉環境におけるマルウェアの分析に本手法を応用できないか検討している．Ryzhykら[4]はデバイスドライバと環境（デバイスおよびOS）との相互作用を有限オートマトンを用いて表現し，デバイスドライバを半自動的に合成する手法を提案している．問題領域は異なるがこうした手法も検討したい．</p>
-<h1 id="用語解説"><a href="#用語解説" class="headerlink" title="用語解説"></a>用語解説</h1><ul>
-<li>テイント解析<ul>
-<li>任意のデータに設定したタグをルールにしたがって伝搬させることで，データ間の依存関係を分析する手法</li>
-</ul>
-</li>
-<li>プログラムスライシング<ul>
-<li>任意のデータに依存する処理部分をプログラムから抽出する手法</li>
-</ul>
-</li>
-<li>記号的実行<ul>
-<li>プログラムの分岐条件を充足論理問題とし，制約を充足する解を得る手法</li>
-</ul>
-</li>
-<li>ファジング<ul>
-<li>開発者が意図しない入力を自動生成してプログラムに与えることで脆弱性を顕在化させる手法</li>
-</ul>
-</li>
-</ul>
-<h1 id="参考文献"><a href="#参考文献" class="headerlink" title="参考文献"></a>参考文献</h1><ul>
-<li>[1] Zhaoyan Xu, Antonio Nappa, Robert Baykov, Guangliang Yang, Juan Caballero, and Guofei Gu, “<a href="http://www.cs.wm.edu/~ksun/csci780-f14/papers/AutoProbe-CCS14.pdf" target="_blank" rel="external">AUTOPROBE: Towards Automatic Active Malicious Server Probing Using Dynamic Binary Analysis[PDF]</a>,” In Proc. of the 21st ACM Conference on Computer and Communications Security (CCS’14), 2014.</li>
-<li>[2] Antonio Nappa, Zhaoyan Xu, M. Zubair Rafique, Juan Caballero, and Guofei Gu, “<a href="http://faculty.cs.tamu.edu/guofei/paper/CyberProbe_NDSS14.pdf" target="_blank" rel="external">Cyberprobe: Towards Internet-Scale Active Detection of Malicious Servers[PDF]</a>,” In Network and Distributed System Security Symposium (NDSS’14), 2014.</li>
-<li>[3] Zhaoyan Xu, Lingfeng Chen, Guofei Gu, and Christopher Kruegel, “<a href="http://dl.acm.org/citation.cfm?id=2382257" target="_blank" rel="external">Peerpress: Utilizing Enemies’ P2P Strength against Them</a>,” In ACM Conference on Computer and Communications Security (CCS’12), 2012.</li>
-<li>[4] Leonid Ryzhyk, Adam Walker, John Keys, Alexander Legg, Arun Raghunath, Michael Stumm, and Mona Vij, “<a href="https://www.usenix.org/conference/osdi14/technical-sessions/presentation/ryzhyk" target="_blank" rel="external">User-Guided Device Driver Synthesis</a>,” In Proc. of the 11th USENIX Conference on Operating Systems Design and Implementation (OSDI’14), 2014.</li>
-</ul>
-
-      
-    </div>
-    <footer class="article-footer">
-      <a data-url="http://ntddk.github.io/2015/12/11/autoprobe/" data-id="cjbiq70rv00078w7tt34hy274" class="article-share-link">Share</a>
-      
-      
-  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/symbolic-execution/">symbolic execution</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/taint-analysis/">taint analysis</a></li></ul>
-
-    </footer>
-  </div>
-  
-</article>
-
-
-  
   
     <nav id="page-nav">
       <a class="extend prev" rel="prev" href="/archives/">&laquo; Prev</a><a class="page-number" href="/archives/">1</a><span class="page-number current">2</span><a class="page-number" href="/archives/page/3/">3</a><a class="page-number" href="/archives/page/4/">4</a><a class="extend next" rel="next" href="/archives/page/3/">Next &raquo;</a>
@@ -749,7 +789,7 @@
   
   <div class="outer">
     <div id="footer-info" class="inner">
-      &copy; 2017 ntddk<br>
+      &copy; 2018 ntddk<br>
       <a href="https://github.com/ntddk/hexo-theme-jathena" target="_blank">JAthena</a> by <a href="https://ntddk.github.io" target="_blank">ntddk</a> | Powered by <a href="https://hexo.io/" target="_blank">Hexo</a>
     </div>
   </div>
