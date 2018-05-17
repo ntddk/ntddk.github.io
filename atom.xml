@@ -5,7 +5,7 @@
   <link href="/atom.xml" rel="self"/>
   
   <link href="http://ntddk.github.io/"/>
-  <updated>2018-05-17T12:35:52.499Z</updated>
+  <updated>2018-05-17T15:02:10.211Z</updated>
   <id>http://ntddk.github.io/</id>
   
   <author>
@@ -20,7 +20,7 @@
     <link href="http://ntddk.github.io/2018/05/14/def-con-ctf-qualifier-2018-round-up/"/>
     <id>http://ntddk.github.io/2018/05/14/def-con-ctf-qualifier-2018-round-up/</id>
     <published>2018-05-14T11:00:00.000Z</published>
-    <updated>2018-05-17T12:35:52.499Z</updated>
+    <updated>2018-05-17T15:02:10.211Z</updated>
     
     <content type="html"><![CDATA[<p>This is too brief to be called write-up. But I’m tired …</p>
 <h1 id="Introduction"><a href="#Introduction" class="headerlink" title="Introduction"></a>Introduction</h1><p>I’ve participated in DEF CON CTF Qualifier 2018 as a member of a certain team, ignominious 40th place. But somehow I solved 3 tasks:</p>
@@ -65,7 +65,7 @@
 <li><a href="https://blog.eadom.net/writeups/qemu-escape-vm-escape-from-0ctf-2017-finals-writeup/" target="_blank" rel="external">QEMU Escape — vm_escape from 0CTF 2017 Finals Writeup - Eadom’s Blog</a></li>
 </ul>
 <p>Thanks authors!</p>
-<h1 id="Last-Words"><a href="#Last-Words" class="headerlink" title="Last Words"></a>Last Words</h1><p>Other tasks I had wanted to solve are:</p>
+<h1 id="Final-Words"><a href="#Final-Words" class="headerlink" title="Final Words"></a>Final Words</h1><p>Other tasks I had wanted to solve are:</p>
 <ul>
 <li>flagsifier</li>
 <li>TechSupport</li>
