@@ -50,6 +50,706 @@
       <div class="outer">
         <section id="main">
   
+    <article id="post-thin-hypervisor-2017" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    
+      <header class="article-header">
+        
+  
+    <a class="article-title" href="/2017/03/04/thin-hypervisor-2017/">シン・ハイパーバイザ2017 (前編)</a>
+  
+
+      </header>
+    
+    <time class="article-date" datetime="2017-03-04T09:45:00.000Z" itemprop="datePublished">03-04-2017</time>
+    
+  </div>
+  <div class="article-inner">
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p>　いまさらながら，<a href="http://www.adventar.org/calendars/1401" target="_blank" rel="external">情報セキュリティ系論文紹介 Advent Calendar 2016</a>あるいは<a href="http://qiita.com/advent-calendar/2016/bitvisor" target="_blank" rel="external">BitVisor Advent Calendar 2016</a>に投稿されるはずだった文章を供養する．</p>
+<h1 id="はじめに"><a href="#はじめに" class="headerlink" title="はじめに"></a>はじめに</h1><p>　本稿では，シン，すなわち薄いハイパーバイザ (thin hypervisor) の動向を紹介する．<br>　薄いハイパーバイザとは，小規模であることを志向したハイパーバイザだ——ということにしておこう．小規模というのは，一部のイベントのみトラップするということだ．メリットとしては，実装・学習コストやオーバーヘッド，TCB (trusted computing base) を削減できる点が挙げられる．<br>　用語の初出はBitVisorの論文<a href="https://www.os.ecc.u-tokyo.ac.jp/papers/vee2009-shina.pdf" target="_blank" rel="external">[T. Shinagawa, et al. VEE’09]</a>だが，多くはWindows向けルートキットとして開発されたBlue Pillという手法<a href="http://www.blackhat.com/presentations/bh-usa-06/BH-US-06-Rutkowska.pdf" target="_blank" rel="external">[J. Rutkowska. Black Hat USA’06]</a>の流れを汲んでいる．そのため，ブート時からゲストを掌握するのではなく，のちほど——あえてchain of trustの構築を放棄して——カーネルドライバとしてロードされるものが一般的である．そのほか，単一のゲストのみ対象とする，セキュリティを意識しているといった傾向が見られる．<br>　前編となる今回は，3種類の薄いハイパーバイザを見ていく．</p>
+<h1 id="ksm"><a href="#ksm" class="headerlink" title="ksm"></a>ksm</h1><table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>リポジトリ</td>
+<td><a href="https://github.com/asamy/ksm" target="_blank" rel="external">https://github.com/asamy/ksm</a></td>
+</tr>
+<tr>
+<td>形態</td>
+<td>カーネルドライバ</td>
+</tr>
+<tr>
+<td>仮想化支援機能</td>
+<td>Intel VT-x with EPT</td>
+</tr>
+<tr>
+<td>サポートしている環境</td>
+<td>Windows 7/8/8.1/10, Linux</td>
+</tr>
+<tr>
+<td>言語</td>
+<td>C, アセンブリ言語</td>
+</tr>
+<tr>
+<td>ライセンス</td>
+<td>GNU GPL v2</td>
+</tr>
+</tbody>
+</table>
+<p>　ksmは高速，拡張可能かつ小規模であることを旨としているハイパーバイザで，アンチウイルスソフトウェアやサンドボックスへの利用を意識して開発されている．機能は以下の通り：</p>
+<ul>
+<li>IDT Shadowing</li>
+<li>EPT violation #VE (Broadwell以降)</li>
+<li>EPTP switching VMFUNC (Haswell以降，もしサポートされていなければVMCALLで代替)</li>
+<li>Builtin Userspace physical memory sandboxer (ビルドオプション)</li>
+<li>Builtin Introspection engine (ビルドオプション)</li>
+<li>APIC virtualization (実験的機能)</li>
+<li>VMX Nesting (実験的機能)</li>
+</ul>
+<p>　主なソースコードは以下の通り：</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="https://github.com/asamy/ksm/blob/master/main_nt.c" target="_blank" rel="external"><code>main_nt.c</code></a>, <a href="https://github.com/asamy/ksm/blob/master/main_linux.c" target="_blank" rel="external"><code>main_linux.c</code></a></td>
+<td>カーネルドライバのエントリポイント，<code>ioctl</code>ディスパッチ</td>
+</tr>
+<tr>
+<td><a href="https://github.com/asamy/ksm/blob/master/ksm.c" target="_blank" rel="external"><code>ksm.c</code></a></td>
+<td>ハイパーバイザ全体の初期化</td>
+</tr>
+<tr>
+<td><a href="https://github.com/asamy/ksm/blob/master/vmx.S" target="_blank" rel="external"><code>vmx.S</code></a>, <a href="https://github.com/asamy/ksm/blob/master/vmx.asm" target="_blank" rel="external"><code>vmx.asm</code></a></td>
+<td>IDTやEPT violationのトラップ，ゲストのレジスタ退避</td>
+</tr>
+<tr>
+<td><a href="https://github.com/asamy/ksm/blob/master/vcpu.c" target="_blank" rel="external"><code>vcpu.c</code></a></td>
+<td>VMCSの読み書き</td>
+</tr>
+<tr>
+<td><a href="https://github.com/asamy/ksm/blob/master/exit.c" target="_blank" rel="external"><code>exit.c</code></a></td>
+<td>VMExitのハンドラ</td>
+</tr>
+<tr>
+<td><a href="https://github.com/asamy/ksm/blob/master/um/um.c" target="_blank" rel="external"><code>um/um.c</code></a></td>
+<td>ユーザーランドのエージェント</td>
+</tr>
+<tr>
+<td><a href="https://github.com/asamy/ksm/blob/master/sandbox.c" target="_blank" rel="external"><code>sandbox.c</code></a></td>
+<td>サンドボックス機能</td>
+</tr>
+<tr>
+<td><a href="https://github.com/asamy/ksm/blob/master/introspect.c" target="_blank" rel="external"><code>introspect.c</code></a></td>
+<td>イントロスペクション機能</td>
+</tr>
+<tr>
+<td><a href="https://github.com/asamy/ksm/blob/master/epage.c" target="_blank" rel="external"><code>epage.c</code></a></td>
+<td>EPTフック機能</td>
+</tr>
+<tr>
+<td><a href="https://github.com/asamy/ksm/blob/master/mm.c" target="_blank" rel="external"><code>mm.c</code></a></td>
+<td>メモリ管理</td>
+</tr>
+<tr>
+<td><a href="https://github.com/asamy/ksm/blob/master/hotplug.c" target="_blank" rel="external"><code>hotplug.c</code></a></td>
+<td>CPUホットプラグに関する処理</td>
+</tr>
+</tbody>
+</table>
+<p>　カーネルドライバをロードし，ユーザーランドのエージェントから<code>ioctl</code>を発行，サンドボックス機能またはイントロスペクション機能，EPT機能を呼び出すという流れになっている．詳細は<a href="https://github.com/asamy/ksm/blob/master/Documentation/SPEC.rst" target="_blank" rel="external"><code>Documentation/SPEC.rst</code></a>を参照のこと．</p>
+<h1 id="SimpleVisor"><a href="#SimpleVisor" class="headerlink" title="SimpleVisor"></a>SimpleVisor</h1><table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>リポジトリ</td>
+<td><a href="https://github.com/ionescu007/SimpleVisor" target="_blank" rel="external">https://github.com/ionescu007/SimpleVisor</a></td>
+</tr>
+<tr>
+<td>形態</td>
+<td>カーネルドライバ</td>
+</tr>
+<tr>
+<td>仮想化支援機能</td>
+<td>Intel VT-x with EPT, AMD-V</td>
+</tr>
+<tr>
+<td>サポートしている環境</td>
+<td>Windows 8/8.1/10, UEFI</td>
+</tr>
+<tr>
+<td>言語</td>
+<td>C, アセンブリ言語</td>
+</tr>
+<tr>
+<td>ライセンス</td>
+<td>2 clause BSD</td>
+</tr>
+</tbody>
+</table>
+<p>　SimpleVisorは，名前の通り極力シンプルであることをめざしたハイパーバイザだ．全体で1700行程度．開発者はWindows Internalsの著者のひとりで，<a href="https://github.com/ionescu007/SimpleVisor/blob/master/README.md" target="_blank" rel="external"><code>README.md</code></a>にはこう書かれている：</p>
+<blockquote>
+<p>Have you always been curious on how to build a hypervisor? Has Intel’s documentation (the many hundreds of pages) gotten you down? Have the samples you’ve found online just made things more confusing, or required weeks of reading through dozens of thousands of lines and code? If so, SimpleVisor might be the project for you.</p>
+</blockquote>
+<p>　そういうわけで，SimpleVisorはIntel SDM (とくに，ハイパーバイザまわりは<a href="http://www.intel.co.jp/content/www/jp/ja/architecture-and-technology/64-ia-32-architectures-software-developer-vol-3c-part-3-manual.html" target="_blank" rel="external">Vol. 3C</a>) の解読にうんざりした人向けだ．学習にはもってこい．<code>CPUID</code>, <code>INVD</code>, <code>VMX</code>, <code>XSETBV</code>のみトラップするようになっており，ネストには対応していない．しかし，XenやBochsでさえ追いついていない最新の仮想化支援機能にいちはやく追随しようとしている．<br>　主なソースコードは以下の通り：</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="https://github.com/ionescu007/SimpleVisor/blob/master/nt/shvos.c" target="_blank" rel="external"><code>nt/shvos.c</code></a></td>
+<td>カーネルドライバのエントリポイント</td>
+</tr>
+<tr>
+<td><a href="https://github.com/ionescu007/SimpleVisor/blob/master/shv.c" target="_blank" rel="external"><code>shv.c</code></a></td>
+<td>VMExit/VMEntryのコールバック関数の登録</td>
+</tr>
+<tr>
+<td><a href="https://github.com/ionescu007/SimpleVisor/blob/master/shvvp.c" target="_blank" rel="external"><code>shvvp.c</code></a></td>
+<td>コールバック関数の実体，仮想CPUの初期化</td>
+</tr>
+<tr>
+<td><a href="https://github.com/ionescu007/SimpleVisor/blob/master/shvvmx.c" target="_blank" rel="external"><code>shvvmx.c</code></a></td>
+<td>VMCSの初期化</td>
+</tr>
+<tr>
+<td><a href="https://github.com/ionescu007/SimpleVisor/blob/master/shvvmxhv.c" target="_blank" rel="external"><code>shvvmxhv.c</code></a></td>
+<td>VMExitのハンドラ</td>
+</tr>
+<tr>
+<td><a href="https://github.com/ionescu007/SimpleVisor/blob/master/shvutil.c" target="_blank" rel="external"><code>shvutil.c</code></a></td>
+<td>GDTの変換</td>
+</tr>
+</tbody>
+</table>
+<p>　シンプル．</p>
+<h1 id="HyperPlatform"><a href="#HyperPlatform" class="headerlink" title="HyperPlatform"></a>HyperPlatform</h1><table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>リポジトリ</td>
+<td><a href="https://github.com/tandasat/HyperPlatform" target="_blank" rel="external">https://github.com/tandasat/HyperPlatform</a></td>
+</tr>
+<tr>
+<td>形態</td>
+<td>カーネルドライバ</td>
+</tr>
+<tr>
+<td>仮想化支援機能</td>
+<td>Intel VT-x with EPT</td>
+</tr>
+<tr>
+<td>サポートしている環境</td>
+<td>Windows 7/8.1/10</td>
+</tr>
+<tr>
+<td>言語</td>
+<td>C++, アセンブリ言語</td>
+</tr>
+<tr>
+<td>ライセンス</td>
+<td>MIT</td>
+</tr>
+</tbody>
+</table>
+<p>　HyperPlatformは，カーネルランドで動くコード，すなわちWindows向けルートキットやWindowsカーネル自体の解析を目的として開発されているハイパーバイザ．物理メモリと仮想メモリへのアクセス，関数呼び出し，命令単位のコード実行を監視できるようになっている<a href="https://recon.cx/2016/resources/slides/RECON-0xA-HyperPlatform-Satoshi.pdf" target="_blank" rel="external">[S. Tanda. REcon’16]</a>．<br>　主なソースコードは以下の通り：</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="https://github.com/tandasat/HyperPlatform/blob/master/HyperPlatform/driver.cpp" target="_blank" rel="external"><code>driver.cpp</code></a></td>
+<td>カーネルドライバのエントリポイント，各種コールバック関数の登録</td>
+</tr>
+<tr>
+<td><a href="https://github.com/tandasat/HyperPlatform/blob/master/HyperPlatform/log.cpp" target="_blank" rel="external"><code>log.cpp</code></a></td>
+<td>ログ出力</td>
+</tr>
+<tr>
+<td><a href="https://github.com/tandasat/HyperPlatform/blob/master/HyperPlatform/global_object.cpp" target="_blank" rel="external"><code>global_object.cpp</code></a></td>
+<td>グローバル変数の初期化</td>
+</tr>
+<tr>
+<td><a href="https://github.com/tandasat/HyperPlatform/blob/master/HyperPlatform/performance.cpp" target="_blank" rel="external"><code>performance.cpp</code></a></td>
+<td>パフォーマンス計測</td>
+</tr>
+<tr>
+<td><a href="https://github.com/tandasat/HyperPlatform/blob/master/HyperPlatform/util.cpp" target="_blank" rel="external"><code>util.cpp</code></a></td>
+<td><code>PTE_BASE</code>の取得，メモリアドレス変換，VMCALLのラッパなど</td>
+</tr>
+<tr>
+<td><a href="https://github.com/tandasat/HyperPlatform/blob/master/HyperPlatform/power_callback.cpp" target="_blank" rel="external"><code>power_callback.cpp</code></a></td>
+<td>電源状態のコールバック関数</td>
+</tr>
+<tr>
+<td><a href="https://github.com/tandasat/HyperPlatform/blob/master/HyperPlatform/hotplug_callback.cpp" target="_blank" rel="external"><code>hotplug_callback.cpp</code></a></td>
+<td>CPUホットプラグのコールバック関数</td>
+</tr>
+<tr>
+<td><a href="https://github.com/tandasat/HyperPlatform/blob/master/HyperPlatform/vm.cpp" target="_blank" rel="external"><code>vm.cpp</code></a></td>
+<td>仮想CPUの初期化，VMCSの読み書き</td>
+</tr>
+<tr>
+<td><a href="https://github.com/tandasat/HyperPlatform/blob/master/HyperPlatform/ept.cpp" target="_blank" rel="external"><code>ept.cpp</code></a></td>
+<td>EPTの構成</td>
+</tr>
+<tr>
+<td><a href="https://github.com/tandasat/HyperPlatform/blob/master/HyperPlatform/vmm.cpp" target="_blank" rel="external"><code>vmm.cpp</code></a></td>
+<td>命令のトラップ，VMExitのハンドラ</td>
+</tr>
+<tr>
+<td><a href="https://github.com/tandasat/HyperPlatform/blob/master/HyperPlatform/Arch/x64/x64.asm" target="_blank" rel="external"><code>Arch/x64/x64.asm</code></a>, <a href="https://github.com/tandasat/HyperPlatform/blob/master/HyperPlatform/Arch/x86/x86.asm" target="_blank" rel="external"><code>Arch/x86/x86.asm</code></a></td>
+<td>VMX命令呼び出しにともなう命令列</td>
+</tr>
+<tr>
+<td><a href="https://github.com/tandasat/HyperPlatform/blob/master/HyperPlatform/kernel_stl.cpp" target="_blank" rel="external"><code>kernel_stl.cpp</code></a></td>
+<td>ntoskrnl経由でカーネルドライバからSTLを利用する</td>
+</tr>
+</tbody>
+</table>
+<p>　エントリポイントから手続き的に書き下されていて，わかりやすい．ハイパーバイザとしての機能もさることながら，STLを強引に呼び出すハックがかっこいい．<br>　この拡張例には以下がある：</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="https://github.com/tandasat/MemoryMon" target="_blank" rel="external">MemoryMon</a></td>
+<td>カーネルランドへのコード挿入を検知する</td>
+</tr>
+<tr>
+<td><a href="https://github.com/tandasat/EopMon" target="_blank" rel="external">EopMon</a></td>
+<td>マルウェアによる特権昇格攻撃を検知する</td>
+</tr>
+<tr>
+<td><a href="https://github.com/tandasat/DdiMon" target="_blank" rel="external">DdiMon</a></td>
+<td>EPTを用いたAPIフック</td>
+</tr>
+<tr>
+<td><a href="https://github.com/tandasat/GuardMon" target="_blank" rel="external">GuardMon</a></td>
+<td>PatchGuardの挙動解析</td>
+</tr>
+</tbody>
+</table>
+<p>　いずれもカーネルドライバのエントリポイントで追加機能を初期化するしくみ．<br>　やや温め納豆は遠くなりにけり．</p>
+<h1 id="おわりに"><a href="#おわりに" class="headerlink" title="おわりに"></a>おわりに</h1><p>　いずれもSandy Bridge以降のいまどきの環境であれば動作する．<br>　卒業研究ではQEMUをベースとしたマルウェア解析環境を開発していたのだけど，やはり速度面に難があるし，このあたりの技術を再検討しないとなー．<br>　なお，今回取り上げなかったハイパーバイザには以下のようなものがある：</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="https://github.com/ainfosec/MoRE" target="_blank" rel="external">MoRE</a></td>
+<td>ルートキット文脈のハイパーバイザ．やや古い</td>
+</tr>
+<tr>
+<td><a href="https://github.com/DarthTon/HyperBone" target="_blank" rel="external">HyperBone</a></td>
+<td>HyperPlatformと似た機能をもつ．やや古い</td>
+</tr>
+<tr>
+<td><a href="https://github.com/linux-noah/noah" target="_blank" rel="external">Noah</a></td>
+<td>未踏のアレ．OS X上でLinuxバイナリを動かす．MacBook持ってないので試せないのだわ</td>
+</tr>
+<tr>
+<td><a href="https://github.com/Bareflank/hypervisor" target="_blank" rel="external">Bareflank</a></td>
+<td>type 1, 2, ドライバいずれの形態のVMMもサポートしたライブラリ．しかもC++で書ける</td>
+</tr>
+</tbody>
+</table>
+<p>　なかでもBareflankがヤバいので後編ではこれを読んでいきます．</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://ntddk.github.io/2017/03/04/thin-hypervisor-2017/" data-id="cjna5v32l001tul7t9u3p3ilr" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/virtual-machine-introspection/">virtual machine introspection</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+    <article id="post-yakiniku-optimization" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    
+      <header class="article-header">
+        
+  
+    <a class="article-title" href="/2016/12/04/yakiniku-optimization/">焼肉最適化問題</a>
+  
+
+      </header>
+    
+    <time class="article-date" datetime="2016-12-04T14:59:59.000Z" itemprop="datePublished">12-04-2016</time>
+    
+  </div>
+  <div class="article-inner">
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p>　本稿は<a href="http://www.adventar.org/calendars/1413" target="_blank" rel="external">SFC-RG Advent Calendar 2016</a>の4日目である．</p>
+<h1 id="はじめに"><a href="#はじめに" class="headerlink" title="はじめに"></a>はじめに</h1><p>　あなたは研究の中間発表を終えて，今晩何を食べようか考えている．たしかに準備不足ではあったけれど，研究の前提をいまいち解さないファカルティの高飛車な質問にはうんざりしたし，今日くらいはパーッと気分転換したいものだ．そういうわけで，あなたは⊿館を飛び出して焼肉 ざんまい 湘南台店に行くことにした．</p>
+<h1 id="組合せ最適化"><a href="#組合せ最適化" class="headerlink" title="組合せ最適化"></a>組合せ最適化</h1><p>　さて，着席し，メニューを開いたあなたはしばし考える．限られた予算，限られた時間，限られた胃袋の容量——いったい何を頼めば最も<strong>満足</strong>できるだろうか？<br>　そんなとき，組合せ最適化が役に立つんです．騙されたと思って，メニューを必死に転記してみよう：</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div><div class="line">22</div></pre></td><td class="code"><pre><div class="line"><span class="keyword">import</span> numpy <span class="keyword">as</span> np, pandas <span class="keyword">as</span> pd</div><div class="line"></div><div class="line">menu = [<span class="string">'カルビ'</span>, <span class="string">'和牛カルビ'</span>, <span class="string">'和牛中落ちカルビ'</span>, <span class="string">'ハラミ'</span>, <span class="string">'厚切りロース'</span>, <span class="string">'ネギ牛タン塩'</span>, <span class="string">'牛タン塩'</span>, </div><div class="line">        <span class="string">'イベリコ豚'</span>, <span class="string">'カシラ'</span>, <span class="string">'豚トロ'</span>, <span class="string">'ネギ豚タン塩'</span>, <span class="string">'豚タン塩'</span>, <span class="string">'厚切りベーコン'</span>, <span class="string">'ウインナー'</span>, <span class="string">'チョリソ'</span>, </div><div class="line">        <span class="string">'ホルモン'</span>, <span class="string">'シロコロホルモン'</span>, <span class="string">'レバー'</span>, <span class="string">'白レバー'</span>, <span class="string">'ハツ'</span>, <span class="string">'ミノ'</span>, </div><div class="line">        <span class="string">'お得!! 三種盛り'</span>, <span class="string">'本日の塩三種盛り'</span>, <span class="string">'本日の味噌三種盛り'</span>]</div><div class="line">price = [<span class="number">720</span>, <span class="number">950</span>, <span class="number">850</span>, <span class="number">720</span>, <span class="number">690</span>, <span class="number">950</span>, <span class="number">850</span>, </div><div class="line">        <span class="number">600</span>, <span class="number">550</span>, <span class="number">580</span>, <span class="number">680</span>, <span class="number">580</span>, <span class="number">500</span>, <span class="number">380</span>, <span class="number">400</span>, </div><div class="line">        <span class="number">550</span>, <span class="number">600</span>, <span class="number">550</span>, <span class="number">450</span>, <span class="number">550</span>, <span class="number">650</span>, </div><div class="line">        <span class="number">1280</span>, <span class="number">780</span>, <span class="number">780</span>]</div><div class="line"></div><div class="line">n = len(menu)</div><div class="line">np.random.seed(<span class="number">0</span>)</div><div class="line">df = pd.DataFrame(&#123;</div><div class="line">    <span class="string">'品目'</span>: menu,</div><div class="line">    <span class="string">'値段'</span>: price,</div><div class="line">    <span class="string">'満足度'</span>: np.random.randint(<span class="number">10</span>, <span class="number">20</span>, n),</div><div class="line">    <span class="string">'焼き時間'</span>: np.random.randint(<span class="number">5</span>, <span class="number">10</span>, n),</div><div class="line">    <span class="string">'量'</span>: np.random.randint(<span class="number">10</span>, <span class="number">20</span>, n),</div><div class="line">    &#125;)</div><div class="line"></div><div class="line">print(df)</div></pre></td></tr></table></figure>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>値段</th>
+<th>品目</th>
+<th>満足度</th>
+<th>焼き時間</th>
+<th>量</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0</td>
+<td>720</td>
+<td>カルビ</td>
+<td>15</td>
+<td>9</td>
+<td>10</td>
+</tr>
+<tr>
+<td>1</td>
+<td>950</td>
+<td>和牛カルビ</td>
+<td>10</td>
+<td>8</td>
+<td>10</td>
+</tr>
+<tr>
+<td>2</td>
+<td>850</td>
+<td>和牛中落ちカルビ</td>
+<td>13</td>
+<td>5</td>
+<td>14</td>
+</tr>
+<tr>
+<td>3</td>
+<td>720</td>
+<td>ハラミ</td>
+<td>13</td>
+<td>8</td>
+<td>15</td>
+</tr>
+<tr>
+<td>4</td>
+<td>690</td>
+<td>厚切りロース</td>
+<td>17</td>
+<td>5</td>
+<td>15</td>
+</tr>
+<tr>
+<td>5</td>
+<td>950</td>
+<td>ネギ牛タン塩</td>
+<td>19</td>
+<td>7</td>
+<td>16</td>
+</tr>
+<tr>
+<td>6</td>
+<td>850</td>
+<td>牛タン塩</td>
+<td>13</td>
+<td>8</td>
+<td>18</td>
+</tr>
+<tr>
+<td>7</td>
+<td>600</td>
+<td>イベリコ豚</td>
+<td>15</td>
+<td>5</td>
+<td>14</td>
+</tr>
+<tr>
+<td>8</td>
+<td>550</td>
+<td>カシラ</td>
+<td>12</td>
+<td>6</td>
+<td>11</td>
+</tr>
+<tr>
+<td>9</td>
+<td>580</td>
+<td>豚トロ</td>
+<td>14</td>
+<td>8</td>
+<td>14</td>
+</tr>
+<tr>
+<td>10</td>
+<td>680</td>
+<td>ネギ豚タン塩</td>
+<td>17</td>
+<td>8</td>
+<td>19</td>
+</tr>
+<tr>
+<td>11</td>
+<td>580</td>
+<td>豚タン塩</td>
+<td>16</td>
+<td>8</td>
+<td>18</td>
+</tr>
+<tr>
+<td>12</td>
+<td>500</td>
+<td>厚切りベーコン</td>
+<td>18</td>
+<td>5</td>
+<td>11</td>
+</tr>
+<tr>
+<td>13</td>
+<td>380</td>
+<td>ウインナー</td>
+<td>18</td>
+<td>6</td>
+<td>11</td>
+</tr>
+<tr>
+<td>14</td>
+<td>400</td>
+<td>チョリソ</td>
+<td>11</td>
+<td>6</td>
+<td>17</td>
+</tr>
+<tr>
+<td>15</td>
+<td>550</td>
+<td>ホルモン</td>
+<td>16</td>
+<td>6</td>
+<td>19</td>
+</tr>
+<tr>
+<td>16</td>
+<td>600</td>
+<td>シロコロホルモン</td>
+<td>17</td>
+<td>5</td>
+<td>19</td>
+</tr>
+<tr>
+<td>17</td>
+<td>550</td>
+<td>レバー</td>
+<td>17</td>
+<td>7</td>
+<td>13</td>
+</tr>
+<tr>
+<td>18</td>
+<td>450</td>
+<td>白レバー</td>
+<td>18</td>
+<td>9</td>
+<td>16</td>
+</tr>
+<tr>
+<td>19</td>
+<td>550</td>
+<td>ハツ</td>
+<td>11</td>
+<td>8</td>
+<td>17</td>
+</tr>
+<tr>
+<td>20</td>
+<td>650</td>
+<td>ミノ</td>
+<td>15</td>
+<td>8</td>
+<td>12</td>
+</tr>
+<tr>
+<td>21</td>
+<td>1280</td>
+<td>お得!! 三種盛り</td>
+<td>19</td>
+<td>7</td>
+<td>10</td>
+</tr>
+<tr>
+<td>22</td>
+<td>780</td>
+<td>本日の塩三種盛り</td>
+<td>18</td>
+<td>9</td>
+<td>13</td>
+</tr>
+<tr>
+<td>23</td>
+<td>780</td>
+<td>本日の味噌三種盛り</td>
+<td>19</td>
+<td>7</td>
+<td>15</td>
+</tr>
+</tbody>
+</table>
+<p>　メニューがpandasのデータフレームになった．取り急ぎ（？）満足度・焼き時間・量は乱数で埋めている．<br>　あなたはこのメニューの中から，最も満足度の高い組合せを見つけたい．それも，限られた予算，限られた時間，限られた胃袋の容量という条件を満たすような．ここではそのわがままを割当問題として解くことにする．</p>
+<table>
+<thead>
+<tr>
+<th>変数</th>
+<th><span>$x_i \in \{0, 1\}$</span><!-- Has MathJax --></th>
+<th>i番目の料理を選ぶかどうか</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>目的関数</td>
+<td><span>$\sum_i{満足度_i x_i}$</span><!-- Has MathJax --></td>
+<td><span>$\rightarrow$</span><!-- Has MathJax --> 最大</td>
+</tr>
+<tr>
+<td>制約条件</td>
+<td><span>$\sum_i{予算_i x_i} \le 12000$</span><!-- Has MathJax --></td>
+<td>予算制限</td>
+</tr>
+<tr>
+<td></td>
+<td><span>$\sum_i{焼き時間_i x_i} \le 120$</span><!-- Has MathJax --></td>
+<td>時間制限</td>
+</tr>
+<tr>
+<td></td>
+<td><span>$150 \le \sum_i{量_i x_i} \le 200$</span><!-- Has MathJax --></td>
+<td>分量制限</td>
+</tr>
+</tbody>
+</table>
+<p>　こういった問題はpulpという整数計画法ライブラリを使って解くことができる：</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div><div class="line">22</div><div class="line">23</div><div class="line">24</div><div class="line">25</div><div class="line">26</div><div class="line">27</div><div class="line">28</div><div class="line">29</div><div class="line">30</div><div class="line">31</div><div class="line">32</div><div class="line">33</div><div class="line">34</div><div class="line">35</div><div class="line">36</div><div class="line">37</div></pre></td><td class="code"><pre><div class="line"><span class="keyword">from</span> pulp <span class="keyword">import</span> *</div><div class="line"></div><div class="line">m = LpProblem(sense = LpMaximize)	<span class="comment"># 最大化問題</span></div><div class="line">df[<span class="string">'x'</span>] = [LpVariable(<span class="string">'x%d'</span> % i, cat = LpBinary) <span class="keyword">for</span> i <span class="keyword">in</span> range(n)]	<span class="comment"># i番目の品目を選択するかしないか</span></div><div class="line"></div><div class="line">m += lpDot(df.満足度, df.x)	<span class="comment"># 目的関数：満足度の最大化</span></div><div class="line">m += lpDot(df.値段, df.x) &lt;= <span class="number">12000</span>	<span class="comment"># 制約条件：予算</span></div><div class="line">m += lpDot(df.焼き時間, df.x) &lt;= <span class="number">120</span>	<span class="comment"># 制約条件：焼き時間</span></div><div class="line">m += lpDot(df.量, df.x) &gt;= <span class="number">150</span>	<span class="comment"># 制約条件：量</span></div><div class="line">m += lpDot(df.量, df.x) &lt;= <span class="number">200</span>	<span class="comment"># 制約条件：量</span></div><div class="line"></div><div class="line">m.solve()</div><div class="line"><span class="keyword">if</span> m.status == <span class="number">1</span>:</div><div class="line">    df[<span class="string">'val'</span>] = df.x.apply(<span class="keyword">lambda</span> v: value(v))	<span class="comment"># 結果</span></div><div class="line">    print(df[df.val == <span class="number">1</span>].品目)</div><div class="line">    print(<span class="string">'満足度 &#123;&#125;'</span>.format(sum(df[df.val == <span class="number">1</span>].満足度)))</div><div class="line">    print(<span class="string">'値段 &#123;&#125;'</span>.format(sum(df[df.val == <span class="number">1</span>].値段)))</div><div class="line"></div><div class="line">&gt;&gt;&gt;</div><div class="line"><span class="number">0</span>           カルビ</div><div class="line"><span class="number">4</span>        厚切りロース</div><div class="line"><span class="number">5</span>        ネギ牛タン塩</div><div class="line"><span class="number">7</span>         イベリコ豚</div><div class="line"><span class="number">8</span>           カシラ</div><div class="line"><span class="number">9</span>           豚トロ</div><div class="line"><span class="number">12</span>      厚切りベーコン</div><div class="line"><span class="number">13</span>        ウインナー</div><div class="line"><span class="number">16</span>     シロコロホルモン</div><div class="line"><span class="number">17</span>          レバー</div><div class="line"><span class="number">18</span>         白レバー</div><div class="line"><span class="number">20</span>           ミノ</div><div class="line"><span class="number">21</span>    お得!! 三種盛り</div><div class="line"><span class="number">22</span>     本日の塩三種盛り</div><div class="line"><span class="number">23</span>    本日の味噌三種盛り</div><div class="line">Name: 品目, dtype: object</div><div class="line">満足度 <span class="number">251</span></div><div class="line">値段 <span class="number">10060</span></div></pre></td></tr></table></figure>
+<p>　はい．順番はともかくとして，これらを食べれば満足できそうだ．<br>　ここまで考えたところで，あなたは今月の懐具合がよろしくないことを思い出す．なるべく出費を抑えて，それでいてある程度満足できるような品目の組合せはあるだろうか？<br>　これも同様に割当問題として考えられる．</p>
+<table>
+<thead>
+<tr>
+<th>変数</th>
+<th><span>$x_i \in \{0, 1\}$</span><!-- Has MathJax --></th>
+<th>i番目の料理を選ぶかどうか</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>目的関数</td>
+<td><span>$\sum_i{予算_i x_i}$</span><!-- Has MathJax --></td>
+<td><span>$\rightarrow$</span><!-- Has MathJax --> 最小</td>
+</tr>
+<tr>
+<td>制約条件</td>
+<td><span>$\sum_i{満足度_i x_i} \le 200$</span><!-- Has MathJax --></td>
+<td>満足度制限</td>
+</tr>
+<tr>
+<td></td>
+<td><span>$\sum_i{焼き時間_i x_i} \le 120$</span><!-- Has MathJax --></td>
+<td>時間制限</td>
+</tr>
+<tr>
+<td></td>
+<td><span>$150 \le \sum_i{量_i x_i} \le 200$</span><!-- Has MathJax --></td>
+<td>分量制限</td>
+</tr>
+</tbody>
+</table>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div><div class="line">22</div><div class="line">23</div><div class="line">24</div><div class="line">25</div><div class="line">26</div><div class="line">27</div><div class="line">28</div><div class="line">29</div><div class="line">30</div><div class="line">31</div></pre></td><td class="code"><pre><div class="line">m = LpProblem(sense = LpMinimize)	<span class="comment"># 最小化問題</span></div><div class="line">a[<span class="string">'v'</span>] = [LpVariable(<span class="string">'v%d'</span> % i, cat = LpBinary) <span class="keyword">for</span> i <span class="keyword">in</span> range(n)]	<span class="comment"># i番目の品目を選択するかしないか</span></div><div class="line"></div><div class="line">m += lpDot(df.値段, df.x)	<span class="comment"># 目的関数：予算の最小化</span></div><div class="line">m += lpDot(df.満足度, df.x) &gt;= <span class="number">200</span>	<span class="comment"># 制約条件：満足度</span></div><div class="line">m += lpDot(df.焼き時間, df.x) &lt;= <span class="number">120</span>	<span class="comment"># 制約条件：焼き時間</span></div><div class="line">m += lpDot(df.量, df.x) &gt;= <span class="number">150</span>	<span class="comment"># 制約条件：量</span></div><div class="line">m += lpDot(df.量, df.x) &lt;= <span class="number">200</span>	<span class="comment"># 制約条件：量</span></div><div class="line">m.solve()</div><div class="line"><span class="keyword">if</span> m.status == <span class="number">1</span>:</div><div class="line">    df[<span class="string">'val'</span>] = df.x.apply(<span class="keyword">lambda</span> v: value(v))	<span class="comment"># 結果</span></div><div class="line">    print(df[df.val == <span class="number">1</span>].品目)</div><div class="line">    print(<span class="string">'満足度 &#123;&#125;'</span>.format(sum(df[df.val == <span class="number">1</span>].満足度)))</div><div class="line">    print(<span class="string">'値段 &#123;&#125;'</span>.format(sum(df[df.val == <span class="number">1</span>].値段)))</div><div class="line"></div><div class="line">&gt;&gt;&gt;</div><div class="line"><span class="number">7</span>         イベリコ豚</div><div class="line"><span class="number">10</span>       ネギ豚タン塩</div><div class="line"><span class="number">11</span>         豚タン塩</div><div class="line"><span class="number">12</span>      厚切りベーコン</div><div class="line"><span class="number">13</span>        ウインナー</div><div class="line"><span class="number">14</span>         チョリソ</div><div class="line"><span class="number">15</span>         ホルモン</div><div class="line"><span class="number">16</span>     シロコロホルモン</div><div class="line"><span class="number">17</span>          レバー</div><div class="line"><span class="number">18</span>         白レバー</div><div class="line"><span class="number">22</span>     本日の塩三種盛り</div><div class="line"><span class="number">23</span>    本日の味噌三種盛り</div><div class="line">Name: 品目, dtype: object</div><div class="line">満足度 <span class="number">200</span></div><div class="line">値段 <span class="number">6850</span></div></pre></td></tr></table></figure>
+<p>　200の満足度でいいなら豚ばっか食ってろということらしい．</p>
+<h1 id="多腕バンディット問題"><a href="#多腕バンディット問題" class="headerlink" title="多腕バンディット問題"></a>多腕バンディット問題</h1><p>　いやいやちょっと待った．乱数でお茶を濁しているけど，あらゆる品目の満足度なんて知らないじゃないか．全品目を食べたことがあるならいざ知らず．それに，毎日同じ店で同じ食事をとるわけでもない．焼肉屋にしたって，湘南台には寅屋にえのもとにとあるわけだ．<br>　そういうわけで，あなたはいろいろな店に行き，いろいろな注文をして，なるべくどれを頼んでも満足度の高い食事のとれる店を見つけたいと考えた．しかしここで疑念が生まれる——いまの店でそこそこ満足できるなら，別の店を探さなくてもよいのではないか？ しかしいまの店に行き続ける限り，別の店の食事を食べることはできないぞ．しかしそこがハズレだとしたら．さてどうしよう——業界用語でこれを<strong>探索</strong>と<strong>利用</strong>のトレードオフ (exploration-exploitation tradeoff) という．</p>
+<blockquote>
+<p>これまでの学習結果を利用 (exploitation) しようとすると，探索 (exploration) が減ってしまい，機会損失が増えてしまう．一方，探索を増やせば，学習した最良の行動とは異なる行動をとることが増えるため，得られる報酬が減ってしまう．学習した最良の行動との差が，探索のコストということになる．– 牧野，et al. 『<a href="https://www.amazon.co.jp/dp/4627880316" target="_blank" rel="external">これからの強化学習</a>』</p>
+</blockquote>
+<p>　このトレードオフを解消する試みを多腕バンディット問題という．多腕バンディット問題は，複数のスロットマシンのレバー（腕）を次々と引いていき，最終的に得られる報酬を最大化するというもので，強化学習の一種といえる．各スロットマシンの報酬はそれぞれ一定の確率分布に従っている．言い換えれば，いろいろな店のメニューにある品目を試していき，最終的に得られる満足度を最大化していく，ということになる．もちろん，品目によって得られる満足度に違いはあるが，なるべく何を食べても満足度の高い店を絞り込んでいきたい．<br>　そのためのアルゴリズムのうち，ここでは<span>$\epsilon$</span><!-- Has MathJax -->-GreedyとUCB1を紹介したい．</p>
+<h2 id="Greedy"><a href="#Greedy" class="headerlink" title="-Greedy"></a><span>$\epsilon$</span><!-- Has MathJax -->-Greedy</h2><p>　デフォルトで現在最良な選択肢を選ぶが，一定の確率でいま最良と思っていないような選択肢を選びにいく手法．</p>
+<ul>
+<li><span>$1 - \epsilon$</span><!-- Has MathJax -->の確率で最適だと思われる選択肢を利用する</li>
+<li><span>$\epsilon / 2$</span><!-- Has MathJax -->の確率で最適だと思われる選択肢を探索する</li>
+<li><span>$\epsilon / 2$</span><!-- Has MathJax -->の確率で最悪だと思われる選択肢を探索する</li>
+</ul>
+<p>　<span>$\epsilon$</span><!-- Has MathJax -->-Greedyはつまり行きつけの店に入り浸るタイプのアルゴリズムだ．ただし<span>$0 &lt; \epsilon &lt; 1$</span><!-- Has MathJax -->.</p>
+<h2 id="UCB1"><a href="#UCB1" class="headerlink" title="UCB1"></a>UCB1</h2><p>　それもいいが，実はいまの行きつけよりもっといい店なのに，一度行って微妙だったからといって行かないままになっている店がないだろうか？ UCB1は，それぞれの店についてどれくらい知っているかを考慮に入れ，なるべく多くの店のことを知ろうとするアルゴリズムだ．具体的には，各店（腕）についてUCB (Upper Confidence Bound) という値を計算する．</p>
+<p>　<span>$\overline {x}_{j}+c\sqrt {\dfrac {2\log n} {x_{j}}}$</span><!-- Has MathJax --></p>
+<p>　ただし<span>$\overline {x}_{j}$</span><!-- Has MathJax -->は<span>$_{j}$</span><!-- Has MathJax -->番目の店の満足度（報酬）の期待値，<span>$n$</span><!-- Has MathJax -->はそれまでに店を回った回数の合計，<span>$n_{j}$</span><!-- Has MathJax -->は<span>$_{j}$</span><!-- Has MathJax -->番目の店に行った回数，<span>$c$</span><!-- Has MathJax -->は定数．UCB1は，この値が最大になる店に飛び込んでいく．あなたが好奇心旺盛なら，こちらのアルゴリズムを使って考えたほうがいいだろう．<br>　この手法のメリットとして，ベストでない店に行く回数を確率<span>$1$</span><!-- Has MathJax -->で<span>$O(\log n)$</span><!-- Has MathJax -->以内に抑えられる．長々とした証明は<a href="http://homes.di.unimi.it/~cesabian/Pubblicazioni/ml-02.pdf" target="_blank" rel="external">論文</a>を参照していただくとして，これは店に行く回数が十分大きい場合の理論限界に到達している．デメリットとしては，探索のためによくない店にあたってしまうことが多いという点が挙げられる．</p>
+<h2 id="実験"><a href="#実験" class="headerlink" title="実験"></a>実験</h2><p>　では，<span>$\epsilon$</span><!-- Has MathJax -->-GreedyとUCB1が<strong>最良の店を選ぶ過程</strong>はどうなっているだろうか？ 『<a href="http://www.oreilly.co.jp/books/9784873116273/" target="_blank" rel="external">バンディットアルゴリズムによる最適化手法</a>』の<a href="https://github.com/johnmyleswhite/BanditsBook" target="_blank" rel="external">サンプルコード</a>をPython3 + numpy向けに改変して実験．</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div><div class="line">22</div><div class="line">23</div><div class="line">24</div><div class="line">25</div><div class="line">26</div><div class="line">27</div><div class="line">28</div><div class="line">29</div><div class="line">30</div><div class="line">31</div><div class="line">32</div><div class="line">33</div><div class="line">34</div><div class="line">35</div><div class="line">36</div><div class="line">37</div><div class="line">38</div><div class="line">39</div><div class="line">40</div><div class="line">41</div><div class="line">42</div><div class="line">43</div><div class="line">44</div><div class="line">45</div><div class="line">46</div><div class="line">47</div><div class="line">48</div><div class="line">49</div><div class="line">50</div><div class="line">51</div><div class="line">52</div><div class="line">53</div><div class="line">54</div><div class="line">55</div><div class="line">56</div><div class="line">57</div><div class="line">58</div><div class="line">59</div><div class="line">60</div><div class="line">61</div><div class="line">62</div><div class="line">63</div><div class="line">64</div><div class="line">65</div><div class="line">66</div><div class="line">67</div><div class="line">68</div><div class="line">69</div><div class="line">70</div><div class="line">71</div><div class="line">72</div><div class="line">73</div><div class="line">74</div><div class="line">75</div><div class="line">76</div><div class="line">77</div><div class="line">78</div><div class="line">79</div><div class="line">80</div><div class="line">81</div><div class="line">82</div><div class="line">83</div><div class="line">84</div><div class="line">85</div><div class="line">86</div><div class="line">87</div><div class="line">88</div><div class="line">89</div><div class="line">90</div><div class="line">91</div><div class="line">92</div><div class="line">93</div><div class="line">94</div><div class="line">95</div><div class="line">96</div><div class="line">97</div><div class="line">98</div><div class="line">99</div><div class="line">100</div><div class="line">101</div><div class="line">102</div><div class="line">103</div><div class="line">104</div><div class="line">105</div><div class="line">106</div><div class="line">107</div><div class="line">108</div><div class="line">109</div><div class="line">110</div><div class="line">111</div><div class="line">112</div><div class="line">113</div><div class="line">114</div><div class="line">115</div><div class="line">116</div><div class="line">117</div><div class="line">118</div><div class="line">119</div><div class="line">120</div><div class="line">121</div><div class="line">122</div><div class="line">123</div><div class="line">124</div><div class="line">125</div><div class="line">126</div><div class="line">127</div><div class="line">128</div><div class="line">129</div><div class="line">130</div><div class="line">131</div><div class="line">132</div><div class="line">133</div><div class="line">134</div><div class="line">135</div><div class="line">136</div></pre></td><td class="code"><pre><div class="line"><span class="keyword">import</span> pandas <span class="keyword">as</span> pd</div><div class="line"><span class="keyword">import</span> numpy <span class="keyword">as</span> np</div><div class="line"><span class="keyword">import</span> matplotlib.pyplot <span class="keyword">as</span> plt</div><div class="line"><span class="keyword">import</span> random</div><div class="line"><span class="keyword">import</span> math</div><div class="line"><span class="keyword">import</span> seaborn <span class="keyword">as</span> sns</div><div class="line"></div><div class="line"><span class="class"><span class="keyword">class</span> <span class="title">BernoulliArm</span><span class="params">()</span>:</span></div><div class="line">    <span class="function"><span class="keyword">def</span> <span class="title">__init__</span><span class="params">(self, p)</span>:</span></div><div class="line">        self.p = p</div><div class="line"></div><div class="line">    <span class="function"><span class="keyword">def</span> <span class="title">draw</span><span class="params">(self)</span>:</span></div><div class="line">        <span class="keyword">if</span> random.random() &gt; self.p:</div><div class="line">            <span class="keyword">return</span> <span class="number">0.0</span></div><div class="line">        <span class="keyword">else</span>:</div><div class="line">            <span class="keyword">return</span> <span class="number">1.0</span></div><div class="line"></div><div class="line"><span class="class"><span class="keyword">class</span> <span class="title">EpsilonGreedy</span><span class="params">()</span>:</span></div><div class="line">    <span class="function"><span class="keyword">def</span> <span class="title">__init__</span><span class="params">(self, epsilon, counts, values)</span>:</span></div><div class="line">        self.epsilon = epsilon</div><div class="line">        self.counts = counts</div><div class="line">        self.values = values</div><div class="line">        <span class="keyword">return</span></div><div class="line"></div><div class="line">    <span class="function"><span class="keyword">def</span> <span class="title">initialize</span><span class="params">(self, n_arms)</span>:</span></div><div class="line">        self.counts = np.zeros(n_arms)</div><div class="line">        self.values = np.zeros(n_arms)</div><div class="line">        <span class="keyword">return</span></div><div class="line"></div><div class="line">    <span class="function"><span class="keyword">def</span> <span class="title">select_arm</span><span class="params">(self)</span>:</span></div><div class="line">        <span class="keyword">if</span> random.random() &gt; self.epsilon:</div><div class="line">            <span class="keyword">return</span> np.argmax(self.values)</div><div class="line">        <span class="keyword">else</span>:</div><div class="line">            <span class="keyword">return</span> np.random.randint(<span class="number">0</span>, len(self.values))</div><div class="line"></div><div class="line">    <span class="function"><span class="keyword">def</span> <span class="title">update</span><span class="params">(self, chosen_arm, reward)</span>:</span></div><div class="line">        self.counts[chosen_arm] += <span class="number">1</span></div><div class="line">        n = self.counts[chosen_arm]</div><div class="line"></div><div class="line">        value = self.values[chosen_arm]</div><div class="line">        new_value = ((n<span class="number">-1</span>) / float(n)) * value + (<span class="number">1</span> / float(n)) * reward</div><div class="line">        self.values[chosen_arm] = new_value</div><div class="line">        <span class="keyword">return</span></div><div class="line"></div><div class="line"><span class="class"><span class="keyword">class</span> <span class="title">UCB1</span><span class="params">()</span>:</span></div><div class="line">  <span class="function"><span class="keyword">def</span> <span class="title">__init__</span><span class="params">(self, counts, values)</span>:</span></div><div class="line">    self.counts = counts</div><div class="line">    self.values = values</div><div class="line">    <span class="keyword">return</span></div><div class="line"></div><div class="line">  <span class="function"><span class="keyword">def</span> <span class="title">initialize</span><span class="params">(self, n_arms)</span>:</span></div><div class="line">    self.counts = np.zeros(n_arms)</div><div class="line">    self.values = np.zeros(n_arms)</div><div class="line">    <span class="keyword">return</span></div><div class="line"></div><div class="line">  <span class="function"><span class="keyword">def</span> <span class="title">select_arm</span><span class="params">(self)</span>:</span></div><div class="line">    n_arms = len(self.counts)</div><div class="line">    <span class="keyword">for</span> arm <span class="keyword">in</span> range(n_arms):</div><div class="line">      <span class="keyword">if</span> self.counts[arm] == <span class="number">0</span>:</div><div class="line">        <span class="keyword">return</span> arm</div><div class="line"></div><div class="line">    ucb_values = [<span class="number">0.0</span> <span class="keyword">for</span> arm <span class="keyword">in</span> range(n_arms)]</div><div class="line">    total_counts = sum(self.counts)</div><div class="line">    <span class="keyword">for</span> arm <span class="keyword">in</span> range(n_arms):</div><div class="line">      bonus = math.sqrt((<span class="number">2</span> * math.log(total_counts)) / float(self.counts[arm]))</div><div class="line">      ucb_values[arm] = self.values[arm] + bonus</div><div class="line">    <span class="keyword">return</span> np.argmax(ucb_values)</div><div class="line"></div><div class="line">  <span class="function"><span class="keyword">def</span> <span class="title">update</span><span class="params">(self, chosen_arm, reward)</span>:</span></div><div class="line">    self.counts[chosen_arm] = self.counts[chosen_arm] + <span class="number">1</span></div><div class="line">    n = self.counts[chosen_arm]</div><div class="line"></div><div class="line">    value = self.values[chosen_arm]</div><div class="line">    new_value = ((n - <span class="number">1</span>) / float(n)) * value + (<span class="number">1</span> / float(n)) * reward</div><div class="line">    self.values[chosen_arm] = new_value</div><div class="line">    <span class="keyword">return</span></div><div class="line"></div><div class="line"><span class="function"><span class="keyword">def</span> <span class="title">test_algorithm</span><span class="params">(algo, arms, num_sims, horizon)</span>:</span></div><div class="line">    chosen_arms = np.zeros(num_sims * horizon)</div><div class="line">    rewards = np.zeros(num_sims * horizon)</div><div class="line">    cumulative_rewards = np.zeros(num_sims * horizon)</div><div class="line">    sim_nums = np.zeros(num_sims * horizon)</div><div class="line">    times = np.zeros(num_sims * horizon)</div><div class="line"></div><div class="line">    <span class="keyword">for</span> sim <span class="keyword">in</span> range(num_sims):</div><div class="line">        sim += <span class="number">1</span></div><div class="line">        algo.initialize(len(arms))</div><div class="line"></div><div class="line">        <span class="keyword">for</span> t <span class="keyword">in</span> range(horizon):</div><div class="line">            t += <span class="number">1</span></div><div class="line">            index = (sim - <span class="number">1</span>) * horizon + t - <span class="number">1</span></div><div class="line">            sim_nums[index] = sim</div><div class="line">            times[index] = t</div><div class="line"></div><div class="line">            chosen_arm = algo.select_arm()</div><div class="line">            chosen_arms[index] = chosen_arm</div><div class="line"></div><div class="line">            reward = arms[chosen_arm].draw()</div><div class="line">            rewards[index] = reward</div><div class="line"></div><div class="line">            <span class="keyword">if</span> t == <span class="number">1</span>:</div><div class="line">                cumulative_rewards[index] = reward</div><div class="line">            <span class="keyword">else</span>:</div><div class="line">                cumulative_rewards[index] = cumulative_rewards[index - <span class="number">1</span>] + reward</div><div class="line"></div><div class="line">            algo.update(chosen_arm, reward)</div><div class="line"></div><div class="line">    <span class="keyword">return</span> [sim_nums, times, chosen_arms, rewards, cumulative_rewards]</div><div class="line"></div><div class="line">means = np.array([<span class="number">0.1</span>, <span class="number">0.1</span>, <span class="number">0.1</span>, <span class="number">0.1</span>, <span class="number">0.9</span>])</div><div class="line">n_arms = len(means) <span class="comment"># 腕は5本</span></div><div class="line">random.shuffle(means)</div><div class="line"></div><div class="line">arms = [BernoulliArm(x) <span class="keyword">for</span> x <span class="keyword">in</span> means]</div><div class="line"></div><div class="line"><span class="keyword">for</span> epsilon <span class="keyword">in</span> [<span class="number">0.1</span>, <span class="number">0.2</span>, <span class="number">0.3</span>, <span class="number">0.4</span>, <span class="number">0.5</span>]: <span class="comment"># epsilonを変えたらどうなるか？</span></div><div class="line">    algo = EpsilonGreedy(epsilon, [], [])</div><div class="line">    algo.initialize(n_arms)</div><div class="line">    results = test_algorithm(algo, arms, <span class="number">5000</span>, <span class="number">500</span>)</div><div class="line"></div><div class="line">    df = pd.DataFrame(&#123;<span class="string">"times"</span>: results[<span class="number">1</span>], <span class="string">"rewards"</span>: results[<span class="number">3</span>]&#125;)</div><div class="line">    grouped = df[<span class="string">"rewards"</span>].groupby(df[<span class="string">"times"</span>])</div><div class="line"></div><div class="line">    plt.plot(grouped.mean(), label=<span class="string">"epsilon="</span>+str(epsilon))</div><div class="line"></div><div class="line">algo = UCB1([], [])</div><div class="line">algo.initialize(n_arms)</div><div class="line">results = test_algorithm(algo, arms, <span class="number">5000</span>, <span class="number">500</span>)</div><div class="line"></div><div class="line">df = pd.DataFrame(&#123;<span class="string">"times"</span>: results[<span class="number">1</span>], <span class="string">"rewards"</span>: results[<span class="number">3</span>]&#125;)</div><div class="line">grouped = df[<span class="string">"rewards"</span>].groupby(df[<span class="string">"times"</span>])</div><div class="line"></div><div class="line">plt.plot(grouped.mean(), label=<span class="string">"UCB1"</span>)</div><div class="line"></div><div class="line">plt.legend(loc=<span class="string">"best"</span>)</div><div class="line">plt.show()</div></pre></td></tr></table></figure>
+<p><img src="/image/bandits/bandits.png"></p>
+<p>　好奇心旺盛な人は序盤それなりに苦労することがわかる．</p>
+<h1 id="おわりに"><a href="#おわりに" class="headerlink" title="おわりに"></a>おわりに</h1><p>　こうしたナイーブな実装で焼肉の頼み方を最適化したり，店の巡り方を最適化できるかどうかというとまあ実際微妙（たとえば焼肉の各品目から得られる満足度は，限界効用逓減の法則に従ってすり減っていく）だが，日々の意思決定をアルゴリズム的に考えてみる遊びはそれなりにおもしろい．ソーシャルゲームにどう課金するか，というのもこの俎上に載せられる．<br>　『<a href="https://www.amazon.co.jp/dp/B015CKNWJI/" target="_blank" rel="external">Algorithms to Live By: The Computer Science of Human Decisions</a>』という本はそういう，情報系の人間がよくやる与太話をまじめに考察したものだ——書類はどのキャッシュアルゴリズムに従って並べるべきかとか．先に挙げた探索と利用のトレードオフについても述べられている．YouTubeで著者らの講演を観てほしい．</p>
+<center><iframe width="560" height="315" src="https://www.youtube.com/embed/OwKj-wgXteo" frameborder="0" allowfullscreen></iframe></center>
+
+<p>　はい．</p>
+<h1 id="参考文献"><a href="#参考文献" class="headerlink" title="参考文献"></a>参考文献</h1><ul>
+<li><a href="http://qiita.com/Tsutomu-KKE@github/items/f8be15f56cbacdbb7bd9" target="_blank" rel="external">献立を組合せ最適化で考える - Qiita</a></li>
+<li><a href="http://qiita.com/makora9143/items/9e90a533c95c24b85a94" target="_blank" rel="external">備忘録＠Python ORセミナー: Pulp - Qiita</a></li>
+<li><a href="http://qiita.com/yuku_t/items/6844aac6008911401b19" target="_blank" rel="external">A/Bテストよりすごい？バンディットアルゴリズムとは一体何者か - Qiita</a></li>
+<li><a href="http://minerva.cs.uec.ac.jp/~ito/entcog/contents/lecture/date/5-yoshizoe.pdf" target="_blank" rel="external">コンピュータ囲碁における モンテカルロ法 ~理論編~[PDF]</a></li>
+</ul>
+<h1 id="追記-2016-12-06"><a href="#追記-2016-12-06" class="headerlink" title="追記 (2016.12.06)"></a>追記 (2016.12.06)</h1><p>　今回のような設定では多腕バンディット問題というより最適腕識別として考えたほうがよさそう．多腕バンディット問題は累積報酬の最大化が目的だけれど，最適腕識別はどの腕が最良か発見するのが目的．将来の報酬が最大の腕を見つける，ということ．『<a href="https://www.amazon.co.jp/dp/406152917X/" target="_blank" rel="external">バンディット問題の理論とアルゴリズム</a>』を読めばいいんだとか．</p>
+<h1 id="追記-2018-08-13"><a href="#追記-2018-08-13" class="headerlink" title="追記 (2018.08.13)"></a>追記 (2018.08.13)</h1><p>　<span>$\epsilon - 1$</span><!-- Has MathJax -->となっていたのを<span>$1 - \epsilon$</span><!-- Has MathJax -->に修正．</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://ntddk.github.io/2016/12/04/yakiniku-optimization/" data-id="cjna5v32s002dul7tsqz68ur8" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/machine-learning/">machine learning</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/optimization/">optimization</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
     <article id="post-kdd-cup-99-data" class="article article-type-post" itemscope itemprop="blogPost">
   <div class="article-meta">
     
@@ -170,7 +870,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://ntddk.github.io/2016/11/23/kdd-cup-99-data/" data-id="cjkr035si000rpv7twr3xoquw" class="article-share-link">Share</a>
+      <a data-url="http://ntddk.github.io/2016/11/23/kdd-cup-99-data/" data-id="cjna5v324000sul7t45phi3uh" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/machine-learning/">machine learning</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/network/">network</a></li></ul>
@@ -214,7 +914,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://ntddk.github.io/2016/11/06/suppress-switching-ime-on-xming/" data-id="cjkr035sr001dpv7tb5b65cpp" class="article-share-link">Share</a>
+      <a data-url="http://ntddk.github.io/2016/11/06/suppress-switching-ime-on-xming/" data-id="cjna5v32a0019ul7twepd32a1" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/reversing/">reversing</a></li></ul>
@@ -284,7 +984,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://ntddk.github.io/2016/08/27/angr-afl-driller/" data-id="cjkr035s90006pv7tqfg24suo" class="article-share-link">Share</a>
+      <a data-url="http://ntddk.github.io/2016/08/27/angr-afl-driller/" data-id="cjna5v31u0006ul7tq0xaw7ye" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/exploitation/">exploitation</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/symbolic-execution/">symbolic execution</a></li></ul>
@@ -341,7 +1041,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://ntddk.github.io/2016/07/09/unicorn-internals-python/" data-id="cjkr035t20021pv7t7r9v8eat" class="article-share-link">Share</a>
+      <a data-url="http://ntddk.github.io/2016/07/09/unicorn-internals-python/" data-id="cjna5v32o0020ul7t1rrew9ma" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/dynamic-binary-translation/">dynamic binary translation</a></li></ul>
@@ -427,7 +1127,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://ntddk.github.io/2016/06/29/cyber-security-in-israel/" data-id="cjkr035sg000mpv7twua7e7kp" class="article-share-link">Share</a>
+      <a data-url="http://ntddk.github.io/2016/06/29/cyber-security-in-israel/" data-id="cjna5v321000lul7t6a2qhsvk" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/intelligence/">intelligence</a></li></ul>
@@ -482,7 +1182,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://ntddk.github.io/2016/03/26/neural-image-caption-generator-twitter-bot/" data-id="cjkr035sk000tpv7try7ombg8" class="article-share-link">Share</a>
+      <a data-url="http://ntddk.github.io/2016/03/26/neural-image-caption-generator-twitter-bot/" data-id="cjna5v325000vul7tva8t3epv" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/machine-learning/">machine learning</a></li></ul>
@@ -570,7 +1270,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://ntddk.github.io/2016/03/21/book-guide-for-computational-neuroscience/" data-id="cjkr035sd000fpv7to74lsk8d" class="article-share-link">Share</a>
+      <a data-url="http://ntddk.github.io/2016/03/21/book-guide-for-computational-neuroscience/" data-id="cjna5v31z000gul7ta36fqh47" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/machine-learning/">machine learning</a></li></ul>
@@ -632,143 +1332,10 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://ntddk.github.io/2016/03/02/sushi-and-memorized-recursion/" data-id="cjkr035ss001hpv7t1ytsk7x9" class="article-share-link">Share</a>
+      <a data-url="http://ntddk.github.io/2016/03/02/sushi-and-memorized-recursion/" data-id="cjna5v32e001jul7t60jwjy7j" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/optimization/">optimization</a></li></ul>
-
-    </footer>
-  </div>
-  
-</article>
-
-
-  
-    <article id="post-controlling-rolling-spider-with-leap-motion-cylon-js" class="article article-type-post" itemscope itemprop="blogPost">
-  <div class="article-meta">
-    
-      <header class="article-header">
-        
-  
-    <a class="article-title" href="/2016/01/08/controlling-rolling-spider-with-leap-motion-cylon-js/">凧揚げ</a>
-  
-
-      </header>
-    
-    <time class="article-date" datetime="2016-01-08T09:00:00.000Z" itemprop="datePublished">01-08-2016</time>
-    
-  </div>
-  <div class="article-inner">
-    <div class="article-entry" itemprop="articleBody">
-      
-        <p>　凧揚げの様子．</p>
-<center><iframe src="https://vine.co/v/ihdD7VVeeYz/embed/simple" width="300" height="300" frameborder="0"></iframe><script src="https://platform.vine.co/static/scripts/embed.js"></script></center>
-
-<h1 id="TL-DR"><a href="#TL-DR" class="headerlink" title="TL;DR:"></a>TL;DR:</h1><p>　新年なので凧揚げをやる．<br>　具体的にはCylon.jsを用いてLeap MotionからRolling Spiderを操作し，ついでにSlackに通知する．<br>　依存関係は次の通り．<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div></pre></td><td class="code"><pre><div class="line"># npm install cylon cylon-keyboard cylon-leapmotion cylon-rolling-spider node-slack</div></pre></td></tr></table></figure></p>
-<h1 id="Cylon-js"><a href="#Cylon-js" class="headerlink" title="Cylon.js"></a>Cylon.js</h1><p>　<a href="http://cylonjs.com/" target="_blank" rel="external">Cylon.js</a>はロボティクス向けに開発されているJavaScriptのラッパーライブラリ．<br>　マイコンボードやドローン，スマートウォッチなど，さまざまなガジェットのSDKを統一されたインターフェイスで利用できる．反面，バグを踏み抜くと少ししんどい．<br>　たとえばキーボードに接続するには，次のように書く．</p>
-<figure class="highlight javascript"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div></pre></td><td class="code"><pre><div class="line"><span class="keyword">var</span> Cylon = <span class="built_in">require</span>(<span class="string">'cylon'</span>);</div><div class="line"></div><div class="line">Cylon.robot(&#123;</div><div class="line">    <span class="attr">connections</span>: &#123;</div><div class="line">        <span class="string">'keyboard'</span>: &#123; <span class="attr">adaptor</span>: <span class="string">'keyboard'</span> &#125;</div><div class="line">    &#125;,</div><div class="line">    <span class="attr">devices</span>: &#123;</div><div class="line">        <span class="attr">keyboard</span>: &#123;<span class="attr">driver</span>: <span class="string">'keyboard'</span>, <span class="attr">connection</span>: <span class="string">'keyboard'</span>&#125;</div><div class="line">    &#125;,</div><div class="line"></div><div class="line">    <span class="attr">work</span>: <span class="function"><span class="keyword">function</span> (<span class="params">my</span>) </span>&#123;</div><div class="line">        my.keyboard.on(<span class="string">'a'</span>, <span class="function"><span class="keyword">function</span>(<span class="params">key</span>) </span>&#123;</div><div class="line">            my.log(<span class="string">"A PRESSED!"</span>);</div><div class="line">        &#125;);</div><div class="line">    &#125;</div><div class="line">&#125;).start();</div></pre></td></tr></table></figure>
-<p>　これでお手軽キーロガーのできあがりだ．内部ではkeypressというモジュールが呼ばれる．</p>
-<h1 id="Leap-Motion"><a href="#Leap-Motion" class="headerlink" title="Leap Motion"></a>Leap Motion</h1><p>　<a href="https://www.leapmotion.com/" target="_blank" rel="external">Leap Motion</a>は人間の手の動きを入力に変換できるモーションセンサー．<br>　以前から研究室に転がっていたものの，これまで<a href="http://radiatoryang.itch.io/hurt-me-plenty" target="_blank" rel="external">ケツ叩きゲーム</a>にしか使われてこなかった．<br>　Cylon.jsで複数のガジェットを扱うときは，<code>connections</code>と<code>devices</code>に追記していけばよい．</p>
-<figure class="highlight javascript"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div></pre></td><td class="code"><pre><div class="line"><span class="keyword">var</span> Cylon = <span class="built_in">require</span>(<span class="string">'cylon'</span>);</div><div class="line"></div><div class="line">Cylon.robot(&#123;</div><div class="line">    <span class="attr">connections</span>: &#123;</div><div class="line">        <span class="string">'keyboard'</span>: &#123; <span class="attr">adaptor</span>: <span class="string">'keyboard'</span> &#125;,</div><div class="line">        <span class="string">'leapmotion'</span>: &#123; <span class="attr">adaptor</span>: <span class="string">'leapmotion'</span> &#125;</div><div class="line">    &#125;,</div><div class="line">    <span class="attr">devices</span>: &#123;</div><div class="line">        <span class="attr">keyboard</span>: &#123;<span class="attr">driver</span>: <span class="string">'keyboard'</span>, <span class="attr">connection</span>: <span class="string">'keyboard'</span>&#125;,</div><div class="line">        <span class="attr">leapmotion</span>: &#123; <span class="attr">driver</span>: <span class="string">'leapmotion'</span>, <span class="attr">connection</span>: <span class="string">'leapmotion'</span>&#125;,</div><div class="line">    &#125;,</div><div class="line"></div><div class="line">    <span class="attr">work</span>: <span class="function"><span class="keyword">function</span> (<span class="params">my</span>) </span>&#123;</div><div class="line">        my.leapmotion.on(<span class="string">'gesture'</span>, <span class="function"><span class="keyword">function</span>(<span class="params">g</span>) </span>&#123;</div><div class="line">            my.log(g.type.toString());</div><div class="line">            <span class="keyword">if</span> (g.type == <span class="string">"circle"</span>) &#123;</div><div class="line">                ...</div><div class="line">            &#125;</div><div class="line">        &#125;);</div><div class="line">    &#125;</div><div class="line">&#125;).start();</div></pre></td></tr></table></figure>
-<p>　これで手の動きが取れる．内部ではleapjsというモジュールが呼ばれる．<br>　次はドローンだ．</p>
-<h1 id="Rolling-Spider"><a href="#Rolling-Spider" class="headerlink" title="Rolling Spider"></a>Rolling Spider</h1><p>　<a href="http://www.parrot.com/jp/products/rolling-spider/" target="_blank" rel="external">Rolling Spider</a>はParrot社の小型ドローン．というとすぐドローンの定義は自律航行可能であるとかないとかクアッドコプターという呼称がどうとか言いだすやつがいるけど，ここではドローンと呼んでいる．<br>　それでは，Rolling SpiderをLeap Motionで操作してみよう．</p>
-<figure class="highlight javascript"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div><div class="line">22</div><div class="line">23</div><div class="line">24</div><div class="line">25</div><div class="line">26</div><div class="line">27</div><div class="line">28</div><div class="line">29</div><div class="line">30</div><div class="line">31</div><div class="line">32</div><div class="line">33</div><div class="line">34</div><div class="line">35</div><div class="line">36</div><div class="line">37</div><div class="line">38</div><div class="line">39</div><div class="line">40</div><div class="line">41</div><div class="line">42</div><div class="line">43</div><div class="line">44</div><div class="line">45</div><div class="line">46</div><div class="line">47</div><div class="line">48</div><div class="line">49</div><div class="line">50</div><div class="line">51</div></pre></td><td class="code"><pre><div class="line"><span class="keyword">var</span> Cylon = <span class="built_in">require</span>(<span class="string">'cylon'</span>);</div><div class="line"></div><div class="line">Cylon.robot(&#123;</div><div class="line">    <span class="attr">connections</span>: &#123;</div><div class="line">        <span class="string">'keyboard'</span>: &#123; <span class="attr">adaptor</span>: <span class="string">'keyboard'</span> &#125;,</div><div class="line">        <span class="string">'leapmotion'</span>: &#123; <span class="attr">adaptor</span>: <span class="string">'leapmotion'</span> &#125;,</div><div class="line">        <span class="string">'rolling-spider'</span>: &#123; <span class="attr">adaptor</span>: <span class="string">'rolling-spider'</span>, <span class="attr">uuid</span>: <span class="string">'***'</span> &#125;</div><div class="line">    &#125;,</div><div class="line">    <span class="attr">devices</span>: &#123;</div><div class="line">        <span class="attr">keyboard</span>: &#123;<span class="attr">driver</span>: <span class="string">'keyboard'</span>, <span class="attr">connection</span>: <span class="string">'keyboard'</span>&#125;,</div><div class="line">        <span class="attr">leapmotion</span>: &#123; <span class="attr">driver</span>: <span class="string">'leapmotion'</span>, <span class="attr">connection</span>: <span class="string">'leapmotion'</span>&#125;,</div><div class="line">        <span class="attr">drone</span>: &#123; <span class="attr">driver</span>: <span class="string">'rolling-spider'</span>, <span class="attr">connection</span>: <span class="string">'rolling-spider'</span> &#125;</div><div class="line">    &#125;,</div><div class="line">​</div><div class="line">    work: <span class="function"><span class="keyword">function</span> (<span class="params">my</span>) </span>&#123;</div><div class="line">        my.leapmotion.on(<span class="string">'gesture'</span>, <span class="function"><span class="keyword">function</span>(<span class="params">g</span>) </span>&#123;</div><div class="line">            my.log(g.type.toString());</div><div class="line">            <span class="keyword">if</span> (g.type == <span class="string">"circle"</span>) &#123;</div><div class="line">                my.drone.takeOff();</div><div class="line">            &#125; <span class="keyword">else</span> <span class="keyword">if</span> (g.type == <span class="string">"swipe"</span> &amp;&amp; !flag) &#123;</div><div class="line">                <span class="keyword">var</span> isHorizontal = <span class="built_in">Math</span>.abs(g.direction[<span class="number">0</span>]) &gt; <span class="built_in">Math</span>.abs(g.direction[<span class="number">1</span>]);</div><div class="line">                <span class="keyword">if</span>(isHorizontal)&#123;</div><div class="line">                    <span class="keyword">if</span>(g.direction[<span class="number">0</span>] &gt; <span class="number">0</span>)&#123;</div><div class="line">                        my.drone.right();</div><div class="line">                    &#125; <span class="keyword">else</span> &#123;</div><div class="line">                        my.drone.left();</div><div class="line">                    &#125;</div><div class="line">                &#125; <span class="keyword">else</span> &#123;</div><div class="line">                    <span class="keyword">if</span>(g.direction[<span class="number">1</span>] &gt; <span class="number">0</span>)&#123;</div><div class="line">                        my.drone.up();</div><div class="line">                    &#125; <span class="keyword">else</span> &#123;</div><div class="line">                        my.drone.down();</div><div class="line">                    &#125;</div><div class="line">                &#125;</div><div class="line">            &#125; <span class="keyword">else</span> <span class="keyword">if</span> (g.type == <span class="string">"keyTap"</span>) &#123;</div><div class="line">                my.drone.land();</div><div class="line">            &#125;</div><div class="line">        &#125;);</div><div class="line"></div><div class="line">        my.keyboard.on(<span class="string">"down"</span>, <span class="function"><span class="keyword">function</span>(<span class="params"></span>) </span>&#123;</div><div class="line">            my.drone.land();    </div><div class="line">        &#125;);</div><div class="line">        my.keyboard.on(<span class="string">"m"</span>, <span class="function"><span class="keyword">function</span>(<span class="params"></span>) </span>&#123;</div><div class="line">            my.drone.emergency();</div><div class="line">        &#125;);</div><div class="line">        my.keyboard.on(<span class="string">"q"</span>, <span class="function"><span class="keyword">function</span>(<span class="params"></span>) </span>&#123;</div><div class="line">            Cylon.halt();</div><div class="line">        &#125;);</div><div class="line"></div><div class="line">    &#125;</div><div class="line">&#125;).start();</div></pre></td></tr></table></figure>
-<p>　とりあえずこれで動く．指を回すとドローンが飛び上がり，スワイプに応じて移動する．内部ではnode-rolling-spiderというモジュールが呼ばれる．<br>　複数台の機体に接続できるから，ドローンの編隊飛行も夢ではない．とはいえ，Bluetoothを経由した中央集権的な制御なので，自律飛行にはいたらないが．ほんとうに自律させたければ，ドローン側のファームウェアに手を入れる必要がある．Parrot社が公開している<a href="https://github.com/Parrot-Developers/RollingSpiderEdu" target="_blank" rel="external">RollingSpiderEdu</a>によると，どうやら共有ライブラリを用いてドローンのファームウェアに機能を追加できるようだ．いずれはレクサスのPVのように美しく飛ばしてみたいが，いっそドローンから自作したほうがいいかもしれないな．</p>
-<center><iframe width="560" height="315" src="https://www.youtube.com/embed/uj0v1BgzUdc" frameborder="0" allowfullscreen></iframe></center>
-
-<p>　なおRolling Spiderの総重量は65gなので，空港等の周辺や人口中心地区の上空でのドローン飛行を制限する<a href="http://www.mlit.go.jp/koku/koku_tk10_000003.html" target="_blank" rel="external">改正航空法</a>の対象とはならない．</p>
-<h1 id="Slack"><a href="#Slack" class="headerlink" title="Slack"></a>Slack</h1><p>　凧揚げもChatOpsの時代．<br>　node-slackというモジュールと，ドローンのコールバック機能を用いれば，バッテリー残量をSlackに通知できる．SlackのWebHooks URLに投げるだけだ．</p>
-<figure class="highlight javascript"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div></pre></td><td class="code"><pre><div class="line"><span class="keyword">var</span> Cylon = <span class="built_in">require</span>(<span class="string">'cylon'</span>),</div><div class="line">    Slack = <span class="built_in">require</span>(<span class="string">'node-slack'</span>),</div><div class="line">    slack = <span class="keyword">new</span> Slack(<span class="string">'https://hooks.slack.com/services/***'</span>);</div><div class="line">...</div><div class="line">    work: <span class="function"><span class="keyword">function</span> (<span class="params">my</span>) </span>&#123;</div><div class="line">...</div><div class="line">        my.drone.on(<span class="string">'battery'</span>, <span class="function"><span class="keyword">function</span>(<span class="params"></span>)</span>&#123;</div><div class="line">            slack.send(&#123;</div><div class="line">                <span class="attr">text</span>: <span class="string">':battery:: '</span> + my.drone.getBatteryLevel() + <span class="string">'%'</span>,</div><div class="line">                <span class="attr">channel</span>: <span class="string">'#drone'</span>,</div><div class="line">                <span class="attr">username</span>: <span class="string">'Drone'</span></div><div class="line">            &#125;);</div><div class="line">        &#125;);</div><div class="line">...</div></pre></td></tr></table></figure>
-<p>　こんなふうに通知される．</p>
-<p><img src="/image/drone/slack.png" width="50%" height="50%"></p>
-<p>　ちなみに，ドローンが移動するたびに通知なんかしていると「短期間に送信されたメッセージが多すぎるから表示しないよ！」と怒られる．</p>
-<h1 id="その他の凧揚げ"><a href="#その他の凧揚げ" class="headerlink" title="その他の凧揚げ"></a>その他の凧揚げ</h1><p>　Leap Motionによるドローンの操作はたぶんこの人が初．</p>
-<center><iframe width="560" height="315" src="https://www.youtube.com/embed/hfq2SisPvCU" frameborder="0" allowfullscreen></iframe></center>
-
-<p>　やっぱデカいドローンを飛ばしたいっすね．</p>
-<h1 id="おわりに"><a href="#おわりに" class="headerlink" title="おわりに"></a>おわりに</h1><p>　ジェスチャーでドローンを操作できるようになったことだし，フォースの力みたいでかっこいいと思って，年始にRolling Spiderを多摩川の土手で飛ばしていたらドローン嫌いっぽい人にクソ怒られた．すいません．<br>　あとドローンといえば『<a href="http://www.amazon.co.jp/dp/415031201X" target="_blank" rel="external">伊藤計劃トリビュート</a>』所収の藤井太洋「公正的戦闘規範」がおもしろいぞ！！！</p>
-<h1 id="謝辞"><a href="#謝辞" class="headerlink" title="謝辞"></a>謝辞</h1><ul>
-<li>Leap Motionは<a href="https://twitter.com/shunki9" target="_blank" rel="external">@shunki9</a>から借りた．</li>
-<li>Rolling Spiderは<a href="http://www.gehirn.co.jp/" target="_blank" rel="external">Gehirn Inc.</a>に買ってもらった．</li>
-</ul>
-
-      
-    </div>
-    <footer class="article-footer">
-      <a data-url="http://ntddk.github.io/2016/01/08/controlling-rolling-spider-with-leap-motion-cylon-js/" data-id="cjkr035se000ipv7tcnvh1tkc" class="article-share-link">Share</a>
-      
-      
-  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/drone/">drone</a></li></ul>
-
-    </footer>
-  </div>
-  
-</article>
-
-
-  
-    <article id="post-generating-thesis-titles-with-rnnlm" class="article article-type-post" itemscope itemprop="blogPost">
-  <div class="article-meta">
-    
-      <header class="article-header">
-        
-  
-    <a class="article-title" href="/2015/12/19/generating-thesis-titles-with-rnnlm/">RNNLMによる論文タイトルの自動生成</a>
-  
-
-      </header>
-    
-    <time class="article-date" datetime="2015-12-19T14:45:00.000Z" itemprop="datePublished">12-19-2015</time>
-    
-  </div>
-  <div class="article-inner">
-    <div class="article-entry" itemprop="articleBody">
-      
-        <p>　本稿は<a href="http://www.adventar.org/calendars/1053" target="_blank" rel="external">慶應義塾大学SFC村井&amp;徳田研 Advent Calendar 2015</a>の19日目である．</p>
-<h1 id="TL-DR"><a href="#TL-DR" class="headerlink" title="TL;DR:"></a>TL;DR:</h1><p>　村井研・徳田研の卒論・修論・博論アーカイブから過去の論文タイトルを収集し，RNNLM（Recurrent Neural Network Language Model, 再帰型ニューラルネット言語モデル）[1]を用いて論文タイトルを自動生成する．</p>
-<h1 id="手順"><a href="#手順" class="headerlink" title="手順"></a>手順</h1><ol>
-<li><a href="http://www.sfc.wide.ad.jp/paper.html" target="_blank" rel="external">論文アーカイブ</a>を雑にスクレイピング．</li>
-<li>簡単のため英語タイトルを削る．データサイズは540行・16294字．</li>
-<li>MeCabの<code>-Owakati</code>オプションで分かち書き．単語数は6272と少ない．</li>
-<li>RNNLMで学習，出力．</li>
-</ol>
-<p>　生成した論文タイトルは次の通り．</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div><div class="line">22</div><div class="line">23</div><div class="line">24</div><div class="line">25</div><div class="line">26</div><div class="line">27</div><div class="line">28</div><div class="line">29</div><div class="line">30</div><div class="line">31</div><div class="line">32</div><div class="line">33</div><div class="line">34</div><div class="line">35</div><div class="line">36</div><div class="line">37</div><div class="line">38</div><div class="line">39</div><div class="line">40</div><div class="line">41</div><div class="line">42</div><div class="line">43</div><div class="line">44</div><div class="line">45</div><div class="line">46</div><div class="line">47</div><div class="line">48</div><div class="line">49</div><div class="line">50</div><div class="line">51</div><div class="line">52</div><div class="line">53</div><div class="line">54</div><div class="line">55</div><div class="line">56</div><div class="line">57</div><div class="line">58</div><div class="line">59</div><div class="line">60</div><div class="line">61</div><div class="line">62</div><div class="line">63</div><div class="line">64</div><div class="line">65</div><div class="line">66</div><div class="line">67</div><div class="line">68</div><div class="line">69</div><div class="line">70</div><div class="line">71</div><div class="line">72</div><div class="line">73</div><div class="line">74</div><div class="line">75</div><div class="line">76</div><div class="line">77</div><div class="line">78</div><div class="line">79</div><div class="line">80</div><div class="line">81</div><div class="line">82</div><div class="line">83</div><div class="line">84</div><div class="line">85</div><div class="line">86</div><div class="line">87</div><div class="line">88</div><div class="line">89</div><div class="line">90</div><div class="line">91</div><div class="line">92</div><div class="line">93</div><div class="line">94</div><div class="line">95</div><div class="line">96</div><div class="line">97</div><div class="line">98</div><div class="line">99</div><div class="line">100</div><div class="line">101</div></pre></td><td class="code"><pre><div class="line">改変適応機環境におけるインターネット化の設計と実装</div><div class="line">暮らし計算発見を利用したUDL機器</div><div class="line">インターネットを用いた機器プローブ体系のVoDについて開発な攻撃運用手法</div><div class="line">自律計算ネットワークの行動に-移動システムに関する研究</div><div class="line">衛星情報を用いたビジュアライゼーション定義アーキテクチャ表をする検出ユビキタスノードのファイル構成に関する研究</div><div class="line">あしあと適応セキュリティネットワークを用いた負荷議事取り入れたセンサNEMOMANET解決</div><div class="line">ユーザエンティティに適した仮想な通信接近による制御対象の設計と実装</div><div class="line">蓄積学校利用性のための再作業に関する持続</div><div class="line">型連携ネットワークのインターネットに基づく遠隔コードの向けたデジタル機構の構築</div><div class="line">アプリケーション：型と時間特定を用いた利用型路準拠相関の構築</div><div class="line">自律電話教育における異種品質空間支援システムの設計と実装</div><div class="line">位置AV端末著作授業特殊トポロジ型し分析高速構築</div><div class="line">広域を利用した次応用におけるレイヤーな授業に関する研究プロシステムに関する研究</div><div class="line">次制御対するカメラを利用したAd型間屋外パブリック構築</div><div class="line">協調:不sネットワークにおけるOSストリーミングの考慮機器コミュニケーション配信システムの設計と実装</div><div class="line">センサ環境におけるデバイスソフトウェア文字通信システム</div><div class="line">無線作業めぐるにおけるパケットIP発信・支援機構</div><div class="line">ELA上環境に応じたしたコンピュータ測定に関する研究</div><div class="line">インターネット型プラットホームの遠隔パケットとシステム</div><div class="line">無線コントロールセンサを考慮する参加参加サービスの研究</div><div class="line">移動者における位置適応オブジェクト手法の研究</div><div class="line">インターネットグルーピングの回覧性をシステムした経路消耗性の実現</div><div class="line">自己情報を用いた実を量子よる協調表行動流通</div><div class="line">デジタル前遠隔しるしの情報共有支援機構</div><div class="line">ネットワークト可視ネットワークを車的基盤」関数の分析</div><div class="line">環境Computing通信DVB携帯性に関する移動同期利用の設計と実装</div><div class="line">マルチパスFunction無線センサノードを用いた技術マルチ支援支援促進に関する研究</div><div class="line">スマート世代ネットワークにおける相互ブリッジ家電システムの設計と実装</div><div class="line">インターネット情報のための興味無支援システムの構築</div><div class="line">オペレーティング型IP環境のプロファイリング的な信頼に関する研究</div><div class="line">実方向自動ポロジにおける同期機器性における研究</div><div class="line">センサ-抽出生成を支援情報登録抽出機構の構築</div><div class="line">アドホックOSにおけるOS環境のGlass性基盤機構の構築</div><div class="line">DV地アプリケーションの者による最適いアルゴリズム</div><div class="line">商上のための選択なMobile効率システムの構築</div><div class="line">ユビキタス世代環境における効率Wireless情報のMarkit</div><div class="line">系列演奏位置スレッドサービス二マッチングマルチプロアクティブモデルの構築</div><div class="line">パケット適応付け利用を考慮したネットワークブログモデルの設計と実装</div><div class="line">TranS情報環境におけるグループホスト同期への安全履歴と分散</div><div class="line">の情報対象でのMediatorコラボレーションに関する研究</div><div class="line">類似Allシステム</div><div class="line">情報グループを利用するデジタル制御動画像配送システムの構築</div><div class="line">RFIDを利用したネットワークのプラットフォーム転送に関する研究</div><div class="line">周辺上セキュリティにおけるコンテキスト者基無線の提案に関する研究</div><div class="line">Link型服行動RCSにおける効率しない機構</div><div class="line">クラシック型車載インターネットを解決した分散音声なりすましシステム</div><div class="line">Dynamic特徴解析に基づく仮想制御機構の設計と実装</div><div class="line">多段CSMAにおける多様な解析管理機構の設計と実装</div><div class="line">移動機:を用いた-コンテンツシステムの構築</div><div class="line">技術センサ環境におけるホーム化による経路サーバ</div><div class="line">アプリケーション回線に基づく薦環境におけるする作成への行動利用に関する研究</div><div class="line">インターネットを用いたしたな動画ルールに関する研究</div><div class="line">機器協調利用Efficientのネットワーク解決のエンド映像構築</div><div class="line">計算情報を利用した家電抽象の迷い連携への構築</div><div class="line">関連情報教育における動的メールイベント収集の研究</div><div class="line">通知におけるデータベース方式購買によるした状態時間グループに関する研究</div><div class="line">コンテキスト:6のためのための設計と実装</div><div class="line">電子ネットワークのための提案と実装</div><div class="line">自己電話を利用したオブジェクト分散型授業属性制御機構の実現</div><div class="line">ネットワークの抽出化環境の向上圧縮システムの構築</div><div class="line">Networks対戦ネットワークにおける家庭テリトリー手法の構築</div><div class="line">広バイト依存患者のための収集及び積極システム</div><div class="line">IPコンテキスト精度点のデータベース的と-発見環境動画像モデル行動-</div><div class="line">通信作業システムの含む属性センサノード付け可能メディアの提案と開発</div><div class="line">情報世代環境時による最適視点環境機構の設計と実装</div><div class="line">協調蓄積モバイルバッテリ支援Shumu機器型設置インシデントIrma保護量</div><div class="line">分散回線にセンサデータ適応をマッチングと基準化に関する研究</div><div class="line">環境さ時複数用方式と審議に関する研究</div><div class="line">自律リンク環境におけるインターネット・属性品質</div><div class="line">オブジェクトしにおけるインタフェース技法化推薦機構の研究</div><div class="line">インターネットにおける光を用いた最適遠隔支援環境の構築</div><div class="line">モーバイルs利用とへの実現自動手法の設計と実装</div><div class="line">インターネットに適した時端末型TCP型データ基準の内</div><div class="line">インターネットを用いた受信・辞書収集</div><div class="line">DOS的利用環境におけるbased配信システムの構築</div><div class="line">i：と利用した情報モーダルの作成に関する研究</div><div class="line">APIの情報におけるソフトウェアするをシステムの自律</div><div class="line">インターネットを用いたセル内回避手法アプリケーションFunction選択制御機構</div><div class="line">マルチ:ユーザ時のLooking支援競合の参加情報に関する研究</div><div class="line">マルチネットワークによる動的リモコンアーキテクチャの分析に関する研究</div><div class="line">インターネット：文字を含むと対策軽減地理ファイルの構築</div><div class="line">アプリケーションのデジタル行動環境における負荷教育の設計と実装</div><div class="line">移動制御型メディア取り入れたにおける自律トポロジモデルの提案</div><div class="line">日本回線時におけるセンサのアーキテクチャ</div><div class="line">『世代sionを支援情報ユーザの実現</div><div class="line">Mobileの行動空間に基づくするコンポーネントシステムの設計と構築</div><div class="line">キットライブラリのアドレス利用を支援するアプリケーションの行動に関する研究</div><div class="line">間:環境における認証検出の考察</div><div class="line">鍵盤を用いた基盤経路トポロジ支援手法の研究</div><div class="line">RFIDネットワークを用いたとユーザ</div><div class="line">自律型機的な支援レイヤー手法の設計と実装</div><div class="line">アドホックを用いたデジタル最適暗号システムの研究</div><div class="line">WWW人IPvシステムの動的2を化フローインフォメーション配送化手法</div><div class="line">次的機タフェース6システムの実現</div><div class="line">IPレイヤーネットワークにおけるグループ取得遠隔システムに関する研究</div><div class="line">二通信ユニバーサルにおける複数共有再についての研究</div><div class="line">Tapirus上の情報的実現あるの構築</div><div class="line">環境上における仮想指機構の構築</div><div class="line">インターネットにおけるRFID経路エンドノードデータベース付けモデルの設計と実装</div><div class="line">2回線学習への効率的型環境の提案と構築</div><div class="line">...</div></pre></td></tr></table></figure>
-<p>　これはRNNLMが生成した論文タイトルを100件無作為抽出したもの．全リストは<a href="https://gist.github.com/ntddk/c1dd4476677667157a97" target="_blank" rel="external">gist</a>に置いている．この程度のデータサイズでRNNLMの性能を云々するのはいささか危うい気がするが，論文タイトルの末尾はえてして「～の構築」「～の研究」「～の実現」になるというルールを獲得できている，ということだろうか．<br>　同じデータセットから，ありがちな2単語プリフィックスのマルコフ連鎖で生成した論文タイトルは次の通り．</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div></pre></td><td class="code"><pre><div class="line">注目した二点間接続基盤ソフトウエアの構築インターネット</div><div class="line">地域における高等教育協力手法の研究ホームネットワークにおける多様</div><div class="line">かつスケーラブルな識別子管理システムゲームコンソールに対応する管理</div><div class="line">運用基盤分析に関する研究ポリシ経路制御に関する研究大</div><div class="line">任意の物理的量子ビットに対する効率的な情報閲覧</div><div class="line">脳疲労検知システムの提案次世代インターネット経路制御を用い</div><div class="line">鍵交換機構の実装と評価初等中等教育におけるWWW</div><div class="line">プロセスデザイン片方向ブロードキャストメディアを用いたユビキタスコンピューティング環境に適し</div><div class="line">連携システムの設計と実装exPhoto:周辺機器と撮影</div><div class="line">に関する研究分散環境におけるプロアクティブ制御方式に関する研究アドホック</div><div class="line">...</div></pre></td></tr></table></figure>
-<p>　パッと見でRNNLMが生成した論文タイトルの方がより自然に思える．で，RNNLMって何なの？</p>
-<h1 id="RNNLM"><a href="#RNNLM" class="headerlink" title="RNNLM"></a>RNNLM</h1><p>　読んで字のごとくRNNLMはRNNの言語モデルへの応用である．<br>　RNNは内部に有向閉路をもつニューラルネット．系列データの各時刻<span>$t$</span><!-- Has MathJax -->につき1つの入力<span>$x^t$</span><!-- Has MathJax -->をとり1つの出力<span>$y^t$</span><!-- Has MathJax -->を返す．ふつう順伝播型ニューラルネットは入力1つをとり1つの入力を与える写像を表現するが，RNNは任意の系列–すなわち過去のすべての入力から任意の系列への写像を表現する．<br>　これは<strong>時刻<span>$t-1$</span><!-- Has MathJax -->の隠れ層の出力を，時刻<span>$t$</span><!-- Has MathJax -->の隠れ層の入力に与える</strong>ことで実現される．</p>
-<p><img src="/image/rnnlm/rnnlm.png" width="30%" height="30%"></p>
-<p>　文章は系列データであり，文章に含まれる各単語は直前の単語の並びに依存している．そこで，1990年のエルマンネット[2]以来，RNNを用いた文章の分析が試みられてきた–近頃「RNNは深層学習の一種」というような言辞を見かけるが，RNN<span>$\in$</span><!-- Has MathJax -->深層学習では<strong>ない</strong>．<br>　RNNLMと既存手法との相違点は，単語を潜在空間に写像して単語の意味を獲得しようとしているところだ．<br>　上図において隠れ層のベクトルは単語の潜在ベクトルとその履歴より<span>$\begin{split}s(t) =&amp; f(Uw(t) + Ws(t-1))\end{split}$</span><!-- Has MathJax -->となる．次の単語の確率は<span>$\begin{split}y(t) =&amp; g(Vs(t))\end{split}$</span><!-- Has MathJax -->となる．<br>　ここで活性化関数<span>$f(z)$</span><!-- Has MathJax -->は標準シグモイド関数で，<span>$g(z)$</span><!-- Has MathJax -->はソフトマックス関数<span>$\dfrac {e^{zm}} {\Sigma _{k}e^{zm}}$</span><!-- Has MathJax -->である．<br>　学習では確率的勾配降下法を用いて重み<span>$U$</span><!-- Has MathJax -->, <span>$W$</span><!-- Has MathJax -->, <span>$V$</span><!-- Has MathJax -->を更新していくが，このときRNNLMは各層を時間方向に展開し，最後の時刻<span>$t$</span><!-- Has MathJax -->から誤差逆伝播計算をおこなう（BPTT, Backpropagation through time法）．<br>　ここにおいてRNNは多層の順伝播型ニューラルネットのようにみなせる．</p>
-<p><img src="/image/rnnlm/bptt.png" width="30%" height="30%"></p>
-<p>　BPTT法において，ある時刻<span>$t$</span><!-- Has MathJax -->における出力層の誤差は正解ベクトル<span>$d(t)$</span><!-- Has MathJax -->から出力<span>$y(t)$</span><!-- Has MathJax -->を引いた出力誤差<span>$e_{o}(t)$</span><!-- Has MathJax -->と，時刻<span>$t+1$</span><!-- Has MathJax -->から伝播してきた誤差の和となる．ここでたとえば<span>$V(t+1) = V(t) + s(t)e_{o}(t)^t\alpha - V(t)\beta$</span><!-- Has MathJax -->．<span>$\alpha$</span><!-- Has MathJax -->は学習率であり，各層で行列の勾配に掛かる．<span>$\beta$</span><!-- Has MathJax -->はL2正則化の係数．<br>　このBPTT法で長い系列を扱うとき勾配が消失してしまう問題[3]があり，解決策としてLSTM（Long Short-Term Memory, 長・短期記憶）[4]が提案されているが，割愛する．<br>　なお今回のパラメータは次の通り．</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div></pre></td><td class="code"><pre><div class="line">last probability of validation data: -441.610349</div><div class="line">number of finished iterations: 14</div><div class="line">current position in training data: 0</div><div class="line">current probability of training data: -441.576456</div><div class="line">save after processing # words: 0</div><div class="line"># of training words: 6272</div><div class="line">input layer size: 1295</div><div class="line">hidden layer size: 200</div><div class="line">compression layer size: 0</div><div class="line">output layer size: 1096</div><div class="line">direct connections: 0</div><div class="line">direct order: 3</div><div class="line">bptt: 6</div><div class="line">bptt block: 10</div><div class="line">vocabulary size: 1095</div><div class="line">class size: 1</div><div class="line">old classes: 0</div><div class="line">independent sentences mode: 1</div><div class="line">starting learning rate: 0.100000</div><div class="line">current learning rate: 0.000195</div><div class="line">learning rate decrease: 1</div></pre></td></tr></table></figure>
-<h1 id="おわりに"><a href="#おわりに" class="headerlink" title="おわりに"></a>おわりに</h1><p>　恥知らずのクソ野郎なので何番煎じともわからない記事を書いてしまった．元ネタは<a href="http://www.phontron.com/nlp-title/" target="_blank" rel="external">NLP論文ネタ一覧</a>．<br>　このほか青空文庫やなろう小説[5]をRNNに学習させてはいるが，LSTM込みでもいまだ人間が見て自然に思える文章の生成は難しく思える．<br>　いずれは論文タイトルばかりか論文の内容も自動生成して知の欺瞞をもう一発カマしたいのだが．SFC自体が知の欺瞞っぽいところはさておき．<br>　物語の自動生成なら円城塔がなんとかしてくれるだろう．</p>
-<h1 id="参考文献"><a href="#参考文献" class="headerlink" title="参考文献"></a>参考文献</h1><ul>
-<li>[1] “RNNLM Toolkit,” <a href="http://rnnlm.org/" target="_blank" rel="external">http://rnnlm.org/</a><ul>
-<li>記事中の画像は開発者による<a href="http://www.fit.vutbr.cz/~imikolov/rnnlm/google.pdf" target="_blank" rel="external">紹介スライド</a>より．</li>
-<li>解説は<a href="http://kiyukuta.github.io/2013/12/09/mlac2013_day9_recurrent_neural_network_language_model.html" target="_blank" rel="external">これもある意味Deep Learning，Recurrent Neural Network Language Modelの話 [MLAC2013_9日目] – KiyuHu</a>がわかりやすい．</li>
-</ul>
-</li>
-<li>[2] Jeffrey L. Elman, “<a href="http://crl.ucsd.edu/~elman/Papers/fsit.pdf" target="_blank" rel="external">Finding Structure in Time[PDF]</a>,” Cognitive Science, vol. 14, issue. 2, pp. 179-211, 1990.</li>
-<li>[3] Sepp Hochreiter, “<a href="http://www.bioinf.jku.at/publications/older/3804.pdf" target="_blank" rel="external">Untersuchungen zu dynamischen neuronalen Netzen[PDF]</a>,” Diploma thesis, TU Munich, 1991.<ul>
-<li>読めない．</li>
-</ul>
-</li>
-<li>[4] Sepp Hochreiter and Jürgen Schmidhuber, “<a href="http://deeplearning.cs.cmu.edu/pdfs/Hochreiter97_lstm.pdf" target="_blank" rel="external">Long Short-Term Memory[PDF]</a>,” Neural Computation, vol. 9, no. 8, pp. 1735-1780, 1997.<ul>
-<li>解説は<a href="http://qiita.com/t_Signull/items/21b82be280b46f467d1b" target="_blank" rel="external">MachineLearning - わかるLSTM ～ 最近の動向と共に - Qiita</a>がわかりやすい．</li>
-</ul>
-</li>
-<li>[5] <a href="http://ncode.syosetu.com/n9073ca/" target="_blank" rel="external">幻想再帰のアリュージョニスト</a>，おすすめです．</li>
-</ul>
-
-      
-    </div>
-    <footer class="article-footer">
-      <a data-url="http://ntddk.github.io/2015/12/19/generating-thesis-titles-with-rnnlm/" data-id="cjkr035sm0010pv7tuybjzqsy" class="article-share-link">Share</a>
-      
-      
-  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/machine-learning/">machine learning</a></li></ul>
 
     </footer>
   </div>

@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+  <title>The Art Of De-obfuscation | 一生あとで読んでろ</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="description" content="Last week, I gave a talk at 第51回 情報科学若手の会.   I am pleased to be able to tell the relationship between the artisanship of reverse engineering and the principle of computer science. The questions asked">
+<meta name="keywords" content="reversing,symbolic execution,program synthesis">
+<meta property="og:type" content="article">
+<meta property="og:title" content="The Art Of De-obfuscation">
+<meta property="og:url" content="http://ntddk.github.io/2018/10/15/the-art-of-de-obfuscation/index.html">
+<meta property="og:site_name" content="一生あとで読んでろ">
+<meta property="og:description" content="Last week, I gave a talk at 第51回 情報科学若手の会.   I am pleased to be able to tell the relationship between the artisanship of reverse engineering and the principle of computer science. The questions asked">
+<meta property="og:updated_time" content="2018-10-15T10:38:09.677Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="The Art Of De-obfuscation">
+<meta name="twitter:description" content="Last week, I gave a talk at 第51回 情報科学若手の会.   I am pleased to be able to tell the relationship between the artisanship of reverse engineering and the principle of computer science. The questions asked">
+  
+  
+  <link href="//fonts.googleapis.com/css?family=Ubuntu" rel="stylesheet" type="text/css">
+  <link rel="stylesheet" href="/css/style.css">
+  
+</head>
+<body>
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/" id="logo">一生あとで読んでろ</a>
+      </h1>
+      
+        <h2 id="subtitle-wrap">
+          <a href="/" id="subtitle">技術ブログ</a>
+        </h2>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="sub-nav">
+        
+          <a id="nav-home-icon" class="nav-icon" href="/"></a>
+        
+          <a id="nav-about-icon" class="nav-icon" href="/about"></a>
+        
+        
+      </nav>
+    </div>
+  </div>
+</header>
+      <div class="outer">
+        <section id="main"><article id="post-the-art-of-de-obfuscation" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    
+      <header class="article-header">
+        
+  
+    <h1 class="article-title" itemprop="name">
+      The Art Of De-obfuscation
+    </h1>
+  
+
+      </header>
+    
+    <time class="article-date" datetime="2018-10-15T11:00:00.000Z" itemprop="datePublished">10-15-2018</time>
+    
+  </div>
+  <div class="article-inner">
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p>Last week, I gave a talk at <a href="https://wakate.org/2018/07/28/51th-general/" target="_blank" rel="external">第51回 情報科学若手の会</a>.</p>
+<script async class="speakerdeck-embed" data-id="d581afa782624a629964475fd0e0aa98" data-ratio="1.33333333333333" src="//speakerdeck.com/assets/embed.js"></script>
+
+<p>I am pleased to be able to tell the relationship between the artisanship of reverse engineering and the principle of computer science. The questions asked at the site are as follows:</p>
+<table>
+<thead>
+<tr>
+<th>Q</th>
+<th>A</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Does the “operation” here mean mathematical operation or anything else?</td>
+<td>In this presentation, the word “operation” corresponds to assembly or BitVector operations.</td>
+</tr>
+<tr>
+<td>How much advanced obfuscation is spreading?</td>
+<td>Although it is not widely used in malware for masses, it is common in government-grade malware e.g. APT28.</td>
+</tr>
+</tbody>
+</table>
+<p>Also, I got the feedback:</p>
+<p><blockquote class="twitter-tweet" data-conversation="none" data-lang="ja"><p lang="en" dir="ltr">Hello - We had done similar work on JEB in 2017 (plugins for our native decompilers) to perform: 1) opaque predicate remove (see <a href="https://t.co/pAp5dD25XL" target="_blank" rel="external">https://t.co/pAp5dD25XL</a>) and 2) CFG un-flattening (see <a href="https://t.co/3fl5Qpr4g7" target="_blank" rel="external">https://t.co/3fl5Qpr4g7</a>) – check out the videos.</p>&mdash; JEB Decompiler (@jebdec) <a href="https://twitter.com/jebdec/status/1049358773045751808?ref_src=twsrc%5Etfw" target="_blank" rel="external">2018年10月8日</a></blockquote><script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script></p>
+<p>It sounds great.</p>
+<p>In the 会, I’ve enjoyed discussing various topics related to information science:</p>
+<ul>
+<li><a href="http://polyhedral.info/" target="_blank" rel="external">Polyhedral optimization</a>, a method to optimize a certain kind of loop called SCoP using a linear algebra model.</li>
+<li><a href="https://arxiv.org/abs/1809.04098" target="_blank" rel="external">The paper</a> about principle of adversarial examples focusing on Fourier basis functions.</li>
+<li><a href="http://www.colm.net/open-source/ragel/" target="_blank" rel="external">Ragel</a>, the parser generator used in Ruby community. It was news to me.</li>
+<li>The hypothesis that the cerebellum may be using reinforcement learning.</li>
+<li>The weakness of random number generator of Dragon Quest 4 (PS version).</li>
+<li>About quantitative indicator of the beautiness of exploit code.</li>
+<li>Some binary analysis platform written in Rust e.g. <a href="https://github.com/danleh/wasabi" target="_blank" rel="external">wasabi</a>, <a href="https://github.com/falconre/falcon" target="_blank" rel="external">falcon</a> and <a href="https://github.com/falconre/finch" target="_blank" rel="external">finch</a>.</li>
+<li>The fact that <a href="https://pokemongo.gamepress.gg/s2-cells-foundation-pokemon-go-design" target="_blank" rel="external">Pokemon Go players are knowledgeable about Hilbert curve</a>.</li>
+</ul>
+<p>Young people who are interested in such topics should attend next 会.</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://ntddk.github.io/2018/10/15/the-art-of-de-obfuscation/" data-id="cjna5v32m001vul7tkcy1l16v" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/program-synthesis/">program synthesis</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/reversing/">reversing</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/symbolic-execution/">symbolic execution</a></li></ul>
+
+    </footer>
+  </div>
+  
+    
+<nav id="article-nav">
+  
+    <a href="/2018/10/12/picoctf-2018-dog-or-frog-write-up/" id="article-nav-newer" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Newer</strong>
+      <div class="article-nav-title">
+        
+          picoCTF 2018 Dog Or Frog Write-up
+        
+      </div>
+    </a>
+  
+  
+</nav>
+
+  
+</article>
+
+</section>
+        
+      </div>
+      <footer id="footer">
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      &copy; 2018 ntddk<br>
+      <a href="https://github.com/ntddk/hexo-theme-jathena" target="_blank">JAthena</a> by <a href="https://ntddk.github.io" target="_blank">ntddk</a> | Powered by <a href="https://hexo.io/" target="_blank">Hexo</a>
+    </div>
+  </div>
+</footer>
+
+    </div>
+    
+
+<script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+
+
+  <link rel="stylesheet" href="/fancybox/jquery.fancybox.css">
+  <script src="/fancybox/jquery.fancybox.pack.js"></script>
+
+
+<script src="/js/script.js"></script>
+  </div>
+</body>
+</html>

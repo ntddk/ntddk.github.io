@@ -50,6 +50,76 @@
       <div class="outer">
         <section id="main">
   
+    <article id="post-the-art-of-de-obfuscation" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    
+      <header class="article-header">
+        
+  
+    <a class="article-title" href="/2018/10/15/the-art-of-de-obfuscation/">The Art Of De-obfuscation</a>
+  
+
+      </header>
+    
+    <time class="article-date" datetime="2018-10-15T11:00:00.000Z" itemprop="datePublished">10-15-2018</time>
+    
+  </div>
+  <div class="article-inner">
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p>Last week, I gave a talk at <a href="https://wakate.org/2018/07/28/51th-general/" target="_blank" rel="external">第51回 情報科学若手の会</a>.</p>
+<script async class="speakerdeck-embed" data-id="d581afa782624a629964475fd0e0aa98" data-ratio="1.33333333333333" src="//speakerdeck.com/assets/embed.js"></script>
+
+<p>I am pleased to be able to tell the relationship between the artisanship of reverse engineering and the principle of computer science. The questions asked at the site are as follows:</p>
+<table>
+<thead>
+<tr>
+<th>Q</th>
+<th>A</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Does the “operation” here mean mathematical operation or anything else?</td>
+<td>In this presentation, the word “operation” corresponds to assembly or BitVector operations.</td>
+</tr>
+<tr>
+<td>How much advanced obfuscation is spreading?</td>
+<td>Although it is not widely used in malware for masses, it is common in government-grade malware e.g. APT28.</td>
+</tr>
+</tbody>
+</table>
+<p>Also, I got the feedback:</p>
+<p><blockquote class="twitter-tweet" data-conversation="none" data-lang="ja"><p lang="en" dir="ltr">Hello - We had done similar work on JEB in 2017 (plugins for our native decompilers) to perform: 1) opaque predicate remove (see <a href="https://t.co/pAp5dD25XL" target="_blank" rel="external">https://t.co/pAp5dD25XL</a>) and 2) CFG un-flattening (see <a href="https://t.co/3fl5Qpr4g7" target="_blank" rel="external">https://t.co/3fl5Qpr4g7</a>) – check out the videos.</p>&mdash; JEB Decompiler (@jebdec) <a href="https://twitter.com/jebdec/status/1049358773045751808?ref_src=twsrc%5Etfw" target="_blank" rel="external">2018年10月8日</a></blockquote><script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script></p>
+<p>It sounds great.</p>
+<p>In the 会, I’ve enjoyed discussing various topics related to information science:</p>
+<ul>
+<li><a href="http://polyhedral.info/" target="_blank" rel="external">Polyhedral optimization</a>, a method to optimize a certain kind of loop called SCoP using a linear algebra model.</li>
+<li><a href="https://arxiv.org/abs/1809.04098" target="_blank" rel="external">The paper</a> about principle of adversarial examples focusing on Fourier basis functions.</li>
+<li><a href="http://www.colm.net/open-source/ragel/" target="_blank" rel="external">Ragel</a>, the parser generator used in Ruby community. It was news to me.</li>
+<li>The hypothesis that the cerebellum may be using reinforcement learning.</li>
+<li>The weakness of random number generator of Dragon Quest 4 (PS version).</li>
+<li>About quantitative indicator of the beautiness of exploit code.</li>
+<li>Some binary analysis platform written in Rust e.g. <a href="https://github.com/danleh/wasabi" target="_blank" rel="external">wasabi</a>, <a href="https://github.com/falconre/falcon" target="_blank" rel="external">falcon</a> and <a href="https://github.com/falconre/finch" target="_blank" rel="external">finch</a>.</li>
+<li>The fact that <a href="https://pokemongo.gamepress.gg/s2-cells-foundation-pokemon-go-design" target="_blank" rel="external">Pokemon Go players are knowledgeable about Hilbert curve</a>.</li>
+</ul>
+<p>Young people who are interested in such topics should attend next 会.</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://ntddk.github.io/2018/10/15/the-art-of-de-obfuscation/" data-id="cjna5v32m001vul7tkcy1l16v" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/program-synthesis/">program synthesis</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/reversing/">reversing</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/symbolic-execution/">symbolic execution</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
     <article id="post-def-con-ctf-qualifier-2018-round-up" class="article article-type-post" itemscope itemprop="blogPost">
   <div class="article-meta">
     
@@ -136,7 +206,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://ntddk.github.io/2018/05/14/def-con-ctf-qualifier-2018-round-up/" data-id="cjkr035sf000kpv7tl0ssumi2" class="article-share-link">Share</a>
+      <a data-url="http://ntddk.github.io/2018/05/14/def-con-ctf-qualifier-2018-round-up/" data-id="cjna5v320000iul7t2890udl0" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/exploitation/">exploitation</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/reversing/">reversing</a></li></ul>
@@ -254,7 +324,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://ntddk.github.io/2017/12/04/def-con-ctf-qualifier-2017-pepperidge-farm-write-up/" data-id="cjkr035t40028pv7tqne33k0i" class="article-share-link">Share</a>
+      <a data-url="http://ntddk.github.io/2017/12/04/def-con-ctf-qualifier-2017-pepperidge-farm-write-up/" data-id="cjna5v326000wul7tw0805xw9" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/program-synthesis/">program synthesis</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/reversing/">reversing</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/symbolic-execution/">symbolic execution</a></li></ul>
@@ -304,7 +374,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://ntddk.github.io/2017/11/23/backward-program-slicing-with-idapython-and-triton/" data-id="cjkr035sb000apv7tlk70h3em" class="article-share-link">Share</a>
+      <a data-url="http://ntddk.github.io/2017/11/23/backward-program-slicing-with-idapython-and-triton/" data-id="cjna5v31v0007ul7tl4afk4bf" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/reversing/">reversing</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/symbolic-execution/">symbolic execution</a></li></ul>
@@ -406,7 +476,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://ntddk.github.io/2017/11/08/a-supplemental-guide-to-migrate-pySide-code-to-pyqt5-within-your-idapython-script/" data-id="cjkr035s70005pv7txw1tpg4q" class="article-share-link">Share</a>
+      <a data-url="http://ntddk.github.io/2017/11/08/a-supplemental-guide-to-migrate-pySide-code-to-pyqt5-within-your-idapython-script/" data-id="cjna5v31q0003ul7tkjcmp53x" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/reversing/">reversing</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/symbolic-execution/">symbolic execution</a></li></ul>
@@ -450,7 +520,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://ntddk.github.io/2016/11/06/suppress-switching-ime-on-xming/" data-id="cjkr035sr001dpv7tb5b65cpp" class="article-share-link">Share</a>
+      <a data-url="http://ntddk.github.io/2016/11/06/suppress-switching-ime-on-xming/" data-id="cjna5v32a0019ul7twepd32a1" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/reversing/">reversing</a></li></ul>
