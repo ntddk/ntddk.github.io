@@ -5,7 +5,7 @@
   <link href="/atom.xml" rel="self"/>
   
   <link href="http://ntddk.github.io/"/>
-  <updated>2018-10-15T10:56:02.093Z</updated>
+  <updated>2018-10-15T11:12:22.733Z</updated>
   <id>http://ntddk.github.io/</id>
   
   <author>
@@ -20,7 +20,7 @@
     <link href="http://ntddk.github.io/2018/10/15/the-art-of-de-obfuscation/"/>
     <id>http://ntddk.github.io/2018/10/15/the-art-of-de-obfuscation/</id>
     <published>2018-10-15T11:00:00.000Z</published>
-    <updated>2018-10-15T10:56:02.093Z</updated>
+    <updated>2018-10-15T11:12:22.733Z</updated>
     
     <content type="html"><![CDATA[<p>Last week, I gave a talk at <a href="https://wakate.org/2018/07/28/51th-general/" target="_blank" rel="external">第51回 情報科学若手の会</a>.</p>
 <script async class="speakerdeck-embed" data-id="d581afa782624a629964475fd0e0aa98" data-ratio="1.33333333333333" src="//speakerdeck.com/assets/embed.js"></script>
@@ -51,14 +51,14 @@
 <ul>
 <li><a href="http://polyhedral.info/" target="_blank" rel="external">Polyhedral optimization</a>, a method to optimize a certain kind of loop called SCoP using a linear algebra model.</li>
 <li><a href="https://arxiv.org/abs/1809.04098" target="_blank" rel="external">The paper</a> about principle of adversarial examples focusing on Fourier basis functions.</li>
-<li><a href="http://www.colm.net/open-source/ragel/" target="_blank" rel="external">Ragel</a>, the parser generator used in Ruby community. It was news to me.</li>
+<li><a href="http://www.colm.net/open-source/ragel/" target="_blank" rel="external">Ragel</a>, the parser generator used in the Ruby community. It was news to me.</li>
 <li>The hypothesis that the cerebellum may be using reinforcement learning.</li>
 <li>The weakness of random number generator of Dragon Quest 4 (PS version).</li>
 <li>About quantitative indicator of the beautiness of exploit code.</li>
 <li>Some binary analysis platform written in Rust e.g. <a href="https://github.com/danleh/wasabi" target="_blank" rel="external">wasabi</a>, <a href="https://github.com/falconre/falcon" target="_blank" rel="external">falcon</a> and <a href="https://github.com/falconre/finch" target="_blank" rel="external">finch</a>.</li>
 <li>The fact that <a href="https://pokemongo.gamepress.gg/s2-cells-foundation-pokemon-go-design" target="_blank" rel="external">Pokemon Go players are knowledgeable about Hilbert curve</a>.</li>
 </ul>
-<p>Young people who are interested in such topics should attend next 会.</p>
+<p>If these topics capture your interest, why don’t you join the next 会?</p>
 ]]></content>
     
     <summary type="html">
