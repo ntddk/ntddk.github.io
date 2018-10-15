@@ -78,15 +78,15 @@
   </entry>
   
   <entry>
-    <title>picoCTF 2018 Dog Or Frog Write-up</title>
+    <title>picoCTF 2018 Dog or Frog Write-up</title>
     <link href="http://ntddk.github.io/2018/10/12/picoctf-2018-dog-or-frog-write-up/"/>
     <id>http://ntddk.github.io/2018/10/12/picoctf-2018-dog-or-frog-write-up/</id>
     <published>2018-10-12T11:00:00.000Z</published>
-    <updated>2018-10-15T09:07:03.983Z</updated>
+    <updated>2018-10-15T11:28:03.745Z</updated>
     
     <content type="html"><![CDATA[<p>Thank you for telling me this problem, <a href="https://twitter.com/kumagi" target="_blank" rel="external">@kumagi</a>!</p>
 <h1 id="Introduction"><a href="#Introduction" class="headerlink" title="Introduction"></a>Introduction</h1><p><img src="/image/dog_or_frog/dog_or_frog.png" width="100%" height="100%"></p>
-<p>Dog Or Frog <code>2018shell2.picoctf.com:18318</code> is a classic task about adversarial examples. </p>
+<p>Dog or Frog <code>2018shell2.picoctf.com:18318</code> is a classic task about adversarial examples. </p>
 <p>The following files are given:</p>
 <ul>
 <li>model</li>
