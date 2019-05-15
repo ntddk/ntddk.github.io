@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+  <title>Archives: 2019 | 一生あとで読んでろ</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="description" content="技術ブログ">
+<meta property="og:type" content="website">
+<meta property="og:title" content="一生あとで読んでろ">
+<meta property="og:url" content="http://ntddk.github.io/archives/2019/index.html">
+<meta property="og:site_name" content="一生あとで読んでろ">
+<meta property="og:description" content="技術ブログ">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="一生あとで読んでろ">
+<meta name="twitter:description" content="技術ブログ">
+  
+  
+  <link href="//fonts.googleapis.com/css?family=Ubuntu" rel="stylesheet" type="text/css">
+  <link rel="stylesheet" href="/css/style.css">
+  
+</head>
+<body>
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/" id="logo">一生あとで読んでろ</a>
+      </h1>
+      
+        <h2 id="subtitle-wrap">
+          <a href="/" id="subtitle">技術ブログ</a>
+        </h2>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="sub-nav">
+        
+          <a id="nav-home-icon" class="nav-icon" href="/"></a>
+        
+          <a id="nav-about-icon" class="nav-icon" href="/about"></a>
+        
+        
+      </nav>
+    </div>
+  </div>
+</header>
+      <div class="outer">
+        <section id="main">
+  
+    <article id="post-def-con-ctf-qualifier-2019-round-up" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    
+      <header class="article-header">
+        
+  
+    <a class="article-title" href="/2019/05/13/def-con-ctf-qualifier-2019-round-up/">DEF CON CTF Qualifier 2019 Round-up</a>
+  
+
+      </header>
+    
+    <time class="article-date" datetime="2019-05-13T11:00:00.000Z" itemprop="datePublished">05-13-2019</time>
+    
+  </div>
+  <div class="article-inner">
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p>I’ve participated in DC 27 QUALS as a member of Team Enu (30th place) and solved speedrun-008, speedrun-010, know_your_mem, and vitor. I shall write down my impressions.</p>
+<h1 id="speedrun-008"><a href="#speedrun-008" class="headerlink" title="speedrun-008"></a>speedrun-008</h1><p>Leaking stack canary + ROP. やるだけ。</p>
+<h1 id="speedrun-010"><a href="#speedrun-010" class="headerlink" title="speedrun-010"></a>speedrun-010</h1><p>UAF + One gadget RCE. やるだけ。</p>
+<h1 id="know-your-mem"><a href="#know-your-mem" class="headerlink" title="know_your_mem"></a>know_your_mem</h1><p>Binary search for mmap-ed regions.</p>
+<h2 id="vitor"><a href="#vitor" class="headerlink" title="vitor"></a>vitor</h2><p>A long journey through Android/Crypto/shellcode/ROP/JS/Z3. JS part was analyzed by my teammate. To set DWORD PTR constraints with a left shift is a bit confusing: </p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div></pre></td><td class="code"><pre><div class="line"><span class="string">'''</span></div><div class="line">ecx = 0;</div><div class="line">edi = (_DWORD *)(flag + 0x10);</div><div class="line">edx = 2;</div><div class="line">do</div><div class="line">&#123;</div><div class="line">    ecx ^= *edi;</div><div class="line">    edi += 4;</div><div class="line">    --edx;</div><div class="line">&#125;</div><div class="line">while (edx);</div><div class="line">'''</div><div class="line"></div><div class="line">ecx = <span class="number">0</span></div><div class="line">ecx ^= (flag[<span class="number">2</span> * <span class="number">0x10</span> + <span class="number">0</span>] &lt;&lt; <span class="number">24</span> | flag[<span class="number">2</span> * <span class="number">0x10</span> + <span class="number">1</span>] &lt;&lt; <span class="number">16</span> | flag[<span class="number">2</span> * <span class="number">0x10</span> + <span class="number">2</span>] &lt;&lt; <span class="number">8</span> | flag[<span class="number">2</span> * <span class="number">0x10</span> + <span class="number">3</span>] &lt;&lt; <span class="number">0</span>)</div><div class="line">ecx ^= (flag[<span class="number">1</span> * <span class="number">0x10</span> + <span class="number">0</span>] &lt;&lt; <span class="number">24</span> | flag[<span class="number">1</span> * <span class="number">0x10</span> + <span class="number">1</span>] &lt;&lt; <span class="number">16</span> | flag[<span class="number">1</span> * <span class="number">0x10</span> + <span class="number">2</span>] &lt;&lt; <span class="number">8</span> | flag[<span class="number">1</span> * <span class="number">0x10</span> + <span class="number">3</span>] &lt;&lt; <span class="number">0</span>)</div><div class="line">s.add(ecx == <span class="number">0x42183313</span>)</div></pre></td></tr></table></figure>
+<h1 id="gloryhost"><a href="#gloryhost" class="headerlink" title="gloryhost"></a>gloryhost</h1><p>I couldn’t find a way to get a flag within the time. I wish I could have noticed that it was a side-channel (especially, Spectre) task when I found the reference to <code>rdtsc</code>.<br>While Ubuntu 16.04 implicitly specifies <code>-N</code> as the argument of <code>nc</code> command, Ubuntu 18.04 does not, resulting waste of time in find a way to get a message from the exported function <code>this_is_what_ive_got()</code>. The concept of it was interesting, but such an environment-dependent behavior is not my preference.</p>
+<h1 id="RTOoOS"><a href="#RTOoOS" class="headerlink" title="RTOoOS"></a>RTOoOS</h1><p>Hypervisor.framework-based VM escape task. The first attack surface is <code>export</code>. I was exhausted when I got a dump of <code>honcho</code> … and couldn’t solve it within the time.</p>
+<h1 id="Random-Thoughts"><a href="#Random-Thoughts" class="headerlink" title="Random Thoughts"></a>Random Thoughts</h1><p>There wasn’t a very good task, but Speedruns are good for beginners and retirees (me) to practice as they can be solved in a straightforward way. The top-tier teams have solved Speedruns in about 5 minutes, but I took one and a half hours to solve ‘em. 弱すぎますね。</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://ntddk.github.io/2019/05/13/def-con-ctf-qualifier-2019-round-up/" data-id="cjvozzsrt000lxo7tvylve3w1" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/exploitation/">exploitation</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/reversing/">reversing</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+  
+</section>
+        
+      </div>
+      <footer id="footer">
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      &copy; 2019 ntddk<br>
+      <a href="https://github.com/ntddk/hexo-theme-jathena" target="_blank">JAthena</a> by <a href="https://ntddk.github.io" target="_blank">ntddk</a> | Powered by <a href="https://hexo.io/" target="_blank">Hexo</a>
+    </div>
+  </div>
+</footer>
+
+    </div>
+    
+
+<script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+
+
+  <link rel="stylesheet" href="/fancybox/jquery.fancybox.css">
+  <script src="/fancybox/jquery.fancybox.pack.js"></script>
+
+
+<script src="/js/script.js"></script>
+  </div>
+</body>
+</html>
