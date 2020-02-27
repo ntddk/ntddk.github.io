@@ -23,6 +23,7 @@ Other slides can be found at [Speaker Deck](https://speakerdeck.com/ntddk).
 - Why Cannot Malware Analysis Be Fully-Automated?<br>Trainer, Security Camp National Workshop<br>Makuhari, Japan, August 2016.
 - Malware Analysis with Virtualization<br>Trainer, Security Mini Camp<br>Okinawa, Japan, December 2015.
 - Malware Analysis with Virtualization<br>Trainer, Security Camp National Workshop<br>Makuhari, Japan, August 2015.
+
 The Global Cybersecurity Camp and the Security Camp are nation-backed training programs for students.
 
 ## Work Experiences
