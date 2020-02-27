@@ -1,6 +1,5 @@
 <img src="https://avatars3.githubusercontent.com/u/2392750?s=460&v=4" width="100">
 
-# Yuma Kurogome
 Yuma Kurogome is a security researcher at NTT Secure Platform Laboratories. His interest lies in malware detection, analysis (in particular symbolic execution), and anti-analysis; His passion is in honing both defensive and offensive skills while playing the "cat-and-mouse" game of security. Prior to joining NTT, he received his BA degree from Keio University in 2017. When away from computers, he enjoys climbing. 
 
 - [GitHub](https://github.com/ntddk)
@@ -12,8 +11,7 @@ Yuma Kurogome is a security researcher at NTT Secure Platform Laboratories. His 
 A full list can be found at [Google Scholar](https://scholar.google.com/citations?user=grtRA6sAAAAJ).
 
 ## Talks
-- [AVCLASS++: Yet Another Massive Malware Labeling Tool](https://github.com/malrev/avclassplusplus)<br>Black Hat Europe 2019 Arsenal<br>London, England, December 2019.
-- [The Art of De-Obfuscation](https://speakerdeck.com/ntddk/the-art-of-de-obfuscation)<br>Youth Keynote, The 51st Young Researchers and Engineers Group for Information Science<br>Karuizawa, Japan, October 2018.
+- [The Art of De-Obfuscation](https://speakerdeck.com/ntddk/the-art-of-de-obfuscation)<br>Youth Keynote, The 51st Young Researchers and Engineers Group on Information Science<br>Karuizawa, Japan, October 2018.
 - PANDEMONIUM: Automated Identification of Cryptographic Algorithms using Dynamic Binary Instrumentation and Fuzzy Hashing<br>Youth Session, CODEBLUE 2015<br>Tokyo, Japan, October 2015.
 
 Other slides can be found at [Speaker Deck](https://speakerdeck.com/ntddk).
@@ -24,7 +22,7 @@ Other slides can be found at [Speaker Deck](https://speakerdeck.com/ntddk).
 - Malware Analysis with Virtualization<br>Trainer, Security Mini Camp<br>Okinawa, Japan, December 2015.
 - Malware Analysis with Virtualization<br>Trainer, Security Camp National Workshop<br>Makuhari, Japan, August 2015.
 
-The Global Cybersecurity Camp and the Security Camp are nation-backed training programs for students.
+The Global Cybersecurity Camp and the Security Camp are nation-backed training programs for the youth.
 
 ## Work Experiences
 - Nippon Telegraph and Telephone Corporation<br>Research Engineer, May 2017 - Present.
@@ -50,5 +48,5 @@ Verified reviews can be found at [Publons](https://publons.com/researcher/331942
 - The old blog 一生あとで読んでろ has been archived. Yet, you can recover it from the commit log ;)
 - Currently, I'm **not** open to new job opportunities.
 
-Last updated on 2020-02-27.
+Last updated on 2020-02-28.
 
